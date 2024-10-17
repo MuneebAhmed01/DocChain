@@ -1,9 +1,16 @@
-import React from 'react'
+import React, { useContext, useEffect } from "react";
+import { DoctorContext } from "../../context/DoctorContext";
 
 const DoctorAppointments = () => {
-  return (
-    <div>DoctorAppointments</div>
-  )
-}
+  const { dToken, appointments, getAppointments } = useContext(DoctorContext);
 
-export default DoctorAppointments
+  useEffect(() => {
+    if (dToken) {
+      getAppointments();
+    }
+  }, [dToken]);
+
+  return <div>DoctorAppointments</div>;
+};
+
+export default DoctorAppointments;
