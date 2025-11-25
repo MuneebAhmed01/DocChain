@@ -1,30 +1,104 @@
+// import express from "express";
+// import {
+//   registerUser,
+//   loginUser,
+//   getProfile,
+//   updateProfile,
+//   bookAppointment,
+//   listAppointment,
+//   cancelAppointment,
+// } from "../controllers/userController.js";
+// import authUser from "../middlewares/authUser.js";
+// import upload from "../middlewares/multer.js";
+
+// const userRouter = express.Router();
+
+// userRouter.post("/register", registerUser);
+// userRouter.post("/login", loginUser);
+
+// userRouter.get("/get-profile", authUser, getProfile);
+// userRouter.post(
+//   "/update-profile",
+//   upload.single("image"),
+//   authUser,
+//   updateProfile
+// );
+// userRouter.post("/book-appointment", authUser, bookAppointment);
+// userRouter.get("/appointments", authUser, listAppointment);
+// userRouter.post("/cancel-appointment", authUser, cancelAppointment);
+
+// export default userRouter;
 import express from "express";
-import {
-  registerUser,
-  loginUser,
-  getProfile,
-  updateProfile,
-  bookAppointment,
-  listAppointment,
-  cancelAppointment,
-} from "../controllers/userController.js";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+// import User from "../models/User.js"; // your User model
+import userModel from "../models/userModel.js";
 import authUser from "../middlewares/authUser.js";
-import upload from "../middlewares/multer.js";
+import { getProfile } from "../controllers/userController.js";
 
-const userRouter = express.Router();
+const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
 
-userRouter.post("/register", registerUser);
-userRouter.post("/login", loginUser);
+// Register
+router.post("/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
 
-userRouter.get("/get-profile", authUser, getProfile);
-userRouter.post(
-  "/update-profile",
-  upload.single("image"),
-  authUser,
-  updateProfile
-);
-userRouter.post("/book-appointment", authUser, bookAppointment);
-userRouter.get("/appointments", authUser, listAppointment);
-userRouter.post("/cancel-appointment", authUser, cancelAppointment);
+    // Check if user exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) return res.json({ success: false, message: "User already exists" });
 
-export default userRouter;
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await userModel.create({ name, email, password: hashedPassword });
+
+    // Create JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ success: true, token });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Login
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await userModel.findOne({ email });
+    if (!user) return res.json({ success: false, message: "User not found" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.json({ success: false, message: "Incorrect password" });
+
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ success: true, token });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Protected route
+router.get("/get-profile", authUser,getProfile, async (req, res) => {
+  try {
+    const user = await userModel.findById(req.user.userId).select("-password");
+    if (!user) return res.json({ success: false, message: "User not found" });
+    res.json({ success: true, user });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+export default router;
+
