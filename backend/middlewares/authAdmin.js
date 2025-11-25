@@ -1,25 +1,42 @@
 import jwt from "jsonwebtoken";
 
-// admin authentication middleware
-const authAdmin = async (req, res, next) => {
-    try {
+export default function authAdmin(req, res, next) {
+  console.log("AUTH ADMIN HIT");
 
-        const { atoken } = req.headers;
-        if (!atoken) {
-            return res.json({ success: false, message: "Not Authorized Login Again" });
-        }
-        const token_decode = jwt.verify(atoken, process.env.JWT_SECRET);
+  // Accept BOTH headers so nothing else breaks
+  const authHeader = req.headers.authorization || req.headers.atoken || req.headers.aToken;
 
-        if (token_decode !== process.env.ADMIN_EMAIL + process.env.ADMIN_PASSWORD) {
-            return res.json({ success: false, message: "Not Authorized Login Again" });
-        }
+  console.log("AUTH HEADER RAW:", authHeader);
 
-        next();
+  if (!authHeader) {
+    return res.status(401).json({ message: "Not Authorized - No Token" });
+  }
 
-    } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+  // Extract token if it's "Bearer xxxxx"
+  let token = authHeader;
+
+  if (authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  }
+
+  console.log("TOKEN RECEIVED:", token);
+
+  if (!token) {
+    return res.status(401).json({ message: "Invalid token format" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+
+    // your normal admin check
+    if (decoded.email !== "admin@gmail.com") {
+      return res.status(403).json({ message: "Access denied" });
     }
-}
 
-export default authAdmin
+    next();
+  } catch (err) {
+    console.error(err);
+    return res.status(403).json({ message: "Invalid token" });
+  }
+}
