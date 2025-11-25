@@ -38,7 +38,8 @@ const registerUser = async (req, res) => {
     const newUser = new userModel(userData);
     const user = await newUser.save();
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
 
     res.json({ success: true, token });
   } catch (error) {
@@ -60,7 +61,8 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (isMatch) {
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+
       res.json({ success: true, token });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
@@ -146,7 +148,9 @@ const updateProfile = async (req, res) => {
 // API to book appointment
 const bookAppointment = async (req, res) => {
   try {
-    const { userId, docId, slotDate, slotTime } = req.body;
+    const userId = req.user.userId;
+
+    const {  docId, slotDate, slotTime } = req.body;
 
     const docData = await doctorModel.findById(docId).select("-password");
 
@@ -199,7 +203,7 @@ const bookAppointment = async (req, res) => {
 // API to get user appointments for frontend my-appointments page
 const listAppointment = async (req, res) => {
   try {
-    const { userId } = req.body;
+   const userId = req.user.userId;
     const appointments = await appointmentModel.find({ userId });
 
     res.json({ success: true, appointments });
@@ -212,23 +216,39 @@ const listAppointment = async (req, res) => {
 // API to cancel appointment
 const cancelAppointment = async (req, res) => {
   try {
-    const { userId, appointmentId } = req.body;
+    const { appointmentId } = req.body;
+
+    // userId now comes from authUser middleware
+    const userId = req.user.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: No user from token",
+      });
+    }
 
     const appointmentData = await appointmentModel.findById(appointmentId);
 
-    // verify appointment user
-    if (appointmentData.userId.toString() !== userId) {
-      return res.json({ success: false, message: "Unauthorized action" });
+    if (!appointmentData) {
+      return res.json({ success: false, message: "Appointment not found" });
     }
 
+    // verify appointment belongs to logged in user
+    if (appointmentData.userId.toString() !== userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized action",
+      });
+    }
+
+    // cancel appointment
     await appointmentModel.findByIdAndUpdate(appointmentId, {
       cancelled: true,
     });
 
-    // releasing doctor slot
-
+    // release doctor slot
     const { docId, slotDate, slotTime } = appointmentData;
-
     const doctorData = await doctorModel.findById(docId);
 
     let slots_booked = doctorData.slots_booked;
@@ -239,12 +259,17 @@ const cancelAppointment = async (req, res) => {
 
     await doctorModel.findByIdAndUpdate(docId, { slots_booked });
 
-    res.json({ success: true, message: "Appointment Cancelled" });
+    return res.json({
+      success: true,
+      message: "Appointment Cancelled",
+    });
+
   } catch (error) {
     console.log(error);
-    res.json({ success: false, message: error.message });
+    return res.json({ success: false, message: error.message });
   }
 };
+
 
 export {
   registerUser,

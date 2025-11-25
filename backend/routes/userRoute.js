@@ -31,29 +31,36 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-// import User from "../models/User.js"; // your User model
 import userModel from "../models/userModel.js";
 import authUser from "../middlewares/authUser.js";
-import { getProfile } from "../controllers/userController.js";
+import { 
+  getProfile,
+  bookAppointment,
+  listAppointment,
+  cancelAppointment
+} from "../controllers/userController.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
 
-// Register
+
+// ------------------ REGISTER ------------------
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user exists
     const existingUser = await userModel.findOne({ email });
-    if (existingUser) return res.json({ success: false, message: "User already exists" });
+    if (existingUser)
+      return res.json({ success: false, message: "User already exists" });
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await userModel.create({ name, email, password: hashedPassword });
+    const user = await userModel.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
 
-    // Create JWT
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       JWT_SECRET,
@@ -66,16 +73,19 @@ router.post("/register", async (req, res) => {
   }
 });
 
-// Login
+
+// ------------------ LOGIN ------------------
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await userModel.findOne({ email });
-    if (!user) return res.json({ success: false, message: "User not found" });
+    if (!user)
+      return res.json({ success: false, message: "User not found" });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.json({ success: false, message: "Incorrect password" });
+    if (!isMatch)
+      return res.json({ success: false, message: "Incorrect password" });
 
     const token = jwt.sign(
       { userId: user._id, email: user.email },
@@ -89,16 +99,34 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// Protected route
-router.get("/get-profile", authUser,getProfile, async (req, res) => {
+
+// ------------------ GET PROFILE ------------------
+router.get("/get-profile", authUser, getProfile, async (req, res) => {
   try {
-    const user = await userModel.findById(req.user.userId).select("-password");
-    if (!user) return res.json({ success: false, message: "User not found" });
+    const user = await userModel
+      .findById(req.user.userId)
+      .select("-password");
+
+    if (!user)
+      return res.json({ success: false, message: "User not found" });
+
     res.json({ success: true, user });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-export default router;
 
+// ------------------ APPOINTMENT ROUTES ADDED ------------------
+
+// Book appointment
+router.post("/book-appointment", authUser, bookAppointment);
+
+// Get user appointments
+router.get("/appointments", authUser, listAppointment);
+
+// Cancel appointment
+router.post("/cancel-appointment", authUser, cancelAppointment);
+
+
+export default router;
