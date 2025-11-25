@@ -1,7 +1,8 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AppContext } from "../context/AppContext";
-import axios from "axios";
+// import axios from "axios";
 import { toast } from "react-toastify";
+import axiosInstance from "../axiosInstance";
 
 const MyAppointments = () => {
   const { backendUrl, token, getDoctorsData } = useContext(AppContext);
@@ -32,9 +33,11 @@ const MyAppointments = () => {
 
   const getUserAppointments = async () => {
     try {
-      const { data } = await axios.get(backendUrl + "/api/user/appointments", {
-        headers: { token },
-      });
+      const { data } = await axiosInstance.get(
+        // backendUrl + 
+        "/api/user/appointments", 
+        // {headers: { token },}
+      );
 
       if (data.success) {
         setAppointments(data.appointments.reverse());
@@ -48,10 +51,11 @@ const MyAppointments = () => {
 
   const cancelAppointment = async (appointmentId) => {
     try {
-      const { data } = await axios.post(
-        backendUrl + "/api/user/cancel-appointment",
+      const { data } = await axiosInstance.post(
+        // backendUrl +
+         "/api/user/cancel-appointment",
         { appointmentId },
-        { headers: { token } }
+        // { headers: { token } }
       );
       if (data.success) {
         toast.success(data.message);
