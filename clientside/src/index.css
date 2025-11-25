@@ -20,3 +20,18 @@
     @apply text-white bg-primary;
   }
 }
+.testi-smooth {
+  animation: testiSmooth 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes testiSmooth {
+  0% {
+    opacity: 0;
+    transform: translateY(15px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0px) scale(1);
+  }
+}
+
