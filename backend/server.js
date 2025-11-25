@@ -6,24 +6,76 @@ import connectCloudinary from "./config/cloudinary.js";
 import adminRouter from "./routes/adminRoute.js";
 import doctorRouter from "./routes/doctorRoute.js";
 import userRouter from "./routes/userRoute.js";
-
-// app config
+import axios from "axios";
+import jwt from "jsonwebtoken";
+import blogRoutes from './routes/blogRoutes.js';
 const app = express();
 const port = process.env.PORT || 4000;
 connectDB();
 connectCloudinary();
 
-// middlewares
-app.use(express.json());
-app.use(cors());
+// ✅ CORS - MUST come before routes
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "https://res.cloudinary.com"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
+}));
 
-// api endpoints
+
+// Handle preflight requests
+app.options("*", cors());
+
+// Parse JSON
+app.use(express.json());
+
+// JWT Secret
+const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
+
+// JWT Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) return res.status(401).json({ success: false, message: "No token provided" });
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ success: false, message: "Invalid token" });
+  }
+};
+
+// Routes
 app.use("/api/admin", adminRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
 
-app.get("/", (req, res) => {
-  res.send("API WORKING");
+// blog routes
+
+app.use('/api/blogs', blogRoutes);
+
+
+// Demo login
+app.post("/api/login", (req, res) => {
+  const user = { id: 1, username: "demo" };
+  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "1h" });
+  res.json({ success: true, token });
 });
 
-app.listen(port, () => console.log("Server started", port));
+// Example protected route
+app.get("/api/protected", authenticateToken, (req, res) => {
+  res.json({ message: "This is protected data!", user: req.user });
+});
+
+app.get("/", (req, res) => res.send("API WORKING"));
+
+app.listen(port, () => console.log("Server started on port", port));
+
+console.log("backend running")
