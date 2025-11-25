@@ -5,7 +5,7 @@ import { assets } from "../assets/assets";
 import RelatedDoctors from "../components/RelatedDoctors";
 import { toast } from "react-toastify";
 import axios from "axios";
-
+import axiosInstance from "../axiosInstance";
 const Appointment = () => {
   const { docId } = useParams();
   const { doctors, currencySymbol, backendUrl, token, getDoctorsData } =
@@ -103,10 +103,11 @@ const Appointment = () => {
 
       const slotDate = day + "_" + month + "_" + year;
 
-      const { data } = await axios.post(
-        backendUrl + "/api/user/book-appointment",
+      const { data } = await axiosInstance.post(
+        // backendUrl +
+         "/api/user/book-appointment",
         { docId, slotDate, slotTime },
-        { headers: { token } }
+        // { headers: { token } }
       );
       if (data.success) {
         toast.success(data.message);
