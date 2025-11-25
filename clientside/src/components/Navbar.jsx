@@ -6,6 +6,7 @@ import { AppContext } from "../context/AppContext";
 const Navbar = () => {
   const navigate = useNavigate();
 
+
   const { token, setToken, userData } = useContext(AppContext);
 
   const [showMenu, setShowMenu] = useState(false);
@@ -16,31 +17,56 @@ const Navbar = () => {
   };
 
   return (
-    <div className="flex items-center justify-between text-sm py-4 mb-5 border-b border-b-gray-400">
-      <img
-        onClick={() => navigate("/")}
-        className="w-44 cursor-pointer"
-        src={assets.logo}
-        alt=""
-      />
-      <ul className="hidden md:flex items-start gap-5 font-medium">
-        <NavLink to="/">
-          <li className="py-1">HOME</li>
-          <hr className="border-none outline-none h-0.5 bg-primary w-3/5 m-auto hidden" />
-        </NavLink>
-        <NavLink to="/doctors">
-          <li className="py-1">ALL DOCTORS</li>
-          <hr className="border-none outline-none h-0.5 bg-primary w-3/5 m-auto hidden" />
-        </NavLink>
-        <NavLink to="/about">
-          <li className="py-1">ABOUT</li>
-          <hr className="border-none outline-none h-0.5 bg-primary w-3/5 m-auto hidden" />
-        </NavLink>
-        <NavLink to="/contact">
-          <li className="py-1">CONTACT</li>
-          <hr className="border-none outline-none h-0.5 bg-primary w-3/5 m-auto hidden" />
-        </NavLink>
-      </ul>
+    <div className="flex items-center justify-between text-sm py-4 mb-5 ">
+      <p onClick={() => navigate("/")}
+        className="font-poppins font-extrabold w-36 cursor-pointer text-3xl"><span className="text-blue-600">Doc</span>Chain</p>
+      <ul className="hidden md:flex items-start gap-10 font-medium">
+  <NavLink 
+    to="/" 
+    className={({ isActive }) =>
+      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+    }
+  >
+    Home
+  </NavLink>
+
+  <NavLink 
+    to="/doctors" 
+    className={({ isActive }) =>
+      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+    }
+  >
+    Doctor Booking
+  </NavLink>
+
+  <NavLink 
+    to="/about" 
+    className={({ isActive }) =>
+      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+    }
+  >
+    About
+  </NavLink>
+
+  <NavLink 
+    to="/labtest" 
+    className={({ isActive }) =>
+      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+    }
+  >
+    Lab Test Booking
+  </NavLink>
+
+  <NavLink 
+    to="/contact" 
+    className={({ isActive }) =>
+      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+    }
+  >
+    Contact
+  </NavLink>
+</ul>
+
       <div className="flex items-center gap-4">
         {token && userData ? (
           <div className="flex items-center gap-2 cursor-pointer group relative">
@@ -69,9 +95,9 @@ const Navbar = () => {
         ) : (
           <button
             onClick={() => navigate("/login")}
-            className="bg-primary text-white px-8 py-3 rounded-full font-light hidden md:block"
+            className="bg-primary text-white px-8 py-3 rounded-full font-semibold hidden md:block"
           >
-            Create account
+            Create Account
           </button>
         )}
         <img
