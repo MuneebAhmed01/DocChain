@@ -36,6 +36,12 @@ import General_physician from './General_physician.svg'
 import Gynecologist from './Gynecologist.svg'
 import Neurologist from './Neurologist.svg'
 import Pediatricians from './Pediatricians.svg'
+import snowflakes from './snowflakes.png'
+import testi1 from './testi1.jpg'
+import testi2 from './testi2.jpg'
+import testi3 from './testi3.jpg'
+import testi4 from './testi4.jpg'
+
 
 
 export const assets = {
@@ -55,7 +61,11 @@ export const assets = {
     dropdown_icon,
     upload_icon,
     stripe_logo,
-    razorpay_logo
+    razorpay_logo,
+    snowflakes,
+    doc11,
+    doc9,
+    testi1,testi2,testi3,testi4,testi4
 }
 
 export const specialityData = [
@@ -229,7 +239,7 @@ export const doctors = [
     {
         _id: 'doc11',
         name: 'Dr. Zoe Kelly',
-        image: doc11,
+        image: "doc11",
         speciality: 'Gastroenterologist',
         degree: 'MBBS',
         experience: '4 Years',
@@ -243,7 +253,7 @@ export const doctors = [
     {
         _id: 'doc12',
         name: 'Dr. Patrick Harris',
-        image: doc12,
+        image: "doc12",
         speciality: 'Neurologist',
         degree: 'MBBS',
         experience: '4 Years',
