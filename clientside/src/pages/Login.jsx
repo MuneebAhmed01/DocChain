@@ -1,25 +1,38 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AppContext } from "../context/AppContext";
-import axios from "axios";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import axiosInstance from "../axiosInstance";
 
 const Login = () => {
-  const { backendUrl, token, setToken } = useContext(AppContext);
+  const { token, setToken } = useContext(AppContext);
   const navigate = useNavigate();
 
   const [state, setState] = useState("Sign Up");
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
+  // Password error state
+  const [passwordError, setPasswordError] = useState("");
+
   const onSubmitHandler = async (event) => {
     event.preventDefault();
 
+    // Password validation: at least 8 characters and one uppercase letter
+    const passwordRegex = /^(?=.*[A-Z]).{8,}$/;
+    if (state === "Sign Up" && !passwordRegex.test(password)) {
+      setPasswordError(
+        "Password must be at least 8 characters long and contain at least one uppercase letter"
+      );
+      return; // Stop form submission
+    } else {
+      setPasswordError(""); // Clear error if password is valid
+    }
+
     try {
       if (state === "Sign Up") {
-        const { data } = await axios.post(backendUrl + "/api/user/register", {
+        const { data } = await axiosInstance.post("/api/user/register", {
           name,
           email,
           password,
@@ -31,7 +44,7 @@ const Login = () => {
           toast.error(data.message);
         }
       } else {
-        const { data } = await axios.post(backendUrl + "/api/user/login", {
+        const { data } = await axiosInstance.post("/api/user/login", {
           email,
           password,
         });
@@ -60,9 +73,10 @@ const Login = () => {
           {state === "Sign Up" ? "Create Account" : "Login"}
         </p>
         <p>
-          Please {state === "Sign Up" ? "sign up" : "log in"} to book
+          Please {state === "Sign Up" ? "sign up" : "log in"} to book an
           appointment
         </p>
+
         {state === "Sign Up" && (
           <div className="w-full">
             <p>Full Name</p>
@@ -86,6 +100,7 @@ const Login = () => {
             required
           />
         </div>
+
         <div className="w-full">
           <p>Password</p>
           <input
@@ -95,13 +110,18 @@ const Login = () => {
             value={password}
             required
           />
+          {passwordError && (
+            <p className="text-xs text-red-500 mt-1">{passwordError}</p>
+          )}
         </div>
+
         <button
           type="submit"
           className="bg-primary text-white w-full py-2 rounded-md text-base"
         >
           {state === "Sign Up" ? "Create Account" : "Login"}
         </button>
+
         {state === "Sign Up" ? (
           <p>
             Already have an account?{" "}
@@ -119,7 +139,7 @@ const Login = () => {
               onClick={() => setState("Sign Up")}
               className="text-primary underline cursor-pointer"
             >
-              click here
+              Click here
             </span>
           </p>
         )}
