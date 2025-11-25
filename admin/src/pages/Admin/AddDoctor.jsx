@@ -4,6 +4,7 @@ import { AdminContext } from "../../context/AdminContext";
 import { toast } from "react-toastify";
 import axios from "axios";
 
+
 const AddDoctor = () => {
   const [docImg, SetDocImg] = useState(false);
   const [name, SetName] = useState("");

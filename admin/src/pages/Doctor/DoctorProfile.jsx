@@ -10,7 +10,6 @@ const DoctorProfile = () => {
   const { currency } = useContext(AppContext);
 
   const [isEdit, setIsEdit] = useState(false);
-
   const updateProfile = async () => {
     try {
       const updateData = {

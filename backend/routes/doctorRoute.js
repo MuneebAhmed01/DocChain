@@ -1,4 +1,5 @@
 import express from "express";
+import authDoctor from "../middlewares/authDoctor.js";
 import {
   doctorList,
   loginDoctor,
@@ -9,7 +10,6 @@ import {
   doctorProfile,
   updateDoctorProfile,
 } from "../controllers/doctorController.js";
-import authDoctor from "../middlewares/authDoctor.js";
 
 const doctorRouter = express.Router();
 

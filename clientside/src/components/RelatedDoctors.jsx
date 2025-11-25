@@ -5,9 +5,7 @@ import { useNavigate } from "react-router-dom";
 const RelatedDoctors = ({ speciality, docId }) => {
   const { doctors } = useContext(AppContext);
   const navigate = useNavigate();
-
   const [relDoc, setRelDocs] = useState([]);
-
   useEffect(() => {
     if (doctors.length > 0 && speciality) {
       const doctorsData = doctors.filter(
