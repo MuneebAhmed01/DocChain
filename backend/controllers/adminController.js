@@ -5,9 +5,11 @@ import doctorModel from "../models/doctorModel.js";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../models/appointmentModel.js";
 import userModel from "../models/userModel.js";
-
+import { upload,uploadToCloudinary } from "../middlewares/multer.js";
 // API for adding doctor
 const addDoctor = async (req, res) => {
+  console.log("ADD DOCTOR API HIT");
+
   try {
     const {
       name,
@@ -20,9 +22,8 @@ const addDoctor = async (req, res) => {
       fees,
       address,
     } = req.body;
-    const imageFile = req.file;
 
-    // checking for all data to add doctor
+    // check missing fields
     if (
       !name ||
       !email ||
@@ -37,7 +38,7 @@ const addDoctor = async (req, res) => {
       return res.json({ success: false, message: "Missing Details" });
     }
 
-    // validating email format
+    // validate email
     if (!validator.isEmail(email)) {
       return res.json({
         success: false,
@@ -45,7 +46,7 @@ const addDoctor = async (req, res) => {
       });
     }
 
-    // validating strong password
+    // validate password strength
     if (password.length < 8) {
       return res.json({
         success: false,
@@ -53,20 +54,26 @@ const addDoctor = async (req, res) => {
       });
     }
 
-    // hashing doctor password
+    // password hashing
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // upload image to cloudinary
-    const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
-      resource_type: "image",
-    });
-    const imageUrl = imageUpload.secure_url;
+    // ⛔ STOP using imageFile.path — it no longer exists
+    // ⛔ STOP calling cloudinary.uploader.upload here
+    // ✔ Image URL is already prepared by your middleware
+    const imageUrl = req.imageUrl;
+
+    if (!imageUrl) {
+      return res.json({
+        success: false,
+        message: "Image upload failed",
+      });
+    }
 
     const doctorData = {
       name,
       email,
-      image: imageUrl,
+      image: imageUrl,     // ✔ new Cloudinary URL
       password: hashedPassword,
       speciality,
       degree,
@@ -87,6 +94,7 @@ const addDoctor = async (req, res) => {
   }
 };
 
+
 // API for admin Login
 const loginAdmin = async (req, res) => {
   try {
@@ -96,7 +104,7 @@ const loginAdmin = async (req, res) => {
       email === process.env.ADMIN_EMAIL &&
       password === process.env.ADMIN_PASSWORD
     ) {
-      const token = jwt.sign(email + password, process.env.JWT_SECRET);
+      const token = jwt.sign({ email }, process.env.JWT_SECRET,{expiresIn: "1d"});
       res.json({ success: true, token });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
