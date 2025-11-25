@@ -8,7 +8,6 @@ const Dashboard = () => {
     useContext(AdminContext);
 
   const { slotDateFormat } = useContext(AppContext);
-
   useEffect(() => {
     if (aToken) {
       getDashData();
