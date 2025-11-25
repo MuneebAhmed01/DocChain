@@ -1,8 +1,9 @@
 import React, { useContext, useState } from "react";
 import { AppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
-import axios from "axios";
+
 import { toast } from "react-toastify";
+import axiosInstance from "../axiosInstance";
 
 const MyProfile = () => {
   const { userData, setUserData, token, backendUrl, loadUserProfileData } =
@@ -23,7 +24,7 @@ const MyProfile = () => {
 
       image && formData.append("image", image);
 
-      const { data } = await axios.post(
+      const { data } = await axiosInstance.post(
         backendUrl + "/api/user/update-profile",
         formData,
         { headers: { token } }
