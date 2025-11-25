@@ -4,11 +4,15 @@ import App from "./App.jsx";
 import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import AppContextProvider from "./context/AppContext.jsx";
+import { BlogProvider } from "./context/BlogContext.jsx"; // ⬅ added
 
 createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <AppContextProvider>
-      <App />
+      <BlogProvider>       {/* ⬅ wrap App inside BlogProvider */}
+        <App />
+      </BlogProvider>
     </AppContextProvider>
   </BrowserRouter>
 );
+
