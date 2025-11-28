@@ -1,13 +1,12 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AppContext } from "../context/AppContext";
-// import axios from "axios";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosInstance";
 
 const MyAppointments = () => {
   const { backendUrl, token, getDoctorsData } = useContext(AppContext);
-
   const [appointments, setAppointments] = useState([]);
+
   const months = [
     "",
     "Jan",
@@ -33,15 +32,9 @@ const MyAppointments = () => {
 
   const getUserAppointments = async () => {
     try {
-      const { data } = await axiosInstance.get(
-        // backendUrl + 
-        "/api/user/appointments", 
-        // {headers: { token },}
-      );
-
+      const { data } = await axiosInstance.get("/api/user/appointments");
       if (data.success) {
         setAppointments(data.appointments.reverse());
-        console.log(data.appointments);
       }
     } catch (error) {
       console.log(error);
@@ -49,14 +42,32 @@ const MyAppointments = () => {
     }
   };
 
+  // ⭐ FINAL WORKING ONLINE PAYMENT HANDLER
+  const payOnline = async (appointmentId) => {
+    try {
+      const { data } = await axiosInstance.post(
+        "/api/stripe/create-checkout-session",
+        { appointmentId }
+      );
+
+      if (data.url) {
+        window.location.href = data.url; // Redirect to Stripe
+      } else {
+        toast.error("Unable to process payment.");
+      }
+    } catch (err) {
+      console.log(err);
+      toast.error("Payment failed to start.");
+    }
+  };
+
   const cancelAppointment = async (appointmentId) => {
     try {
       const { data } = await axiosInstance.post(
-        // backendUrl +
-         "/api/user/cancel-appointment",
-        { appointmentId },
-        // { headers: { token } }
+        "/api/user/cancel-appointment",
+        { appointmentId }
       );
+
       if (data.success) {
         toast.success(data.message);
         getUserAppointments();
@@ -81,62 +92,96 @@ const MyAppointments = () => {
       <p className="pb-3 mt-12 font-medium text-zinc-700 border-b">
         My appointments
       </p>
+
       <div>
-        {appointments.map((item, index) => (
-          <div
-            className="grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-2 border-b"
-            key={index}
-          >
-            <div>
-              <img
-                className="w-32 bg-indigo-50"
-                src={item.docData.image}
-                alt=""
-              />
+        {appointments.map((item, index) => {
+          const discounted = Math.round(item.amount * 0.9); // ⭐ 10% OFF
+
+          return (
+            <div
+              className="grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-2 border-b"
+              key={index}
+            >
+              <div>
+                <img
+                  className="w-32 bg-indigo-50"
+                  src={item.docData.image}
+                  alt=""
+                />
+              </div>
+
+              <div className="flex-1 text-sm text-zinc-600">
+                <p className="text-neutral-800 font-semibold">
+                  {item.docData.name}
+                </p>
+                <p>{item.docData.speciality}</p>
+
+                <p className="text-zinc-700 font-medium mt-1">Address:</p>
+                <p className="text-xs">{item.docData.address.line1}</p>
+                <p className="text-xs">{item.docData.address.line2}</p>
+
+                <p className="text-xs mt-1">
+                  <span className="text-sm text-neutral-700 font-medium">
+                    Date & Time:
+                  </span>{" "}
+                  {slotDateFormat(item.slotDate)} | {item.slotTime}
+                </p>
+
+                {/* ⭐ PRICE DISPLAY WITH DISCOUNT */}
+                <p className="mt-2">
+                  <span className="font-medium">Fee:</span> ₹{item.amount}
+                </p>
+
+                <p className="text-green-600 text-sm">
+                  10% OFF on online payment
+                </p>
+                <p className="font-semibold">Pay Online: ₹{discounted}</p>
+
+                {item.isPaid && (
+                  <span className="inline-block mt-1 px-3 py-1 bg-green-500 text-white rounded text-xs">
+                    Paid
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 justify-end">
+                {/* PAY ONLINE BUTTON */}
+                {!item.cancelled && !item.isCompleted && !item.isPaid && (
+                  <button
+                    onClick={() => payOnline(item._id)}
+                    className="text-sm text-white bg-blue-600 text-center sm:min-w-48 py-2 rounded hover:bg-blue-700 transition-all"
+                  >
+                    Pay Online (10% OFF)
+                  </button>
+                )}
+
+                {/* CANCEL BUTTON */}
+                {!item.cancelled && !item.isCompleted && (
+                  <button
+                    onClick={() => cancelAppointment(item._id)}
+                    className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounded hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    Cancel appointment
+                  </button>
+                )}
+
+                {/* CANCELLED BADGE */}
+                {item.cancelled && !item.isCompleted && (
+                  <button className="sm:min-w-48 py-2 border border-red-500 rounded text-red-500">
+                    Appointment cancelled
+                  </button>
+                )}
+
+                {/* COMPLETED BADGE */}
+                {item.isCompleted && (
+                  <button className="sm:min-w-48 py-2 border border-green-500 rounded text-green-500">
+                    Completed
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex-1 text-sm text-zinc-600">
-              <p className="text-neutral-800 font-semibold">
-                {item.docData.name}
-              </p>
-              <p>{item.docData.speciality}</p>
-              <p className="text-zinc-700 font-medium mt-1">Address:</p>
-              <p className="text-xs">{item.docData.address.line1}</p>
-              <p className="text-xs">{item.docData.address.line2}</p>
-              <p className="text-xs mt-1">
-                <span className="text-sm text-neutral-700 font-medium">
-                  Date & Time:
-                </span>{" "}
-                {slotDateFormat(item.slotDate)} | {item.slotTime}
-              </p>
-            </div>
-            <div></div>
-            <div className="flex flex-col gap-2 justify-end">
-              {!item.cancelled && !item.isCompleted && (
-                <button className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounded hover:bg-primary hover:text-white transition-all duration-300">
-                  Pay Online
-                </button>
-              )}
-              {!item.cancelled && !item.isCompleted && (
-                <button
-                  onClick={() => cancelAppointment(item._id)}
-                  className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounded hover:bg-red-600 hover:text-white transition-all duration-300"
-                >
-                  Cancel appointment
-                </button>
-              )}
-              {item.cancelled && !item.isCompleted && (
-                <button className="sm:min-w-48 py-2 border border-red-500 rounded text-red-500">
-                  Appointment cancelled
-                </button>
-              )}
-              {item.isCompleted && (
-                <button className="sm:min-w-48 py-2 border border-green-500 rounded text-green-500">
-                  Completed
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

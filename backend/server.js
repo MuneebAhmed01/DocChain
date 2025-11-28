@@ -4,11 +4,17 @@ import "dotenv/config";
 import connectDB from "./config/mongodb.js";
 import connectCloudinary from "./config/cloudinary.js";
 import adminRouter from "./routes/adminRoute.js";
+
 import doctorRouter from "./routes/doctorRoute.js";
 import userRouter from "./routes/userRoute.js";
 import axios from "axios";
 import jwt from "jsonwebtoken";
+
 import blogRoutes from './routes/blogRoutes.js';
+import stripeRoutes from './routes/stripeRoutes.js'
+import stripeWebhook from "./routes/stripeWebhook.js";
+
+
 const app = express();
 const port = process.env.PORT || 4000;
 connectDB();
@@ -25,6 +31,7 @@ app.use(cors({
   credentials: true,
   allowedHeaders: ["Content-Type", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
 }));
+app.use("/api/stripe", stripeWebhook);
 
 
 // Handle preflight requests
@@ -56,6 +63,7 @@ const authenticateToken = (req, res, next) => {
 app.use("/api/admin", adminRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
+app.use("/api/stripe", stripeRoutes);
 
 // blog routes
 
