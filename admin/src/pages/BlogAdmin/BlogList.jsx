@@ -8,7 +8,7 @@ export function BlogList({ token }) {
     axios.get("/api/blogs").then((res) => {
       console.log("API RESPONSE:", res.data);
 
-      // normalize payload
+    
       const data = Array.isArray(res.data)
         ? res.data
         : res.data.blogs

@@ -11,7 +11,7 @@ export default function HealthTips() {
 
   // 2 big + 4 small layout
   const bigCards = sorted.slice(0, 2);  // first 2 newest blogs
-  const smallCards = sorted.slice(2, 6); // next 4
+  const smallCards = sorted.slice(2, 6); // next 4 choty
 
   return (
     <div className="w-full p-4 flex flex-col gap-4">
