@@ -33,16 +33,19 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import userModel from "../models/userModel.js";
 import authUser from "../middlewares/authUser.js";
+import multer from "multer";
+
 import { 
   getProfile,
   bookAppointment,
   listAppointment,
+  updateProfile,
   cancelAppointment
 } from "../controllers/userController.js";
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
-
+const upload = multer({ dest: "uploads/" });
 
 // ------------------ REGISTER ------------------
 router.post("/register", async (req, res) => {
@@ -122,6 +125,8 @@ router.get("/get-profile", authUser, getProfile, async (req, res) => {
 // Book appointment
 router.post("/book-appointment", authUser, bookAppointment);
 
+//update profile 
+router.post("/update-profile", authUser, upload.single("image"), updateProfile);
 // Get user appointments
 router.get("/appointments", authUser, listAppointment);
 
