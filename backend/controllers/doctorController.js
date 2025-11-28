@@ -67,24 +67,35 @@ const appointmentsDoctor = async (req, res) => {
 };
 
 // API to mark appointment completed for doctor panel
-const appointmentComplete = async (req, res) => {
+// doctorController.js
+ const appointmentComplete = async (req, res) => {
   try {
-    const { docId, appointmentId } = req.body;
-    const appointmentData = await appointmentModel.findById(appointmentId);
+    const { appointmentId } = req.body;
 
-    if (appointmentData && appointmentData.docId === docId) {
-      await appointmentModel.findByIdAndUpdate(appointmentId, {
-        isCompleted: true,
-      });
-      return res.json({ success: true, message: "Appointment Completed" });
-    } else {
-      return res.json({ success: false, message: "Mark Failed" });
+    const appt = await appointmentModel.findById(appointmentId);
+    if (!appt) return res.status(404).json({ success: false, message: "Appointment not found" });
+
+    // Mark appointment as completed
+    appt.isCompleted = true;
+    await appt.save();
+
+    // Calculate earnings
+    let earningsToAdd = appt.amount; // default full price
+
+    if (appt.isPaid) {
+      earningsToAdd = appt.amount * 0.9; // actual paid amount if online
     }
-  } catch (error) {
-    console.log(error);
-    res.json({ success: false, message: error.message });
+
+    // Update doctor earnings
+    await doctorModel.findByIdAndUpdate(appt.docId, { $inc: { earnings: earningsToAdd } });
+
+    res.json({ success: true, message: "Appointment completed and earnings updated" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 // API to cancel appointment for doctor panel
 const appointmentCancel = async (req, res) => {
@@ -175,8 +186,8 @@ export {
   loginDoctor,
   appointmentsDoctor,
   appointmentCancel,
-  appointmentComplete,
   doctorDashboard,
   doctorProfile,
+  appointmentComplete,
   updateDoctorProfile,
 };
