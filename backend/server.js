@@ -29,9 +29,8 @@ app.use(cors({
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
+  allowedHeaders: ["Content-Type", "authorization","token", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
 }));
-app.use("/api/stripe", stripeWebhook);
 
 
 // Handle preflight requests
@@ -39,6 +38,7 @@ app.options("*", cors());
 
 // Parse JSON
 app.use(express.json());
+app.use("/api/stripe", stripeWebhook);
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
