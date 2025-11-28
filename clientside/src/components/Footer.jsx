@@ -21,8 +21,8 @@ export default function Footer() {
         {/* Logo + Description */}
         <div>
           <h1 className="text-2xl font-bold tracking-wide">
-            <span className="text-white">DEZO</span>
-            <span className="text-gray-400">CARE</span>
+            <span className="text-white">Doc</span>
+            <span className="text-gray-400">Chain</span>
           </h1>
           <p className="text-gray-400 mt-2 leading-relaxed">
             We offers 24/7 access to healthcare services, empowering you to stay
@@ -41,7 +41,7 @@ export default function Footer() {
         <div>
           <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
           <ul className="text-gray-400 space-y-3">
-            <li>✉️ info@DEZOcare.com</li>
+            <li>✉️ info@Dochain.com</li>
             <li>📍 44 Batesford Rd, Malvern East VIC 3144</li>
           </ul>
         </div>
@@ -68,7 +68,7 @@ export default function Footer() {
       </div>
 
       <div className="text-center text-gray-600 py-3  border-t  border-gray-700 text-sm">
-        © 2024 DEZOcare.com
+        © 2024 DocChain.com
       </div>
     </footer>
   );

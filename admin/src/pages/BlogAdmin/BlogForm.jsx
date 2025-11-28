@@ -18,7 +18,7 @@ export function BlogForm({ token }) {
     published: true,
   });
 
-  // 🔥 FIXED: Include Authorization header in GET request
+  
   useEffect(() => {
     if (id && id !== "new") {
       axios
