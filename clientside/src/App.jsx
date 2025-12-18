@@ -28,21 +28,31 @@ const App = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/about" element={<About />} />
 
-  <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
 
-{/* Blog route */}
+        {/* Blog route */}
 
-
-<Route path="/blogs" element={<BlogList />} />
-<Route path="/blog/:idOrSlug" element={<BlogDetail />} />
-
-
-
+        <Route path="/blogs" element={<BlogList />} />
+        <Route path="/blog/:idOrSlug" element={<BlogDetail />} />
 
         <Route path="/contact" element={<Contact />} />
         <Route path="/my-profile" element={<MyProfile />} />
         <Route path="/my-appointments" element={<MyAppointments />} />
         <Route path="/appointment/:docId" element={<Appointment />} />
+
+        {/* Temporary placeholders (replace with real pages later) */}
+        <Route
+          path="/labtest"
+          element={<div className="p-6">Lab Test Booking (Coming soon)</div>}
+        />
+        <Route
+          path="/online-consult"
+          element={<div className="p-6">Online Consultation (Coming soon)</div>}
+        />
+        <Route
+          path="/emergency"
+          element={<div className="p-6">Emergency Services (Coming soon)</div>}
+        />
       </Routes>
       <Footer />
     </div>
