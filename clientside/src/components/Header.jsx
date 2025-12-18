@@ -72,9 +72,14 @@ const Header = () => {
     <p className="text-gray-600 text-sm leading-[1.2]">New User</p>
     <p className="text-4xl ">790+</p><div className='flex justify-between items-center '>
 <p className='text-sm '>Care with</p>
-    <button className="mt-3 px-4 py-2 border rounded-xl border-primary text-sm text-primary transition">
-      Services
-    </button>
+   <a
+  href="#features"
+  className="mt-3 inline-block px-4 py-2 border rounded-xl border-primary text-sm text-primary
+             transition hover:-translate-y-0.5 hover:opacity-80"
+>
+  Services
+</a>
+
     </div>
   </div>
 </div>
