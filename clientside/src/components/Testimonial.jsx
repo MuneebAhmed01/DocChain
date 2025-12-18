@@ -7,7 +7,7 @@ export default function Testimonial() {
   useEffect(() => {
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % testimonialData.length);
-    }, 3500); // smoother pacing
+    }, 3500); // smoother pacing,decrease fr fst
 
     return () => clearInterval(interval);
   }, []);
