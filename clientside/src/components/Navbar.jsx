@@ -48,14 +48,7 @@ const Navbar = () => {
     About
   </NavLink>
 
-  <NavLink 
-    to="/labtest" 
-    className={({ isActive }) =>
-      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
-    }
-  >
-    Lab Test Booking
-  </NavLink>
+  
 
   <NavLink 
     to="/contact" 

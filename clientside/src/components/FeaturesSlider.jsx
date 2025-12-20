@@ -54,7 +54,7 @@ export default function FeaturesSlider() {
   });
 
   return (
-    <div className="w-full flex flex-col items-start gap-6 p-6 mt-10" id="features">
+    <div className="w-full flex flex-col items-start gap-6 p-6 mt-10 scroll-mt-24"id="features">
       {/* Heading */}
 
       <div className="w-full">
@@ -125,17 +125,16 @@ export default function FeaturesSlider() {
               {card.desc}
             </p>
 
-           <Link
-  to={card.to}
-  className={`underline mt-2 inline-block text-sm font-medium cursor-pointer
+            <Link
+              to={card.to}
+              className={`underline mt-2 inline-block text-sm font-medium cursor-pointer
     transition-transform duration-200 ease-out
     hover:-translate-y-0.5
     ${active === i ? "text-white" : "text-blue-800"}
   `}
->
-  Learn More
-</Link>
-
+            >
+              Learn More
+            </Link>
           </div>
         ))}
       </div>
