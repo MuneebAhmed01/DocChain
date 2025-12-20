@@ -13,6 +13,7 @@ import jwt from "jsonwebtoken";
 import blogRoutes from './routes/blogRoutes.js';
 import stripeRoutes from './routes/stripeRoutes.js'
 import stripeWebhook from "./routes/stripeWebhook.js";
+import sendEmail from "./utils/sendEmail.js";
 
 
 const app = express();
@@ -42,6 +43,30 @@ app.use("/api/stripe", stripeWebhook);
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
+
+
+console.log("JWT_SECRET:", process.env.JWT_SECRET);
+
+
+//email auto
+app.get("/test-email", async (req, res) => {
+  try {
+    await sendEmail(
+      "alaadinpubg2@gmail.com",
+      "Docchain Test Email",
+      "If you received this email, your backend email system is working."
+    );
+    res.send("Email sent successfully");
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Email failed");
+  }
+});
+
+
+
+
+
 
 // JWT Middleware
 const authenticateToken = (req, res, next) => {
