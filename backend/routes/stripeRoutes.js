@@ -5,7 +5,7 @@ import doctorModel from "../models/doctorModel.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
+import paymentAccepted from "../emailTemplates/paymentAccepted.js"
 // CREATE STRIPE CHECKOUT SESSION
 router.post("/create-checkout-session", async (req, res) => {
   try {
@@ -44,6 +44,8 @@ router.post("/create-checkout-session", async (req, res) => {
     // Save session ID to appointment
     appointment.checkoutSessionId = session.id;
     await appointment.save();
+   
+
 
     res.json({ success: true, url: session.url });
   } catch (err) {
@@ -89,7 +91,18 @@ router.post("/verify-payment", async (req, res) => {
     appointment.isPaid = true;
     appointment.paymentIntentId = session.payment_intent;
     await appointment.save();
-
+       try {
+  await paymentAccepted({
+    patientName: appointment.userData.name,
+    patientEmail: appointment.userData.email,
+    doctorName: appointment.docData.name,
+    amount: appointment.amount,
+    date: appointment.slotDate,
+    time: appointment.slotTime,
+  });
+} catch (err) {
+  console.error("Failed to send payment accepted email:", err);
+}
     // Update doctor earnings
     const doctor = await doctorModel.findById(appointment.docId);
     if (doctor) {
