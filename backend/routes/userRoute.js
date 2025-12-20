@@ -47,6 +47,8 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
 const upload = multer({ dest: "uploads/" });
 
+import welcomeEmail from "../emailTemplates/welcomeEmail.js";
+
 // ------------------ REGISTER ------------------
 router.post("/register", async (req, res) => {
   try {
@@ -59,11 +61,12 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await userModel.create({
+      
       name,
       email,
       password: hashedPassword,
     });
-
+    await welcomeEmail(user);
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       JWT_SECRET,
