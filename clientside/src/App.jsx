@@ -13,7 +13,7 @@ import Footer from "./components/Footer";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BlogList from "./pages/Blogs/BlogList";
-import BlogDetail from "./pages/Blogs/BlogDetail"; // we will create next
+import BlogDetail from "./pages/Blogs/BlogDetail"; 
 import PaymentSuccess from "./pages/PaymentSuccess";
 
 
