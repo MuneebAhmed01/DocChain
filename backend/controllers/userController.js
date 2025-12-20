@@ -5,6 +5,12 @@ import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import doctorModel from "../models/doctorModel.js";
 import appointmentModel from "../models/appointmentModel.js";
+import appointmentBookedPatient from "../emailTemplates/appointmentBookedPatient.js";
+import appointmentBookedDoctor from "../emailTemplates/appointmentBookedDoctor.js";
+import appointmentCancelledPatient from "../emailTemplates/appointmentCancelledPatient.js";
+import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDoctor.js";
+import appointmentReminder from "../emailTemplates/appointmentReminder.js";
+
 
 // API to register user
 const registerUser = async (req, res) => {
@@ -51,23 +57,25 @@ const registerUser = async (req, res) => {
 // API for user login
 const loginUser = async (req, res) => {
   try {
+    
     const { email, password } = req.body;
     const user = await userModel.findOne({ email });
-
+    
     if (!user) {
       return res.json({ success: false, message: "User does not exist" });
     }
-
+    
     const isMatch = await bcrypt.compare(password, user.password);
-
+    
     if (isMatch) {
       const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
-
+      
       res.json({ success: true, token });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) {
+    console.log("Signing with JWT_SECRET:", process.env.JWT_SECRET);
     console.log(error);
     res.json({ success: false, message: error.message });
   }
@@ -191,6 +199,34 @@ const bookAppointment = async (req, res) => {
 
     const newAppointment = new appointmentModel(appointmentData);
     await newAppointment.save();
+    // Send confirmation email to patient
+await appointmentBookedPatient({
+  patientName: userData.name,
+  patientEmail: userData.email,
+  doctorName: docData.name,
+  doctorEmail: docData.email,
+  date: slotDate,
+  time: slotTime,
+});
+
+// Notify doctor
+await appointmentBookedDoctor({
+  patientName: userData.name,
+  patientEmail: userData.email,
+  doctorName: docData.name,
+  doctorEmail: docData.email,
+  date: slotDate,
+  time: slotTime,
+});
+setTimeout(() => {
+  appointmentReminder({
+    patientName: userData.name,
+    patientEmail: userData.email,
+    doctorName: docData.name,
+    date: slotDate,
+    time: slotTime,
+  }).catch(err => console.error("Failed to send reminder email:", err));
+}, 60000); // 60000 ms = 1 minute
 
     // save new slots data in docData
     await doctorModel.findByIdAndUpdate(docId, { slots_booked });
@@ -260,6 +296,24 @@ const cancelAppointment = async (req, res) => {
     );
 
     await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+// Send cancellation email to patient
+await appointmentCancelledPatient({
+  patientName: appointmentData.userData.name, patientEmail: appointmentData.userData.email,
+  doctorName: doctorData.name,
+  doctorEmail: doctorData.email,
+  date: slotDate,
+  time: slotTime,
+});
+
+// Notify doctor
+await appointmentCancelledDoctor({
+  patientName: appointmentData.userData.name,
+  patientEmail: appointmentData.userData.email,
+  doctorName: doctorData.name,
+  doctorEmail: doctorData.email,
+  date: slotDate,
+  time: slotTime,
+});
 
     return res.json({
       success: true,
