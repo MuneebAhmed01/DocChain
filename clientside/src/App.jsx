@@ -16,6 +16,7 @@ import BlogList from "./pages/Blogs/BlogList";
 import BlogDetail from "./pages/Blogs/BlogDetail"; // we will create next
 import PaymentSuccess from "./pages/PaymentSuccess";
 
+
 const App = () => {
   return (
     <div className="mx-4 sm:mx-[3%]  ">
@@ -40,11 +41,7 @@ const App = () => {
         <Route path="/my-appointments" element={<MyAppointments />} />
         <Route path="/appointment/:docId" element={<Appointment />} />
 
-        {/* Temporary placeholders (replace with real pages later) */}
-        <Route
-          path="/labtest"
-          element={<div className="p-6">Lab Test Booking (Coming soon)</div>}
-        />
+        
         <Route
           path="/online-consult"
           element={<div className="p-6">Online Consultation (Coming soon)</div>}
