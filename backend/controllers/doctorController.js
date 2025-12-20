@@ -2,6 +2,12 @@ import doctorModel from "../models/doctorModel.js";
 import bycrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import appointmentModel from "../models/appointmentModel.js";
+import appointmentCompletedPatient from "../emailTemplates/appointmentCompletedPatient.js";
+import doctorRegistered from "../emailTemplates/doctorRegistered.js";
+
+
+
+
 
 const changeAvailability = async (req, res) => {
   try {
@@ -78,6 +84,17 @@ const appointmentsDoctor = async (req, res) => {
     // Mark appointment as completed
     appt.isCompleted = true;
     await appt.save();
+try {
+  await appointmentCompletedPatient({
+    patientName: appt.userData.name,
+    patientEmail: appt.userData.email,
+    doctorName: appt.docData.name,
+    date: appt.slotDate,
+    time: appt.slotTime,
+  });
+} catch (err) {
+  console.error("Failed to send completed appointment email:", err);
+}
 
     // Calculate earnings
     let earningsToAdd = appt.amount; // default full price
@@ -107,6 +124,20 @@ const appointmentCancel = async (req, res) => {
       await appointmentModel.findByIdAndUpdate(appointmentId, {
         cancelled: true,
       });
+      // Notify doctor about patient cancellation
+try {
+  await appointmentCancelledByPatientDoctor({
+    patientName: appointmentData.userData.name,
+    patientEmail: appointmentData.userData.email,
+    doctorName: doctorData.name,
+    doctorEmail: doctorData.email,
+    date: appointmentData.slotDate,
+    time: appointmentData.slotTime,
+  });
+} catch (err) {
+  console.error("Failed to send doctor cancellation email:", err);
+}
+
       return res.json({ success: true, message: "Appointment Cancelled" });
     } else {
       return res.json({ success: false, message: "Cancellation Failed" });
