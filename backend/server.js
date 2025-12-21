@@ -14,6 +14,8 @@ import blogRoutes from './routes/blogRoutes.js';
 import stripeRoutes from './routes/stripeRoutes.js'
 import stripeWebhook from "./routes/stripeWebhook.js";
 import sendEmail from "./utils/sendEmail.js";
+import pendingDoctorRouter from "./routes/pendingDoctorRouter.js";
+
 
 
 const app = express();
@@ -72,7 +74,7 @@ app.get("/test-email", async (req, res) => {
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
+  
   if (!token) return res.status(401).json({ success: false, message: "No token provided" });
   
   try {
@@ -89,6 +91,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/doctor", doctorRouter);
 app.use("/api/user", userRouter);
 app.use("/api/stripe", stripeRoutes);
+app.use("/api/pending-doctor", pendingDoctorRouter);
 
 // blog routes
 

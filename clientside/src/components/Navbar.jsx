@@ -58,6 +58,13 @@ const Navbar = () => {
   >
     Contact
   </NavLink>
+  <button
+  onClick={() => navigate("/join-doctor")}
+  className="border border-blue-600 text-blue-600 px-5 py-2 rounded-full text-base hover:bg-blue-600 hover:text-white transition"
+>
+  Join as Doctor
+</button>
+
 </ul>
 
       <div className="flex items-center gap-4">
@@ -127,6 +134,12 @@ const Navbar = () => {
             <NavLink onClick={() => setShowMenu(false)} to="/contact">
               <p className="px-4 py-2 rounded inline-block">CONTACT</p>
             </NavLink>
+            <NavLink onClick={() => setShowMenu(false)} to="/join-doctor">
+  <p className="px-4 py-2 rounded inline-block text-blue-600">
+    JOIN AS DOCTOR
+  </p>
+</NavLink>
+
           </ul>
         </div>
       </div>
