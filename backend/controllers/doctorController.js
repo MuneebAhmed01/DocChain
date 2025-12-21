@@ -44,6 +44,14 @@ const loginDoctor = async (req, res) => {
     if (!doctor) {
       return res.json({ success: false, message: "Invalid credentials" });
     }
+        // 🔴 BLOCK suspended accounts
+    if (doctor.status === "suspended") {
+      return res.json({
+        success: false,
+        message:
+          "Your account has been suspended. Contact admin to reactivate.",
+      });
+    }
 
     const isMatch = await bycrypt.compare(password, doctor.password);
 

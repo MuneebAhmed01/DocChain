@@ -50,6 +50,24 @@ const AdminContextProvider = (props) => {
       toast.error(error.message);
     }
   };
+const changeDoctorStatus = async (doctorId, status) => {
+  try {
+    const { data } = await axios.post(
+      backendUrl + "/api/admin/change-doctor-status",
+      { doctorId, status },
+      { headers: { aToken } }
+    );
+
+    if (data.success) {
+      toast.success(data.message);
+      getAllDoctors();
+    } else {
+      toast.error(data.message);
+    }
+  } catch (error) {
+    toast.error(error.message);
+  }
+};
 
   const getAllAppointments = async () => {
     try {
@@ -116,6 +134,7 @@ const AdminContextProvider = (props) => {
     cancelAppointment,
     dashData,
     getDashData,
+      changeDoctorStatus,
   };
 
   return (
