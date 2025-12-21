@@ -164,9 +164,21 @@ const bookAppointment = async (req, res) => {
 
     const docData = await doctorModel.findById(docId).select("-password");
 
-    if (!docData.available) {
-      return res.json({ success: false, message: "Doctor not available" });
-    }
+  // / 🔴 NEW: block suspended doctors FIRST
+if (docData.status === "suspended") {
+  return res.json({
+    success: false,
+    message: "This doctor has been suspended",
+  });
+}
+
+// existing availability logic (unchanged)
+if (!docData.available) {
+  return res.json({
+    success: false,
+    message: "Doctor not available",
+  });
+}
 
     let slots_booked = docData.slots_booked;
 
@@ -200,24 +212,24 @@ const bookAppointment = async (req, res) => {
     const newAppointment = new appointmentModel(appointmentData);
     await newAppointment.save();
     // Send confirmation email to patient
-await appointmentBookedPatient({
-  patientName: userData.name,
-  patientEmail: userData.email,
-  doctorName: docData.name,
-  doctorEmail: docData.email,
-  date: slotDate,
-  time: slotTime,
-});
+// await appointmentBookedPatient({
+//   patientName: userData.name,
+//   patientEmail: userData.email,
+//   doctorName: docData.name,
+//   doctorEmail: docData.email,
+//   date: slotDate,
+//   time: slotTime,
+// });
 
-// Notify doctor
-await appointmentBookedDoctor({
-  patientName: userData.name,
-  patientEmail: userData.email,
-  doctorName: docData.name,
-  doctorEmail: docData.email,
-  date: slotDate,
-  time: slotTime,
-});
+// // Notify doctor
+// await appointmentBookedDoctor({
+//   patientName: userData.name,
+//   patientEmail: userData.email,
+//   doctorName: docData.name,
+//   doctorEmail: docData.email,
+//   date: slotDate,
+//   time: slotTime,
+// });
 setTimeout(() => {
   appointmentReminder({
     patientName: userData.name,
@@ -296,26 +308,27 @@ const cancelAppointment = async (req, res) => {
     );
 
     await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-// Send cancellation email to patient
-await appointmentCancelledPatient({
-  patientName: appointmentData.userData.name, patientEmail: appointmentData.userData.email,
-  doctorName: doctorData.name,
-  doctorEmail: doctorData.email,
-  date: slotDate,
-  time: slotTime,
-});
+// // Send cancellation email to patient
 
-// Notify doctor
-await appointmentCancelledDoctor({
-  patientName: appointmentData.userData.name,
-  patientEmail: appointmentData.userData.email,
-  doctorName: doctorData.name,
-  doctorEmail: doctorData.email,
-  date: slotDate,
-  time: slotTime,
-});
+// appointmentCancelledPatient({
+//   patientName: appointmentData.userData.name, patientEmail: appointmentData.userData.email,
+//   doctorName: doctorData.name,
+//   doctorEmail: doctorData.email,
+//   date: slotDate,
+//   time: slotTime,
+// });
 
-    return res.json({
+// // Notify doctor
+// appointmentCancelledDoctor({
+//   patientName: appointmentData.userData.name,
+//   patientEmail: appointmentData.userData.email,
+//   doctorName: doctorData.name,
+//   doctorEmail: doctorData.email,
+//   date: slotDate,
+//   time: slotTime,
+// });
+
+return res.json({
       success: true,
       message: "Appointment Cancelled",
     });

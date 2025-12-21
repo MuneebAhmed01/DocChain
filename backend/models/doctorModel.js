@@ -14,7 +14,13 @@ const doctorSchema = new mongoose.Schema(
     address: { type: Object, required: true },
     date: { type: Number, required: true },
     slots_booked: { type: Object, default: {} },
-      earnings: { type: Number, default: 0 }
+      earnings: { type: Number, default: 0 },
+       status: {
+    type: String,
+    enum: ["active", "suspended"],
+    default: "active",
+  },
+
   },
   { minimize: false }
 );

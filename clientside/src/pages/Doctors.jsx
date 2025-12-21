@@ -2,6 +2,8 @@ import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 const Doctors = () => {
   
   const { speciality } = useParams();
@@ -12,14 +14,29 @@ const Doctors = () => {
 
   const { doctors } = useContext(AppContext);
 
-  const applyFilter = () => {
-    if (speciality) {
-      setFilterDoc(doctors.filter((doc) => doc.speciality === speciality));
-    } else {
-      setFilterDoc(doctors);
-    }
-  };
+  // const applyFilter = () => {
+  //  let filtered = doctors.filter(
+  //   (doc) => doc.status !== "suspended"
+  // );
 
+  // if (speciality) {
+  //   filtered = filtered.filter(
+  //     (doc) => doc.speciality === speciality
+  //   );
+  // }
+
+  // setFilterDoc(filtered);
+  // };
+  const applyFilter = () => {
+    // ✅ Include suspended doctors in the list
+    let filtered = [...doctors];
+
+    if (speciality) {
+      filtered = filtered.filter((doc) => doc.speciality === speciality);
+    }
+
+    setFilterDoc(filtered);
+  };
   useEffect(() => {
     applyFilter();
   }, [doctors, speciality]);
@@ -121,12 +138,21 @@ const Doctors = () => {
         <div className="w-full grid grid-cols-auto gap-4 gap-y-6">
           {filterDoc.map((item, index) => (
             <div
-              onClick={() => navigate(`/appointment/${item._id}`)}
-              className="border border-blue-200 rounded-xl overflow-hidden cursor-pointer hover:translate-y-[-10px] transition-all duration-500"
+           onClick={() => {
+  if (item.status === "suspended") {
+    toast.error("This doctor has been suspended."); // react-toastify syntax
+    return;
+  } navigate(`/appointment/${item._id}`)}}
+              className=" relative border border-blue-200 rounded-xl overflow-hidden cursor-pointer hover:translate-y-[-10px] transition-all duration-500"
               key={index}
             >
               <img className="bg-blue-50" src={item.image} alt="" />
               <div className="p-4">
+                 {item.status === "suspended" && (
+                  <p className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                    Suspended
+                  </p>
+                )}
                 <div
                   className={`flex items-center gap-2 text-sm text-center ${
                     item.available ? "text-green-500" : "text-gray-500"
@@ -137,7 +163,14 @@ const Doctors = () => {
                       item.available ? "bg-green-500" : "bg-gray-500"
                     } rounded-full`}
                   ></p>
-                  <p>{item.available ? "Available" : "Not Available"}</p>
+                  <p className={item.status === "suspended" ? "text-red-500 font-semibold" : ""}>
+  {item.status === "suspended"
+    ? "Suspended"
+    : item.available
+    ? "Available"
+    : "Not Available"}
+</p>
+
                 </div>
                 <p className="text-gray-900 text-lg font-medium">{item.name}</p>
                 <p className="text-gray-600 text-sm ">{item.speciality}</p>

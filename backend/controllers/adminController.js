@@ -197,6 +197,42 @@ const adminDashboard = async (req, res) => {
   }
 };
 
+//suspend doc
+// API to suspend or activate a doctor
+const changeDoctorStatus = async (req, res) => {
+  try {
+    const { doctorId, status } = req.body;
+
+    if (!doctorId || !status) {
+      return res.json({
+        success: false,
+        message: "Doctor ID and status are required",
+      });
+    }
+
+    if (!["active", "suspended"].includes(status)) {
+      return res.json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
+
+    await doctorModel.findByIdAndUpdate(doctorId, { status });
+
+    res.json({
+      success: true,
+      message:
+        status === "suspended"
+          ? "Doctor suspended successfully"
+          : "Doctor activated successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+
 export {
   addDoctor,
   loginAdmin,
@@ -204,4 +240,5 @@ export {
   appointmentsAdmin,
   appointmentCancel,
   adminDashboard,
+    changeDoctorStatus,
 };

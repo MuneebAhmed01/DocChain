@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-
+import doctorModel from "../models/doctorModel.js";
 // doctor authentication middleware
 const authDoctor = async (req, res, next) => {
   try {
@@ -12,6 +12,23 @@ const authDoctor = async (req, res, next) => {
       });
     }
     const token_decode = jwt.verify(dtoken, process.env.JWT_SECRET);
+        // 🔴 fetch doctor from DB
+    const doctor = await doctorModel.findById(token_decode.id);
+
+    if (!doctor) {
+      return res.json({
+        success: false,
+        message: "Not Authorized. Doctor does not exist.",
+      });
+    }
+
+    // 🔴 BLOCK suspended doctors
+    if (doctor.status === "suspended") {
+      return res.json({
+        success: false,
+        message: "Your account has been suspended. Contact admin.",
+      });
+    }
     req.body.docId = token_decode.id;
     next();
   } catch (error) {
