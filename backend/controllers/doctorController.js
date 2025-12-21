@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import appointmentModel from "../models/appointmentModel.js";
 import appointmentCompletedPatient from "../emailTemplates/appointmentCompletedPatient.js";
 import doctorRegistered from "../emailTemplates/doctorRegistered.js";
+import reviewModel from "../models/reviewModel.js";
 
 
 
@@ -218,6 +219,22 @@ const updateDoctorProfile = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+// ⭐ Get reviews for a doctor
+const getDoctorReviews = async (req, res) => {
+  try {
+    const { docId } = req.body;
+
+    const reviews = await reviewModel
+      .find({ doctor: docId })
+      .populate("user", "name")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, reviews });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
 
 export {
   changeAvailability,
@@ -229,4 +246,5 @@ export {
   doctorProfile,
   appointmentComplete,
   updateDoctorProfile,
+  getDoctorReviews
 };

@@ -40,7 +40,9 @@ import {
   bookAppointment,
   listAppointment,
   updateProfile,
-  cancelAppointment
+  cancelAppointment,
+  rateDoctor ,
+  getDoctorReviewsUser
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -122,6 +124,8 @@ router.get("/get-profile", authUser, getProfile, async (req, res) => {
   }
 });
 
+// ⭐ Get doctor reviews (user)
+router.get("/doctor-reviews/:docId", getDoctorReviewsUser);
 
 // ------------------ APPOINTMENT ROUTES ADDED ------------------
 
@@ -135,6 +139,8 @@ router.get("/appointments", authUser, listAppointment);
 
 // Cancel appointment
 router.post("/cancel-appointment", authUser, cancelAppointment);
+
+router.post("/rate-doctor", authUser, rateDoctor);
 
 
 export default router;

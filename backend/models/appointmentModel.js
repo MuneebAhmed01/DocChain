@@ -12,13 +12,14 @@ const appointmentSchema = new mongoose.Schema({
   isPaid: { type: Boolean, default: false },
   paidAmount: { type: Number, default: 0 }, // <-- actual paid amount
   refundId: { type: String, default: null },
-
+  
   docData: { type: Object, required: true },
   amount: { type: Number, required: true }, // full fee
   date: { type: Number, required: true },
   cancelled: { type: Boolean, default: false },
   payment: { type: Boolean, default: false },
   isCompleted: { type: Boolean, default: false },
+  isRated: { type: Boolean, default: false },
 });
 
 const appointmentModel =

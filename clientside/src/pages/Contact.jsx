@@ -76,6 +76,7 @@ export default function Contact() {
           {/* Left content */}
           <div className="lg:col-span-3 space-y-6 pt-6">
             <h1 className="text-4xl lg:text-5xl font-extrabold">Contact Us</h1>
+            
             <p className="text-sm text-gray-600 max-w-lg">
               Email, call, or complete the form to learn how Snappy can solve your messaging problem.
             </p>
@@ -207,17 +208,33 @@ export default function Contact() {
       <section className="w-full bg-white py-12 flex items-center justify-center" style={{ minHeight: '120vh' }}>
         <div className="container mx-auto px-6 lg:px-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="w-full">
-            <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100">
-              {/* Use provided image as the map placeholder */}
-              <img src="/mnt/data/277dd00c-9352-4478-b398-dd88e1c831bd.png" alt="Map placeholder" className="w-full h-[420px] md:h-[520px] object-cover" />
-              <div className="p-4">
-                <div className="inline-block bg-white rounded-lg shadow px-4 py-3 -mt-10">
-                  <div className="font-semibold">Snappy Inc.</div>
-                  <div className="text-sm text-gray-500">San Francisco, USA</div>
-                  <div className="mt-2 text-sm text-blue-600 underline cursor-pointer">Open Google Maps</div>
+         <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100">
+            <a
+              href="https://www.google.com/maps?q=City+Theme+Park+Jhelum+Pakistan"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full h-[420px] md:h-[520px]"
+            >
+              <iframe
+                title="City Housing Jhelum Location"
+                src="https://www.google.com/maps?q=City+Theme+Park+Jhelum+Pakistan&output=embed"
+                className="w-full h-full border-0"
+                loading="lazy"
+              />
+            </a>
+
+            <div className="p-4">
+              <div className="inline-block bg-white rounded-lg shadow px-4 py-3 -mt-10">
+                <div className="font-semibold">Main Office</div>
+                <div className="text-sm text-gray-500">
+                  City Housing Jhelum
+                </div>
+                <div className="mt-2 text-sm text-blue-600 underline">
+                  View on Map
                 </div>
               </div>
             </div>
+          </div>
           </div>
 
           <div className="w-full">
