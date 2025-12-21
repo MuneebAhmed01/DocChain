@@ -33,40 +33,53 @@ export default function Contact() {
     return null;
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    const v = validate();
-    if (v) {
-      setError(v);
-      return;
-    }
+  setLoading(true);
+  setError(null);
+  setSuccess(null);
 
-    setLoading(true);
-    try {
-      // This posts to your backend route. Implement /api/contact with Nodemailer.
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+  const payload = {
+    firstName: form.firstName,
+    lastName: form.lastName,
+    phone: `${form.countryCode}${form.phone}`,
+    email: form.email,
+    problem: form.message,
+  };
+
+  try {
+    const res = await fetch("http://localhost:4000/api/user/contact", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      setSuccess("Message sent successfully!");
+      setForm({
+        firstName: "",
+        lastName: "",
+        email: "",
+        countryCode: "+92",
+        phone: "",
+        message: "",
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to send message");
-      }
-
-      setSuccess("Message sent — thank you! We'll reply soon.");
-      setForm({ firstName: "", lastName: "", email: "", countryCode: "+92", phone: "", message: "" });
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+    } else {
+      setError(data.message);
     }
+  } catch (err) {
+    setError("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
   }
+};
+
+
 
   return (
     <div className="min-h-screen font-sans text-gray-900 bg-gray-50">

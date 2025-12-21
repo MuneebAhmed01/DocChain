@@ -11,6 +11,9 @@ import appointmentCancelledPatient from "../emailTemplates/appointmentCancelledP
 import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDoctor.js";
 import appointmentReminder from "../emailTemplates/appointmentReminder.js";
 import reviewModel from "../models/reviewModel.js";
+import sendEmail from "../utils/sendEmail.js";
+
+
 
 
 
@@ -423,6 +426,50 @@ export const getDoctorReviewsUser = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+const sendContactEmail = async (req, res) => {
+  try {
+    const { firstName, lastName, phone, email, problem } = req.body;
+
+    // Validation
+    if (!firstName || !lastName || !phone || !email || !problem) {
+      return res.json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const fullName = `${firstName} ${lastName}`;
+    const adminEmail = process.env.ADMIN_COMPLAINT_EMAIL;
+
+    const emailBody = `
+📩 New Contact Us Submission
+
+Name: ${fullName}
+Email: ${email}
+Phone: ${phone}
+
+Problem:
+${problem}
+    `;
+
+    await sendEmail(
+      adminEmail,
+      "New Contact Us Message - DocChain",
+      emailBody
+    );
+
+    res.json({
+      success: true,
+      message: "Message sent successfully",
+    });
+  } catch (error) {
+    console.error("Contact email error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send message",
+    });
+  }
+};
 
 
 export {
@@ -433,4 +480,5 @@ export {
   bookAppointment,
   listAppointment,
   cancelAppointment,
+  sendContactEmail
 };

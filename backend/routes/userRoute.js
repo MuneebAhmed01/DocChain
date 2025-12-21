@@ -42,7 +42,8 @@ import {
   updateProfile,
   cancelAppointment,
   rateDoctor ,
-  getDoctorReviewsUser
+  getDoctorReviewsUser,
+   sendContactEmail 
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -132,6 +133,7 @@ router.get("/doctor-reviews/:docId", getDoctorReviewsUser);
 // Book appointment
 router.post("/book-appointment", authUser, bookAppointment);
 
+router.post("/contact", sendContactEmail);
 //update profile 
 router.post("/update-profile", authUser, upload.single("image"), updateProfile);
 // Get user appointments
