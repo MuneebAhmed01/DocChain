@@ -192,8 +192,20 @@ const Doctors = () => {
 </p>
 
                 </div>
-                <p className="text-gray-900 text-lg font-medium">{item.name}</p>
-                <p className="text-gray-600 text-sm ">{item.speciality}</p>
+             <p className="text-gray-900 text-lg font-medium">{item.name}</p>
+<p className="text-gray-600 text-sm">{item.speciality}</p>
+
+{/* ⭐ Rating */}
+<div className="flex items-center gap-1 mt-1 text-sm text-yellow-500">
+  <span>★</span>
+  <span className="text-gray-700">
+    {item.averageRating ? item.averageRating : "0.0"}
+  </span>
+  <span className="text-gray-500">
+    ({item.ratingCount || 0})
+  </span>
+</div>
+
               </div>
             </div>
           ))}

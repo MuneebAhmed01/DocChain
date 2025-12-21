@@ -18,11 +18,24 @@ const Appointment = () => {
   const [docSlots, setDocSlots] = useState([]);
   const [slotIndex, setSlotIndex] = useState(0);
   const [slotTime, setSlotTime] = useState("");
+const [reviews, setReviews] = useState([]);
 
   const fetchDocInfo = async () => {
     const docInfo = doctors.find((doc) => doc._id === docId);
     setDocInfo(docInfo);
   };
+const fetchReviews = async () => {
+  try {
+    const { data } = await axiosInstance.get(
+      `/api/user/doctor-reviews/${docId}`
+    );
+    if (data.success) {
+      setReviews(data.reviews);
+    }
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   const getAvailableSlots = async () => {
     setDocSlots([]);
@@ -122,9 +135,11 @@ const Appointment = () => {
     }
   };
 
-  useEffect(() => {
-    fetchDocInfo();
-  }, [doctors, docId]);
+ useEffect(() => {
+  fetchDocInfo();
+  fetchReviews(); // ⭐ NEW
+}, [doctors, docId]);
+
 
   useEffect(() => {
     getAvailableSlots();
@@ -150,10 +165,24 @@ const Appointment = () => {
           <div className="flex-1 border border-gray-400 rounded-lg p-8 py-7 bg-white mx-2 sm:mx-0 mt-[-80px] sm:mt-0">
             <div className="flex items-center justify-between">
             {/* -------------------- Doc Info : name, degree, experience -------------------- */}
-            <p className="flex items-center gap-2 text-2xl font-medium text-gray-900">
-              {docInfo.name}
-              <img className="w-5" src={assets.verified_icon} alt="" />
-            </p>
+           <div>
+  <p className="flex items-center gap-2 text-2xl font-medium text-gray-900">
+    {docInfo.name}
+    <img className="w-5" src={assets.verified_icon} alt="" />
+  </p>
+
+  {/* ⭐ Rating */}
+  <div className="flex items-center gap-1 text-yellow-500 text-sm mt-1">
+    <span>★</span>
+    <span className="text-gray-700">
+      {docInfo.averageRating || "0.0"}
+    </span>
+    <span className="text-gray-500">
+      ({docInfo.ratingCount || 0} reviews)
+    </span>
+  </div>
+</div>
+
               {/* {docInfo.city && ( */}
   <div className="flex items-center gap-2 text-sm mt-2 text-gray-600">
     <span className="font-medium">Location:</span>
@@ -189,6 +218,38 @@ const Appointment = () => {
                 {docInfo.fees}
               </span>
             </p>
+            {/* ⭐ Reviews Section */}
+<div className="mt-6">
+  <p className="text-sm font-medium text-gray-700 mb-2">
+    Patient Reviews
+  </p>
+
+  {reviews.length === 0 && (
+    <p className="text-sm text-gray-500">No reviews yet.</p>
+  )}
+
+  <div className="flex flex-col gap-3 max-h-60 overflow-y-auto">
+    {reviews.map((rev, idx) => (
+      <div key={idx} className="border p-3 rounded">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-gray-800">
+            {rev.user?.name || "User"}
+          </p>
+          <div className="flex items-center gap-1 text-yellow-500 text-sm">
+            <span>★</span>
+            <span className="text-gray-700">{rev.rating}</span>
+          </div>
+        </div>
+        {rev.comment && (
+          <p className="text-sm text-gray-600 mt-1">
+            {rev.comment}
+          </p>
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+
           </div>
         </div>
 

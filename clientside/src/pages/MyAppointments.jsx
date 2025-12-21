@@ -6,6 +6,10 @@ import axiosInstance from "../axiosInstance";
 const MyAppointments = () => {
   const { backendUrl, token, getDoctorsData } = useContext(AppContext);
   const [appointments, setAppointments] = useState([]);
+const [showRateModal, setShowRateModal] = useState(false);
+const [selectedAppt, setSelectedAppt] = useState(null);
+const [rating, setRating] = useState(0);
+const [comment, setComment] = useState("");
 
   const months = [
     "",
@@ -80,6 +84,38 @@ const MyAppointments = () => {
       toast.error(error.message);
     }
   };
+const openRateModal = (appt) => {
+  setSelectedAppt(appt);
+  setRating(0);
+  setComment("");
+  setShowRateModal(true);
+};
+
+const submitRating = async () => {
+  try {
+    if (!rating) {
+      return toast.error("Please select a rating");
+    }
+
+    const { data } = await axiosInstance.post("/api/user/rate-doctor", {
+      appointmentId: selectedAppt._id,
+      rating,
+      comment,
+    });
+
+    if (data.success) {
+      toast.success(data.message);
+      setShowRateModal(false);
+      getUserAppointments(); // refresh list
+      getDoctorsData(); // refresh doctor ratings
+    } else {
+      toast.error(data.message);
+    }
+  } catch (err) {
+    console.log(err);
+    toast.error("Failed to submit review");
+  }
+};
 
   useEffect(() => {
     if (token) {
@@ -173,16 +209,78 @@ const MyAppointments = () => {
                 )}
 
                 {/* COMPLETED BADGE */}
-                {item.isCompleted && (
-                  <button className="sm:min-w-48 py-2 border border-green-500 rounded text-green-500">
-                    Completed
-                  </button>
-                )}
+               {/* COMPLETED & RATING */}
+{item.isCompleted && !item.isRated && (
+  <div className="flex flex-col gap-2">
+  <button className="sm:min-w-48 py-2 border border-green-500 rounded text-green-500">
+    Completed
+  </button>
+  <button
+    onClick={() => openRateModal(item)}
+    className="sm:min-w-48 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+  >
+    ⭐ Rate Doctor
+  </button>
+  </div>
+)}
+
+{item.isCompleted && item.isRated && (
+  <button className="sm:min-w-48 py-2 border border-gray-400 rounded text-gray-500">
+    Rated
+  </button>
+)}
+
               </div>
             </div>
           );
         })}
       </div>
+      {/* ⭐ Rating Modal */}
+{showRateModal && (
+  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg w-80">
+      <h2 className="text-lg font-semibold mb-3">Rate Doctor</h2>
+
+      <div className="flex justify-center gap-2 mb-3">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <span
+            key={star}
+            onClick={() => setRating(star)}
+            className={`cursor-pointer text-2xl ${
+              star <= rating ? "text-yellow-400" : "text-gray-300"
+            }`}
+          >
+            ★
+          </span>
+        ))}
+      </div>
+
+      <textarea
+        placeholder="Write a short review (optional)"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        className="w-full border rounded p-2 text-sm mb-3"
+        rows={3}
+      />
+
+      <div className="flex justify-end gap-2">
+        <button
+          onClick={() => setShowRateModal(false)}
+          className="px-3 py-1 border rounded"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={submitRating}
+          className="px-3 py-1 bg-primary text-white rounded"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 };

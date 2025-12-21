@@ -56,9 +56,21 @@ const DoctorProfile = () => {
           <div className="flex-1 border border-stone-100 rounded-lg p-8 py-7 bg-white">
             {/* ------- Doc Info: name, degree, experience ------- */}
 
-            <p className="flex items-center gap-2 text-3xl font-medium text-gray-700">
-              {profileData.name}
-            </p>
+           <p className="flex items-center gap-2 text-3xl font-medium text-gray-700">
+  {profileData.name}
+</p>
+
+{/* ⭐ Rating */}
+<div className="flex items-center gap-1 text-yellow-500 mt-1">
+  <span>★</span>
+  <span className="text-gray-700">
+    {profileData.averageRating || "0.0"}
+  </span>
+  <span className="text-gray-500 text-sm">
+    ({profileData.ratingCount || 0} reviews)
+  </span>
+</div>
+
             <div className="flex items-center gap-2 mt-1 text-gray-600">
               <p>
                 {profileData.degree} - {profileData.speciality}

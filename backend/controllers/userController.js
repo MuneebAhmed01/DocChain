@@ -10,6 +10,8 @@ import appointmentBookedDoctor from "../emailTemplates/appointmentBookedDoctor.j
 import appointmentCancelledPatient from "../emailTemplates/appointmentCancelledPatient.js";
 import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDoctor.js";
 import appointmentReminder from "../emailTemplates/appointmentReminder.js";
+import reviewModel from "../models/reviewModel.js";
+
 
 
 // API to register user
@@ -336,6 +338,89 @@ return res.json({
   } catch (error) {
     console.log(error);
     return res.json({ success: false, message: error.message });
+  }
+};
+// ⭐ Rate doctor after completed appointment
+export const rateDoctor = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { appointmentId, rating, comment } = req.body;
+
+    if (!appointmentId || !rating) {
+      return res.json({ success: false, message: "Rating is required" });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.json({ success: false, message: "Rating must be between 1 and 5" });
+    }
+
+    const appt = await appointmentModel.findById(appointmentId);
+    if (!appt) {
+      return res.json({ success: false, message: "Appointment not found" });
+    }
+
+    // ✅ Must belong to this user
+    if (appt.userId !== userId) {
+      return res.json({ success: false, message: "Not authorized" });
+    }
+
+    // ✅ Must be completed
+    if (!appt.isCompleted) {
+      return res.json({ success: false, message: "Appointment not completed yet" });
+    }
+
+    // ✅ Must not be rated already
+    if (appt.isRated) {
+      return res.json({ success: false, message: "You already rated this appointment" });
+    }
+
+    // Create review
+    const review = await reviewModel.create({
+      doctor: appt.docId,
+      user: userId,
+      appointment: appt._id,
+      rating,
+      comment: comment || "",
+    });
+
+    // ⭐ Update doctor's average rating
+    const doctor = await doctorModel.findById(appt.docId);
+    if (!doctor) {
+      return res.json({ success: false, message: "Doctor not found" });
+    }
+
+    const newCount = doctor.ratingCount + 1;
+    const newAvg =
+      (doctor.averageRating * doctor.ratingCount + rating) / newCount;
+
+    doctor.ratingCount = newCount;
+    doctor.averageRating = Number(newAvg.toFixed(1));
+    await doctor.save();
+
+    // ✅ Mark appointment as rated
+    appt.isRated = true;
+    await appt.save();
+
+    res.json({ success: true, message: "Thanks for your review!" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+// ⭐ Get reviews for a doctor (user side)
+export const getDoctorReviewsUser = async (req, res) => {
+  try {
+    const { docId } = req.params;
+
+    const reviews = await reviewModel
+      .find({ doctor: docId })
+      .populate("user", "name")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, reviews });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 

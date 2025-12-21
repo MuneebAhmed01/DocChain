@@ -9,6 +9,7 @@ import {
   doctorDashboard,
   doctorProfile,
   updateDoctorProfile,
+   getDoctorReviews,
 } from "../controllers/doctorController.js";
 
 const doctorRouter = express.Router();
@@ -16,6 +17,7 @@ const doctorRouter = express.Router();
 doctorRouter.get("/list", doctorList);
 doctorRouter.post("/login", loginDoctor);
 doctorRouter.get("/appointments", authDoctor, appointmentsDoctor);
+doctorRouter.get("/reviews", authDoctor, getDoctorReviews);
 doctorRouter.post("/complete-appointment", authDoctor, appointmentComplete);
 doctorRouter.post("/cancel-appointment", authDoctor, appointmentCancel);
 doctorRouter.get("/dashboard", authDoctor, doctorDashboard);
