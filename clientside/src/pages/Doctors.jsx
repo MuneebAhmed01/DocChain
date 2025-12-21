@@ -9,6 +9,7 @@ const Doctors = () => {
   const { speciality } = useParams();
   const [filterDoc, setFilterDoc] = useState([]);
   const [showFilter, setShowFilter] = useState(false);
+ const [city, setCity] = useState("All");
 
   const navigate = useNavigate();
 
@@ -34,16 +35,33 @@ const Doctors = () => {
     if (speciality) {
       filtered = filtered.filter((doc) => doc.speciality === speciality);
     }
+      if (city !== "All") {
+    filtered = filtered.filter((doc) => doc.city === city);
+  }
 
     setFilterDoc(filtered);
   };
   useEffect(() => {
     applyFilter();
-  }, [doctors, speciality]);
+  }, [doctors, speciality , city]);
 
   return (
     <div>
+      <div className="flex justify-between items-center">
       <p className="text-gray-600">Browse through the doctors specialist.</p>
+        <div className="mb-4">
+  <select
+    value={city}
+    onChange={(e) => setCity(e.target.value)}
+    className="border px-3 py-2 rounded text-gray-600"
+  >
+    <option value="All">All Cities</option>
+    <option value="Lahore">Lahore</option>
+    <option value="Islamabad">Islamabad</option>
+    <option value="Karachi">Karachi</option>
+  </select>
+</div>
+      </div>
       <div className="flex flex-col sm:flex-row items-start gap-5 mt-5">
         <button
           className={`py-1 px-3 border rounded text-sm transition-all sm:hidden ${
@@ -135,6 +153,8 @@ const Doctors = () => {
             Gastroenterologist
           </p>
         </div>
+
+
         <div className="w-full grid grid-cols-auto gap-4 gap-y-6">
           {filterDoc.map((item, index) => (
             <div

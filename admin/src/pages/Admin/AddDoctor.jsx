@@ -17,6 +17,8 @@ const AddDoctor = () => {
   const [degree, SetDegree] = useState("");
   const [address1, SetAddress1] = useState("");
   const [address2, SetAddress2] = useState("");
+  const [city, setCity] = useState("");
+
 
   const { backendUrl, aToken } = useContext(AdminContext);
 
@@ -27,6 +29,10 @@ const AddDoctor = () => {
       if (!docImg) {
         return toast.error("Image Not Selected");
       }
+      if (!city) {
+  return toast.error("Please select a city");
+}
+
 
       const formData = new FormData();
 
@@ -39,6 +45,8 @@ const AddDoctor = () => {
       formData.append("about", about);
       formData.append("speciality", speciality);
       formData.append("degree", degree);
+      formData.append("city", city);
+
       formData.append(
         "address",
         JSON.stringify({ line1: address1, line2: address2 })
@@ -201,6 +209,21 @@ const AddDoctor = () => {
                 required
               />
             </div>
+            <div className="flex-1 flex flex-col gap-1">
+  <p>City</p>
+  <select
+    value={city}
+    onChange={(e) => setCity(e.target.value)}
+    className="border rounded px-3 py-2"
+    required
+  >
+    <option value="">Select City</option>
+    <option value="Lahore">Lahore</option>
+    <option value="Islamabad">Islamabad</option>
+    <option value="Karachi">Karachi</option>
+  </select>
+</div>
+
 
             <div className="flex-1 flex flex-col gap-1">
               <p>Address</p>
