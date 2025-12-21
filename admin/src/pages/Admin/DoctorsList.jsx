@@ -20,8 +20,9 @@ const DoctorsList = () => {
           >
             <img
               className="bg-indigo-50 group-hover:bg-primary transition-all duration-500"
-              src={item.image}
-              alt=""
+             src={item.image || "/default-avatar.png"} 
+
+              
             />
             <div className="p-4">
               <p className="text-neutral-800 text-lg font-medium">

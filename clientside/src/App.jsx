@@ -15,6 +15,7 @@ import "react-toastify/dist/ReactToastify.css";
 import BlogList from "./pages/Blogs/BlogList";
 import BlogDetail from "./pages/Blogs/BlogDetail"; 
 import PaymentSuccess from "./pages/PaymentSuccess";
+import JoinDoctor from "./pages/JoinDoctor";
 
 
 const App = () => {
@@ -28,6 +29,7 @@ const App = () => {
         <Route path="/doctors/:speciality" element={<Doctors />} />
         <Route path="/login" element={<Login />} />
         <Route path="/about" element={<About />} />
+<Route path="/join-doctor" element={<JoinDoctor />} />
 
         <Route path="/payment-success" element={<PaymentSuccess />} />
 

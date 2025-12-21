@@ -12,9 +12,10 @@ import appointments_icon from './appointments_icon.svg'
 import earning_icon from './earning_icon.svg'
 import patients_icon from './patients_icon.svg'
 import admin from './admin.jpg'
+import pending_icon from './pending-icon.svg'
 export const assets = {
     add_icon,
-   
+   pending_icon,
     appointment_icon,
     cancel_icon,
     doctor_icon,
