@@ -20,10 +20,20 @@ const doctorSchema = new mongoose.Schema(
     enum: ["active", "suspended"],
     default: "active",
   },
+  city: {
+  type: String,
+  enum: ["Lahore", "Islamabad", "Karachi"],
+  // required: true,
+},
+
 
   },
   { minimize: false }
 );
+
+
+// 🔥 Important index for filtering
+doctorSchema.index({ city: 1, speciality: 1 });
 
 const doctorModel =
   mongoose.models.doctor || mongoose.model("doctor", doctorSchema);

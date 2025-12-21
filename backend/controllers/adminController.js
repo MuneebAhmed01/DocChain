@@ -24,6 +24,7 @@ const addDoctor = async (req, res) => {
       about,
       fees,
       address,
+       city,
     } = req.body;
 
     // check missing fields
@@ -36,7 +37,8 @@ const addDoctor = async (req, res) => {
       !experience ||
       !about ||
       !fees ||
-      !address
+      !address ||
+  !city
     ) {
       return res.json({ success: false, message: "Missing Details" });
     }
@@ -48,6 +50,17 @@ const addDoctor = async (req, res) => {
         message: "Please enter a valid email",
       });
     }
+
+    //validate city
+    const allowedCities = ["Lahore", "Islamabad", "Karachi"];
+
+if (!allowedCities.includes(city)) {
+  return res.json({
+    success: false,
+    message: "Invalid city selected",
+  });
+}
+
 
     // validate password strength
     if (password.length < 8) {
@@ -81,6 +94,7 @@ const addDoctor = async (req, res) => {
       speciality,
       degree,
       experience,
+        city,
       about,
       fees,
       address: JSON.parse(address),
