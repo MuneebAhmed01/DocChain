@@ -41,8 +41,8 @@ import testi1 from './testi1.jpg'
 import testi2 from './testi2.jpg'
 import testi3 from './testi3.jpg'
 import testi4 from './testi4.jpg'
-
-
+import about_dummy from './about_dummy.jpg'
+import about_dummy2 from './about_dummy2.jpg'
 
 export const assets = {
     appointment_img,
@@ -64,7 +64,9 @@ export const assets = {
     snowflakes,
     doc11,
     doc9,
-    testi1,testi2,testi3,testi4,testi4
+    testi1,testi2,testi3,testi4,testi4,
+    about_dummy,
+    about_dummy2
 }
 
 export const specialityData = [
