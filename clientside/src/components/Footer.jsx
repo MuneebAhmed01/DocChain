@@ -70,7 +70,7 @@ const Footer = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           
           <h1 className="text-5xl font-bold text-gray-500 tracking-wide">
-            DocChain
+            Doc<span className="text-gray-300">Chain</span>
           </h1>
 
           <div className="flex gap-6 text-sm">
