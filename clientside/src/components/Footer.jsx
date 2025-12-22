@@ -1,75 +1,88 @@
-import React from "react";
-
-export default function Footer() {
+{/* <footer className="bg-[#1a1a1a] text-white  mt-16 relative -mx-4 sm:-mx-[3.2%] pt-16 "> */}
+{/* <div className="w-full flex justify-center px-4 -mt-28"> */}
+const Footer = () => {
   return (
-    <footer className="bg-[#1a1a1a] text-white  mt-16 relative -mx-4 sm:-mx-[3.2%] pt-16 ">
-      {/* Top Banner */}
-      <div className="w-full flex justify-center px-4 -mt-28">
-        <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-3xl shadow-xl w-full max-w-5xl p-8 flex flex-col md:flex-row items-center justify-between text-center md:text-left">
-          <div>
-            <h2 className="text-3xl font-bold">Need Urgent Help</h2>
-            <p className="text-lg mt-2">Contact Emergency Service Now</p>
-          </div>
-          <button className="mt-4 md:mt-0 bg-white text-blue-600 font-semibold px-6 py-3 rounded-full shadow-md flex items-center gap-2">
-            <span>📞</span> Contact Now
-          </button>
-        </div>
-      </div>
+    <footer className="-mx-4 sm:-mx-[3.2%] bg-gradient-to-b from-[#0b0b0b] to-black text-gray-400 flex flex-col justify-between">
+      
+      {/* Top Section */}
+      <div className="max-w-7xl mx-auto w-full px-6 py-6 grid grid-cols-1 md:grid-cols-4 gap-8">
 
-      {/* Footer Main */}
-      <div className=" max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 md:grid-cols-4 gap-12">
-        {/* Logo + Description */}
+        {/* Brand */}
         <div>
-          <h1 className="text-2xl font-bold tracking-wide">
-            <span className="text-white">Doc</span>
-            <span className="text-gray-400">Chain</span>
-          </h1>
-          <p className="text-gray-400 mt-2 leading-relaxed">
-            We offers 24/7 access to healthcare services, empowering you to stay
-            healthy without stepping outside
+          <h2 className="text-2xl font-semibold mb-4">
+            <span className="text-blue-500">Doc</span>
+            <span className="text-white">Chain</span>
+          </h2>
+
+          <p className="text-sm leading-relaxed mb-4">
+            Healthcare plays a vital role in improving quality of life by
+            providing essential medical services, preventive care, and
+            treatment for illnesses.
           </p>
 
-          {/* Social Icons */}
-          <div className="flex gap-4 mt-6 text-2xl">
-            <span>📸</span>
-            <span>📘</span>
-            <span>▶️</span>
+          <div className="flex gap-3">
+            {["in", "ig", "x", "f"].map((icon) => (
+              <div
+                key={icon}
+                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-600 text-sm hover:text-white hover:border-white transition"
+              >
+                {icon}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Contact Us */}
+        {/* Menu */}
         <div>
-          <h3 className="text-lg font-semibold mb-4">Contact Us</h3>
-          <ul className="text-gray-400 space-y-3">
-            <li>✉️ info@Dochain.com</li>
-            <li>📍 44 Batesford Rd, Malvern East VIC 3144</li>
-          </ul>
-        </div>
-
-        {/* Pages */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Pages</h3>
-          <ul className="text-gray-400 space-y-3">
-            <li>Doctor Booking</li>
-            <li>Lab Test Booking</li>
-            <li>Emergency Support</li>
-          </ul>
-        </div>
-
-        {/* Other */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Other</h3>
-          <ul className="text-gray-400 space-y-3">
+          <h4 className="text-white font-medium mb-4">Menu</h4>
+          <ul className="space-y-2 text-sm">
             <li>Home</li>
-            <li>About</li>
+            <li>About Us</li>
+            <li>Services</li>
+            <li>Blog</li>
+          </ul>
+        </div>
+
+        {/* Services */}
+        <div>
+          <h4 className="text-white font-medium mb-4">Services</h4>
+          <ul className="space-y-2 text-sm">
+            <li>Cardiology</li>
+            <li>Neurology</li>
+            <li>Radiology</li>
+            <li>Urology</li>
+          </ul>
+        </div>
+
+        {/* Further Info */}
+        <div>
+          <h4 className="text-white font-medium mb-4">Further Information</h4>
+          <ul className="space-y-2 text-sm">
+            <li>Terms & Condition</li>
             <li>Privacy Policy</li>
+            <li>Support</li>
           </ul>
         </div>
       </div>
 
-      <div className="text-center text-gray-600 py-3  border-t  border-gray-700 text-sm">
-        © 2024 DocChain.com
+      {/* Bottom Section */}
+      <div className="border-t border-gray-700 px-2 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          
+          <h1 className="text-5xl font-bold text-gray-500 tracking-wide">
+            DocChain
+          </h1>
+
+          <div className="flex gap-6 text-sm">
+            <span>Privacy Policy</span>
+            <span>Terms & Condition</span>
+            <span>Healthcare Setting</span>
+          </div>
+        </div>
       </div>
+
     </footer>
   );
-}
+};
+
+export default Footer;
