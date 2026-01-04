@@ -48,10 +48,7 @@ const App = () => {
           path="/online-consult"
           element={<div className="p-6">Online Consultation (Coming soon)</div>}
         />
-        <Route
-          path="/emergency"
-          element={<div className="p-6">Emergency Services (Coming soon)</div>}
-        />
+       
       </Routes>
       <Footer />
     </div>
