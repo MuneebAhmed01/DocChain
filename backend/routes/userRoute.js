@@ -52,6 +52,48 @@ const upload = multer({ dest: "uploads/" });
 
 import welcomeEmail from "../emailTemplates/welcomeEmail.js";
 
+
+import googleClient from "../utils/googleClient.js";
+
+
+router.post("/google-login", async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
+
+    let user = await userModel.findOne({ email });
+
+    // If user does NOT exist → auto create
+    if (!user) {
+      user = await userModel.create({
+        name,
+        email,
+        password: "GOOGLE_AUTH", // dummy, not used
+        image: picture,
+      });
+    }
+
+    // Create your normal JWT
+    const appToken = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ success: true, token: appToken });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ success: false, message: "Google auth failed" });
+  }
+});
+
 // ------------------ REGISTER ------------------
 router.post("/register", async (req, res) => {
   try {
