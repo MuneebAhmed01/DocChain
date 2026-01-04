@@ -16,8 +16,6 @@ import sendEmail from "../utils/sendEmail.js";
 
 
 
-
-// API to register user
 const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -26,38 +24,41 @@ const registerUser = async (req, res) => {
       return res.json({ success: false, message: "Missing Details" });
     }
 
-    // validating email format
+    // Validate email format
     if (!validator.isEmail(email)) {
-      return res.json({ success: false, message: "enter a valid email" });
+      return res.json({ success: false, message: "Enter a valid email" });
     }
 
-    // validating strong password
+    // Validate strong password
     if (password.length < 8) {
-      return res.json({ success: false, message: "enter a strong password" });
+      return res.json({ success: false, message: "Enter a strong password (min 8 chars)" });
     }
 
-    // hashing user password
+    // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const userData = {
-      name,
-      email,
-      password: hashedPassword,
-    };
-
-    const newUser = new userModel(userData);
+    // Save user
+    const newUser = new userModel({ name, email, password: hashedPassword });
     const user = await newUser.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+    // Generate JWT with expiration
+    const token = jwt.sign(
+      { userId: user._id, name: user.name, email: user.email }, // payload
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" } // token valid for 7 days
+    );
 
-
+    // Return token to frontend
     res.json({ success: true, token });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
   }
 };
+
+export default registerUser;
+
 
 // API for user login
 const loginUser = async (req, res) => {

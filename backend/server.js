@@ -104,7 +104,7 @@ app.use('/api/blogs', blogRoutes);
 // Demo login
 app.post("/api/login", (req, res) => {
   const user = { id: 1, username: "demo" };
-  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "1h" });
+  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
   res.json({ success: true, token });
 });
 
