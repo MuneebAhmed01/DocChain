@@ -2,25 +2,26 @@ import axios from "axios";
 
 const axiosInstance = axios.create({
   baseURL: "http://localhost:4000",
-    withCredentials: true,
+  withCredentials: true, // needed if your backend uses cookies (optional for JWT)
 });
 
-axiosInstance.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  console.log("Token in localStorage:", localStorage.getItem("token"));
+// Interceptor to automatically add token to every request
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token"); // get the latest token
+    console.log("Token in localStorage:", token);
 
+    if (token) {
+      // Always use "Authorization" with "Bearer <token>"
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
 
-  console.log("Sending token:", token);
-
-
-  console.log("Sending token 2:", token);
-console.log("Config headers before request:", config.headers);
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`; // <-- must be "Authorization"
+    console.log("Config headers before request:", config.headers);
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-
-  return config;
-});
+);
 
 export default axiosInstance;

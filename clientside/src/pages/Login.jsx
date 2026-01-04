@@ -3,6 +3,7 @@ import { AppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
+import { GoogleLogin } from "@react-oauth/google";
 
 const Login = () => {
   const { token, setToken } = useContext(AppContext);
@@ -121,6 +122,21 @@ const Login = () => {
         >
           {state === "Sign Up" ? "Create Account" : "Login"}
         </button>
+         <GoogleLogin
+  onSuccess={async (credentialResponse) => {
+    const { data } = await axiosInstance.post("/api/user/google-login", {
+      token: credentialResponse.credential,
+    });
+
+    if (data.success) {
+      localStorage.setItem("token", data.token);
+      setToken(data.token);
+    } else {
+      toast.error("Google login failed");
+    }
+  }}
+  onError={() => toast.error("Google Login Failed")}
+/>
 
         {state === "Sign Up" ? (
           <p>
