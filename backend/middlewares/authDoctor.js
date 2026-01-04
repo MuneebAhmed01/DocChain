@@ -12,7 +12,7 @@ const authDoctor = async (req, res, next) => {
       });
     }
     const token_decode = jwt.verify(dtoken, process.env.JWT_SECRET);
-        // 🔴 fetch doctor from DB
+      
     const doctor = await doctorModel.findById(token_decode.id);
 
     if (!doctor) {
@@ -22,7 +22,7 @@ const authDoctor = async (req, res, next) => {
       });
     }
 
-    // 🔴 BLOCK suspended doctors
+    
     if (doctor.status === "suspended") {
       return res.json({
         success: false,
