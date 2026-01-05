@@ -46,7 +46,7 @@ const registerUser = async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, name: user.name, email: user.email }, // payload
       process.env.JWT_SECRET,
-      { expiresIn: "7d" } // token valid for 7 days
+      { expiresIn: "30d" } // token valid for 7 days
     );
 
     // Return token to frontend
