@@ -165,13 +165,13 @@ const submitRating = async () => {
 
                 {/* ⭐ PRICE DISPLAY WITH DISCOUNT */}
                 <p className="mt-2">
-                  <span className="font-medium">Fee:</span> ₹{item.amount}
+                  <span className="font-medium">Fee:</span> ${item.amount}
                 </p>
 
                 <p className="text-green-600 text-sm">
                   10% OFF on online payment
                 </p>
-                <p className="font-semibold">Pay Online: ₹{discounted}</p>
+                <p className="font-semibold">Pay Online: ${discounted}</p>
 
                 {item.isPaid && (
                   <span className="inline-block mt-1 px-3 py-1 bg-green-500 text-white rounded text-xs">

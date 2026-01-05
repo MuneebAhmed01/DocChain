@@ -4,7 +4,6 @@ import { AdminContext } from "../../context/AdminContext";
 import { toast } from "react-toastify";
 import axios from "axios";
 
-
 const AddDoctor = () => {
   const [docImg, SetDocImg] = useState(false);
   const [name, SetName] = useState("");
@@ -19,7 +18,6 @@ const AddDoctor = () => {
   const [address2, SetAddress2] = useState("");
   const [city, setCity] = useState("");
 
-
   const { backendUrl, aToken } = useContext(AdminContext);
 
   const onSubmitHandler = async (event) => {
@@ -30,9 +28,8 @@ const AddDoctor = () => {
         return toast.error("Image Not Selected");
       }
       if (!city) {
-  return toast.error("Please select a city");
-}
-
+        return toast.error("Please select a city");
+      }
 
       const formData = new FormData();
 
@@ -62,7 +59,6 @@ const AddDoctor = () => {
         formData,
         { headers: { aToken } }
       );
-
       if (data.success) {
         toast.success(data.message);
         SetDocImg(false);
@@ -210,20 +206,19 @@ const AddDoctor = () => {
               />
             </div>
             <div className="flex-1 flex flex-col gap-1">
-  <p>City</p>
-  <select
-    value={city}
-    onChange={(e) => setCity(e.target.value)}
-    className="border rounded px-3 py-2"
-    required
-  >
-    <option value="">Select City</option>
-    <option value="Lahore">Lahore</option>
-    <option value="Islamabad">Islamabad</option>
-    <option value="Karachi">Karachi</option>
-  </select>
-</div>
-
+              <p>City</p>
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="border rounded px-3 py-2"
+                required
+              >
+                <option value="">Select City</option>
+                <option value="Lahore">Lahore</option>
+                <option value="Islamabad">Islamabad</option>
+                <option value="Karachi">Karachi</option>
+              </select>
+            </div>
 
             <div className="flex-1 flex flex-col gap-1">
               <p>Address</p>

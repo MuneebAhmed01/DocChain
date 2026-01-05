@@ -7,7 +7,7 @@ import adminRouter from "./routes/adminRoute.js";
 
 import doctorRouter from "./routes/doctorRoute.js";
 import userRouter from "./routes/userRoute.js";
-import axios from "axios";
+
 import jwt from "jsonwebtoken";
 
 import blogRoutes from './routes/blogRoutes.js';
@@ -15,6 +15,7 @@ import stripeRoutes from './routes/stripeRoutes.js'
 import stripeWebhook from "./routes/stripeWebhook.js";
 import sendEmail from "./utils/sendEmail.js";
 import pendingDoctorRouter from "./routes/pendingDoctorRouter.js";
+import mongoose from "mongoose";
 
 
 
@@ -23,8 +24,8 @@ import pendingDoctorRouter from "./routes/pendingDoctorRouter.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
-connectDB();
 connectCloudinary();
+connectDB();
 
 // ✅ CORS - MUST come before routes
 app.use(cors({
@@ -104,7 +105,7 @@ app.use('/api/blogs', blogRoutes);
 // Demo login
 app.post("/api/login", (req, res) => {
   const user = { id: 1, username: "demo" };
-  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "7d" });
+  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "30d" });
   res.json({ success: true, token });
 });
 
