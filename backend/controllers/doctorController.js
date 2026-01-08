@@ -43,6 +43,7 @@ const loginDoctor = async (req, res) => {
     const doctor = await doctorModel.findOne({ email });
 
     if (!doctor) {
+    
       return res.json({ success: false, message: "Invalid credentials" });
     }
         // 🔴 BLOCK suspended accounts
@@ -60,7 +61,11 @@ const loginDoctor = async (req, res) => {
       const token = jwt.sign({ id: doctor._id }, process.env.JWT_SECRET);
       res.json({ success: true, token });
     } else {
-      res.json({ success: false, message: "Invalid credentials" });
+        console.log("EMAIL:", email)
+console.log("PASSWORD:", password)
+
+
+      res.json({ success: false, message: "Invalid credential" });
     }
   } catch (error) {
     console.log(error);

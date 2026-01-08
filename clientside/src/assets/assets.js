@@ -1,5 +1,5 @@
 import appointment_img from './appointment_img.png'
-import header_img from './header_img.png'
+
 import group_profiles from './group_profiles.png'
 import profile_pic from './profile_pic.png'
 import contact_image from './contact_image.png'
@@ -30,13 +30,14 @@ import doc12 from './doc12.png'
 import doc13 from './doc13.png'
 import doc14 from './doc14.png'
 import doc15 from './doc15.png'
-import Dermatologist from './Dermatologist.svg'
-import Gastroenterologist from './Gastroenterologist.svg'
-import General_physician from './General_physician.svg'
-import Gynecologist from './Gynecologist.svg'
-import Neurologist from './Neurologist.svg'
-import Pediatricians from './Pediatricians.svg'
+
 import snowflakes from './snowflakes.png'
+import speciality1 from './speciality1.jpg'
+import speciality2 from './speciality2.jpg'
+import speciality3 from './speciality3.jpg'
+import speciality4 from './speciality4.jpg'
+import speciality5 from './speciality5.jpg'
+import speciality6 from './speciality6.jpg'
 import testi1 from './testi1.jpg'
 import testi2 from './testi2.jpg'
 import testi3 from './testi3.jpg'
@@ -46,7 +47,7 @@ import about_dummy2 from './about_dummy2.jpg'
 
 export const assets = {
     appointment_img,
-    header_img,
+  
     group_profiles,
     chats_icon,
     verified_icon,
@@ -72,27 +73,27 @@ export const assets = {
 export const specialityData = [
     {
         speciality: 'General physician',
-        image: General_physician
+        image: speciality1
     },
     {
         speciality: 'Gynecologist',
-        image: Gynecologist
+        image: speciality2
     },
     {
         speciality: 'Dermatologist',
-        image: Dermatologist
+        image: speciality3
     },
     {
         speciality: 'Pediatricians',
-        image: Pediatricians
+        image: speciality4
     },
     {
         speciality: 'Neurologist',
-        image: Neurologist
+        image: speciality5
     },
     {
         speciality: 'Gastroenterologist',
-        image: Gastroenterologist
+        image: speciality6
     },
 ]
 

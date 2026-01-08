@@ -100,6 +100,19 @@ const loginUser = async (req, res) => {
 //   }
 // };
 
+// const getProfile = async (req, res) => {
+//   try {
+//     console.log("Authenticated user:", req.user);
+
+//     res.json({
+//       success: true,
+//       user: req.user,
+//     });
+//   } catch (error) {
+//     console.error("getProfile error:", error);
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
 const getProfile = async (req, res) => {
   try {
     console.log("req.user:", req.user); // <--- log token payload
@@ -169,6 +182,14 @@ const bookAppointment = async (req, res) => {
     const {  docId, slotDate, slotTime } = req.body;
 
     const docData = await doctorModel.findById(docId).select("-password");
+const doctor = await doctorModel.findById(docId);
+
+if (!doctor) {
+  return res.status(404).json({
+    success: false,
+    message: "Doctor not found"
+  });
+}
 
   // / 🔴 NEW: block suspended doctors FIRST
 if (docData.status === "suspended") {

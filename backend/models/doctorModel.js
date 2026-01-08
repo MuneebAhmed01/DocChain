@@ -30,6 +30,7 @@ ratingCount: { type: Number, default: 0 },
   city: {
   type: String,
   enum: ["Lahore", "Islamabad", "Karachi"],
+   set: v => v.charAt(0).toUpperCase() + v.slice(1).toLowerCase()
   // required: true,
 },
 

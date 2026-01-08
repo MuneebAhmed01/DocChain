@@ -1,3 +1,29 @@
+// import jwt from "jsonwebtoken";
+// import User from "../models/userModel.js";
+// export default async function authUser(req, res, next) {
+//   try {
+//     console.log("JWT_SECRET (verify):", JSON.stringify(process.env.JWT_SECRET));
+
+//     const authHeader = req.headers.authorization;
+//     if (!authHeader) {
+//       console.log("❌ No Authorization header");
+//       return res.status(401).json({ message: "No token" });
+//     }
+
+//     const token = authHeader.split(" ")[1];
+//     console.log("TOKEN:", token);
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+//     console.log("✅ DECODED TOKEN:", decoded);
+
+//     req.user = decoded;   // IMPORTANT: temporarily store decoded token
+//     next();
+//   } catch (err) {
+//     console.error("❌ JWT VERIFY ERROR:", err.message);
+//     return res.status(401).json({ message: err.message });
+//   }
+// }
 
 import jwt from "jsonwebtoken";
 
@@ -54,3 +80,4 @@ console.log("Received token:", token);
     });
   }
 }
+

@@ -166,6 +166,7 @@ router.get("/get-profile", authUser, getProfile, async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+// router.get("/get-profile", authUser, getProfile);
 
 // ⭐ Get doctor reviews (user)
 router.get("/doctor-reviews/:docId", getDoctorReviewsUser);
