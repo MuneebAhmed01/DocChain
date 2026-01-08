@@ -4,26 +4,28 @@ import { Link } from "react-router-dom";
 
 export default function FeaturesSlider() {
   const cards = [
-    {
-      title: "Doctor Booking",
-      desc: "Easily find and book consultations with trusted specialists and general practitioners in just a few clicks",
-      to: "/doctors",
-    },
-    {
-      title: "Lab Test Booking",
-      desc: "Schedule a wide range of diagnostic tests online with accurate and timely results delivered to you securely",
-      to: "/labtest",
-    },
-    {
-      title: "Online Consultation",
-      desc: "Connect with healthcare professionals virtually for expert advice from the comfort of your home",
-      to: "/online-consult",
-    },
-    {
-      title: "Emergency Services",
-      desc: "Quickly locate nearby emergency healthcare facilities and connect with emergency response teams",
-      to: "/emergency",
-    },
+   
+  {
+    title: "Doctor Booking",
+    desc: "Easily find and book consultations with trusted specialists and general practitioners in just a few clicks",
+    to: "/doctors",
+  },
+  {
+    title: "Appointment Reminders",
+    desc: "Get timely reminders so you never miss your scheduled consultations",
+    to: "/doctors",
+  },
+  {
+    title: "Specialist Search",
+    desc: "Filter and find doctors by speciality, experience, and availability to make the best choice for your health",
+    to: "/doctors",
+  },
+  {
+    title: "Secure Records",
+    desc: "Keep your medical history and appointments organized securely in one place",
+    to: "/doctors",
+  },
+
   ];
 
   const [active, setActive] = useState(0);

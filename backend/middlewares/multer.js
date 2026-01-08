@@ -44,26 +44,37 @@ export const uploadDoctorDocuments = async (req, res, next) => {
     if (!req.files) return next();
 
     // helper function to upload any file type
-    const uploadBuffer = (file, folder) => {
-      return new Promise((resolve, reject) => {
-        let resource_type = "image"; // default
-        if (file.mimetype === "application/pdf") resource_type = "raw";
+    const uploadBuffer = (file, options = {}) => {
+  return new Promise((resolve, reject) => {
+    let resource_type = "image";
+    if (file.mimetype === "application/pdf") resource_type = "raw";
 
-        const stream = cloudinary.uploader.upload_stream(
-          { folder, resource_type },
-          (error, result) => {
-            if (result) resolve(result);
-            else reject(error);
-          }
-        );
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        resource_type,
+        ...options, // 👈 transformations go here
+      },
+      (error, result) => {
+        if (result) resolve(result);
+        else reject(error);
+      }
+    );
 
-        streamifier.createReadStream(file.buffer).pipe(stream);
-      });
-    };
+    streamifier.createReadStream(file.buffer).pipe(stream);
+  });
+};
+
 
     // Upload profilePic (image)
     if (req.files.profilePic?.[0]) {
-      const result = await uploadBuffer(req.files.profilePic[0], "doctor_profiles");
+     const result = await uploadBuffer(req.files.profilePic[0], {
+  folder: "doctor_profiles",
+  width: 400,
+  height: 400,
+  crop: "fill",
+  gravity: "face",
+});
+
       req.profilePic = { public_id: result.public_id, url: result.secure_url };
     }
 

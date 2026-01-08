@@ -9,7 +9,8 @@ const Header = () => {
       <div className="flex items-center gap-3 justify-center bg-gray-100 rounded-3xl px-3 py-2">
   <img className="w-4 h-4" src={assets.snowflakes} />
   <p className="text-center text-gray-500 text-sm">
-    Consultant Top Doctors Anytime, From Any Location
+    Connect with Top Doctors Anytime, Anywhere
+
   </p>
 </div>
 
