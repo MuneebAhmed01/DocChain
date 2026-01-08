@@ -26,16 +26,15 @@ const Home = () => {
 
   return (
     <div>
-      <Headers />
-      <FeaturesSlider />
+      <div><Headers /></div>
+      <div id="services"><FeaturesSlider /></div>
+      <div><Working /></div>
+      <div><HealthTips /></div>
+      <div id="speciality"> <SpecialityMenu /></div>
+      <div><TopDoctors /></div>
 
-      <Working />
-      <HealthTips />
-
-      <SpecialityMenu />
-      <TopDoctors />
-      {/* <Banner /> */}
-      <FAQSection />
+      <div> <FAQSection /></div>
+    
     </div>
   );
 };
