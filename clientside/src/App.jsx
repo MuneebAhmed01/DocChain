@@ -16,6 +16,7 @@ import BlogList from "./pages/Blogs/BlogList";
 import BlogDetail from "./pages/Blogs/BlogDetail"; 
 import PaymentSuccess from "./pages/PaymentSuccess";
 import JoinDoctor from "./pages/JoinDoctor";
+import ScrollToTop from "./components/ScrollToTop";
 
 
 const App = () => {
@@ -50,6 +51,7 @@ const App = () => {
         />
        
       </Routes>
+       <ScrollToTop />
       <Footer />
     </div>
   );
