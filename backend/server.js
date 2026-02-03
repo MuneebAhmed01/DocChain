@@ -19,6 +19,7 @@ import chatRoutes from "./routes/chatRoute.js";
 import appointmentModel from "./models/appointmentModel.js";
 import chatModel from "./models/chatModel.js";
 import messageModel from "./models/messageModel.js";
+import onlineConsultRoute from "./routes/onlineConsultRoute.js";
 
 
 
@@ -100,6 +101,7 @@ app.use("/api/user", userRouter);
 app.use("/api/stripe", stripeRoutes);
 app.use("/api/pending-doctor", pendingDoctorRouter);
 app.use("/api/chat", chatRoutes);
+app.use("/api/online-consult", onlineConsultRoute);
 
 // blog routes
 app.use('/api/blogs', blogRoutes);
@@ -127,6 +129,9 @@ const io = new Server(server, {
     credentials: true
   }
 });
+
+// Make io instance available to routes
+app.set('io', io);
 
 // Socket.IO authentication middleware
 const authenticateSocket = async (socket, next) => {
@@ -347,6 +352,17 @@ io.on('connection', (socket) => {
       userId: socket.userId,
       userType: socket.userType
     });
+  });
+
+  // Online Consultation Events
+  socket.on('join-consult-room', (roomId) => {
+    socket.join(roomId);
+    console.log(`User ${socket.userId} joined consult room: ${roomId}`);
+  });
+
+  socket.on('leave-consult-room', (roomId) => {
+    socket.leave(roomId);
+    console.log(`User ${socket.userId} left consult room: ${roomId}`);
   });
 
   // Handle disconnection
