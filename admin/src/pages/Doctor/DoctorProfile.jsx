@@ -12,8 +12,8 @@ const DoctorProfile = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [timeSettings, setTimeSettings] = useState({
     useCustomSettings: false,
-    workingDays: [],
-    startTime: "10:00",
+    workingDays: ["MON", "TUE", "WED", "THU", "FRI"],
+    startTime: "14:00",
     endTime: "20:00",
     slotDuration: 30,
   });
@@ -180,146 +180,219 @@ const DoctorProfile = () => {
             </div>
 
             {/* Time Settings Section */}
-            <div className="mt-6 border-t pt-6">
-              <p className="text-lg font-medium text-gray-700 mb-4">
-                Time Settings
-              </p>
+            <div className="mt-8 border-t pt-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-800">
+                    Schedule Settings
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Configure your working hours and availability
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      timeSettings.useCustomSettings
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {timeSettings.useCustomSettings
+                      ? "Custom Schedule"
+                      : "Default Schedule"}
+                  </span>
+                </div>
+              </div>
 
               {isEdit ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={timeSettings.useCustomSettings}
-                      onChange={(e) =>
-                        setTimeSettings((prev) => ({
-                          ...prev,
-                          useCustomSettings: e.target.checked,
-                        }))
-                      }
-                    />
-                    <label className="text-sm text-gray-600">
-                      Use custom time settings
-                    </label>
+                <div className="bg-gray-50 rounded-lg p-6 space-y-6">
+                  {/* Custom Settings Toggle */}
+                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="font-medium text-gray-700">
+                          Use Custom Schedule
+                        </label>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Override default working hours
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={timeSettings.useCustomSettings}
+                          onChange={(e) =>
+                            setTimeSettings((prev) => ({
+                              ...prev,
+                              useCustomSettings: e.target.checked,
+                            }))
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
                   </div>
 
                   {timeSettings.useCustomSettings && (
                     <>
-                      <div>
-                        <label className="text-sm text-gray-600 block mb-2">
-                          Working Days:
+                      {/* Working Days */}
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <label className="font-medium text-gray-700 block mb-3">
+                          Working Days
                         </label>
-                        <div className="flex flex-wrap gap-2">
-                          {daysOfWeek.map((day) => (
-                            <label
-                              key={day}
-                              className="flex items-center gap-1"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={timeSettings.workingDays.includes(day)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setTimeSettings((prev) => ({
-                                      ...prev,
-                                      workingDays: [...prev.workingDays, day],
-                                    }));
-                                  } else {
+                        <div className="grid grid-cols-7 gap-2">
+                          {daysOfWeek.map((day) => {
+                            const isSelected =
+                              timeSettings.workingDays.includes(day);
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => {
+                                  if (isSelected) {
                                     setTimeSettings((prev) => ({
                                       ...prev,
                                       workingDays: prev.workingDays.filter(
                                         (d) => d !== day,
                                       ),
                                     }));
+                                  } else {
+                                    setTimeSettings((prev) => ({
+                                      ...prev,
+                                      workingDays: [...prev.workingDays, day],
+                                    }));
                                   }
                                 }}
-                              />
-                              <span className="text-sm">{day}</span>
+                                className={`py-2 px-1 text-center rounded-lg text-sm font-medium transition-all ${
+                                  isSelected
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Working Hours */}
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <label className="font-medium text-gray-700 block mb-3">
+                          Working Hours
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-2">
+                              Start Time
                             </label>
+                            <input
+                              type="time"
+                              value={timeSettings.startTime}
+                              onChange={(e) =>
+                                setTimeSettings((prev) => ({
+                                  ...prev,
+                                  startTime: e.target.value,
+                                }))
+                              }
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm text-gray-600 block mb-2">
+                              End Time
+                            </label>
+                            <input
+                              type="time"
+                              value={timeSettings.endTime}
+                              onChange={(e) =>
+                                setTimeSettings((prev) => ({
+                                  ...prev,
+                                  endTime: e.target.value,
+                                }))
+                              }
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Slot Duration */}
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <label className="font-medium text-gray-700 block mb-3">
+                          Appointment Duration
+                        </label>
+                        <div className="grid grid-cols-4 gap-3">
+                          {[15, 30, 45, 60].map((duration) => (
+                            <button
+                              key={duration}
+                              type="button"
+                              onClick={() =>
+                                setTimeSettings((prev) => ({
+                                  ...prev,
+                                  slotDuration: duration,
+                                }))
+                              }
+                              className={`py-2 px-3 text-center rounded-lg text-sm font-medium transition-all ${
+                                timeSettings.slotDuration === duration
+                                  ? "bg-blue-600 text-white shadow-sm"
+                                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                              }`}
+                            >
+                              {duration} min
+                            </button>
                           ))}
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="text-sm text-gray-600 block mb-1">
-                            Start Time:
-                          </label>
-                          <input
-                            type="time"
-                            value={timeSettings.startTime}
-                            onChange={(e) =>
-                              setTimeSettings((prev) => ({
-                                ...prev,
-                                startTime: e.target.value,
-                              }))
-                            }
-                            className="border rounded px-2 py-1 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-sm text-gray-600 block mb-1">
-                            End Time:
-                          </label>
-                          <input
-                            type="time"
-                            value={timeSettings.endTime}
-                            onChange={(e) =>
-                              setTimeSettings((prev) => ({
-                                ...prev,
-                                endTime: e.target.value,
-                              }))
-                            }
-                            className="border rounded px-2 py-1 text-sm"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-sm text-gray-600 block mb-1">
-                          Slot Duration (minutes):
-                        </label>
-                        <select
-                          value={timeSettings.slotDuration}
-                          onChange={(e) =>
-                            setTimeSettings((prev) => ({
-                              ...prev,
-                              slotDuration: parseInt(e.target.value),
-                            }))
-                          }
-                          className="border rounded px-2 py-1 text-sm"
-                        >
-                          <option value={15}>15 minutes</option>
-                          <option value={30}>30 minutes</option>
-                          <option value={45}>45 minutes</option>
-                          <option value={60}>60 minutes</option>
-                        </select>
                       </div>
                     </>
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-gray-600">
+                <div className="bg-gray-50 rounded-lg p-6">
                   {timeSettings.useCustomSettings ? (
-                    <div>
-                      <p>
-                        <strong>Working Days:</strong>{" "}
-                        {timeSettings.workingDays.join(", ")}
-                      </p>
-                      <p>
-                        <strong>Hours:</strong> {timeSettings.startTime} -{" "}
-                        {timeSettings.endTime}
-                      </p>
-                      <p>
-                        <strong>Slot Duration:</strong>{" "}
-                        {timeSettings.slotDuration} minutes
-                      </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        <span className="text-sm font-medium text-gray-700">
+                          Custom Schedule Active
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <span className="text-gray-500">Working Days:</span>
+                          <p className="font-medium text-gray-800 mt-1">
+                            {timeSettings.workingDays.join(", ")}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Hours:</span>
+                          <p className="font-medium text-gray-800 mt-1">
+                            {timeSettings.startTime} - {timeSettings.endTime}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Slot Duration:</span>
+                          <p className="font-medium text-gray-800 mt-1">
+                            {timeSettings.slotDuration} minutes
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   ) : (
-                    <p>
-                      Using default schedule: Monday-Sunday, 10:00 AM - 8:00 PM
-                      (30 min slots)
-                    </p>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                        <span className="text-sm font-medium text-gray-700">
+                          Default Schedule
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        Monday - Friday, 2:00 PM - 8:00 PM (30-minute
+                        appointments)
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

@@ -93,7 +93,7 @@ const Appointment = () => {
           }
         } else {
           currentDate.setHours(
-            currentDate.getHours() > 10 ? currentDate.getHours() + 1 : 10,
+            currentDate.getHours() > 14 ? currentDate.getHours() + 1 : 14,
           );
           currentDate.setMinutes(currentDate.getMinutes() > 30 ? 30 : 0);
         }
@@ -109,7 +109,7 @@ const Appointment = () => {
             0,
           );
         } else {
-          currentDate.setHours(10, 0, 0, 0); // Default 10 AM
+          currentDate.setHours(14, 0, 0, 0); // Default 2 PM
         }
       }
 

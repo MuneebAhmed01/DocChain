@@ -37,11 +37,11 @@ ratingCount: { type: Number, default: 0 },
     workingDays: {
       type: [String],
       enum: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"],
-      default: ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+      default: ["MON", "TUE", "WED", "THU", "FRI"]
     },
     startTime: {
       type: String,
-      default: "10:00"
+      default: "14:00"
     },
     endTime: {
       type: String,
