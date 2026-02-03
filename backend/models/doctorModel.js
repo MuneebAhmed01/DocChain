@@ -57,6 +57,24 @@ ratingCount: { type: Number, default: 0 },
     }
   },
 
+  // Online Consultation Settings
+  onlineConsultEnabled: {
+    type: Boolean,
+    default: false
+  },
+  onlineConsultFee: {
+    type: Number,
+    default: 0
+  },
+  isOnlineNow: {
+    type: Boolean,
+    default: false
+  },
+  averageConsultDuration: {
+    type: Number,
+    default: 15 // minutes
+  },
+
 
   },
   { minimize: false }

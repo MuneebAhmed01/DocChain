@@ -6,7 +6,6 @@ import { AppContext } from "../context/AppContext";
 const Navbar = () => {
   const navigate = useNavigate();
 
-
   const { token, setToken, userData } = useContext(AppContext);
 
   const [showMenu, setShowMenu] = useState(false);
@@ -18,54 +17,64 @@ const Navbar = () => {
 
   return (
     <div className="flex items-center justify-between text-sm py-4 mb-5 ">
-      <p onClick={() => navigate("/")}
-        className="font-poppins font-extrabold w-36 cursor-pointer text-3xl"><span className="text-blue-600">Doc</span>Chain</p>
+      <p
+        onClick={() => navigate("/")}
+        className="font-poppins font-extrabold w-36 cursor-pointer text-3xl"
+      >
+        <span className="text-blue-600">Doc</span>Chain
+      </p>
       <ul className="hidden md:flex items-start gap-10 font-medium">
-  <NavLink 
-    to="/" 
-    className={({ isActive }) =>
-      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
-    }
-  >
-    Home
-  </NavLink>
+        <NavLink
+          to="/"
+          className={({ isActive }) =>
+            `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+          }
+        >
+          Home
+        </NavLink>
 
-  <NavLink 
-    to="/doctors" 
-    className={({ isActive }) =>
-      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
-    }
-  >
-    Doctor Booking
-  </NavLink>
+        <NavLink
+          to="/doctors"
+          className={({ isActive }) =>
+            `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+          }
+        >
+          Doctor Booking
+        </NavLink>
 
-  <NavLink 
-    to="/about" 
-    className={({ isActive }) =>
-      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
-    }
-  >
-    About
-  </NavLink>
+        <NavLink
+          to="/about"
+          className={({ isActive }) =>
+            `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+          }
+        >
+          About
+        </NavLink>
 
-  
+        <NavLink
+          to="/contact"
+          className={({ isActive }) =>
+            `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+          }
+        >
+          Contact
+        </NavLink>
 
-  <NavLink 
-    to="/contact" 
-    className={({ isActive }) =>
-      `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
-    }
-  >
-    Contact
-  </NavLink>
-  <button
-  onClick={() => navigate("/join-doctor")}
-  className="border border-blue-600 text-blue-600 px-5 py-2 rounded-full text-base hover:bg-blue-600 hover:text-white transition"
->
-  Join as Doctor
-</button>
-
-</ul>
+        <NavLink
+          to="/online-consulting"
+          className={({ isActive }) =>
+            `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
+          }
+        >
+          Online Consulting
+        </NavLink>
+        <button
+          onClick={() => navigate("/join-doctor")}
+          className="border border-blue-600 text-blue-600 px-5 py-2 rounded-full text-base hover:bg-blue-600 hover:text-white transition"
+        >
+          Join as Doctor
+        </button>
+      </ul>
 
       <div className="flex items-center gap-4">
         {token && userData ? (
@@ -134,12 +143,16 @@ const Navbar = () => {
             <NavLink onClick={() => setShowMenu(false)} to="/contact">
               <p className="px-4 py-2 rounded inline-block">CONTACT</p>
             </NavLink>
+            <NavLink onClick={() => setShowMenu(false)} to="/online-consulting">
+              <p className="px-4 py-2 rounded inline-block">
+                ONLINE CONSULTING
+              </p>
+            </NavLink>
             <NavLink onClick={() => setShowMenu(false)} to="/join-doctor">
-  <p className="px-4 py-2 rounded inline-block text-blue-600">
-    JOIN AS DOCTOR
-  </p>
-</NavLink>
-
+              <p className="px-4 py-2 rounded inline-block text-blue-600">
+                JOIN AS DOCTOR
+              </p>
+            </NavLink>
           </ul>
         </div>
       </div>

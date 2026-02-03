@@ -3,6 +3,7 @@ import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import DoctorOnlineSettings from "../../components/DoctorOnlineSettings.jsx";
 
 const DoctorProfile = () => {
   const { dToken, profileData, setProfileData, getProfileData, backendUrl } =
@@ -397,6 +398,13 @@ const DoctorProfile = () => {
                 </div>
               )}
             </div>
+
+            {/* Online Consultation Settings */}
+            <DoctorOnlineSettings
+              profileData={profileData}
+              setProfileData={setProfileData}
+              getProfileData={getProfileData}
+            />
 
             {isEdit ? (
               <button
