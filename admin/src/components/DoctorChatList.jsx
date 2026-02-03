@@ -86,84 +86,116 @@ const DoctorChatList = ({ dToken }) => {
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Patient Chats</h2>
-        {getTotalUnreadCount() > 0 && (
-          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-            {getTotalUnreadCount()} unread
-          </span>
-        )}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
+          {getTotalUnreadCount() > 0 && (
+            <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+              {getTotalUnreadCount()}
+            </span>
+          )}
+        </div>
       </div>
 
-      {chats.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-gray-400 mb-4">
-            <svg
-              className="w-16 h-16 mx-auto"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              />
-            </svg>
+      {/* Chat List */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {chats.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <svg
+                className="w-8 h-8 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </div>
+            <p className="text-gray-500 font-medium">No conversations yet</p>
+            <p className="text-gray-400 text-sm mt-1">
+              Patients will appear here when they message you
+            </p>
           </div>
-          <p className="text-gray-500">No patient conversations yet</p>
-          <p className="text-gray-400 text-sm mt-2">
-            Patients will appear here when they start chatting
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {chats.map((chat) => (
-            <div
-              key={chat._id}
-              onClick={() => openChat(chat)}
-              className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start space-x-3 flex-1">
-                  <img
-                    src={chat.patientImage || "/default-avatar.png"}
-                    alt={chat.patientName}
-                    className="w-12 h-12 rounded-full object-cover bg-gray-100"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-800 truncate">
-                        {chat.patientName}
-                      </h3>
-                      <span className="text-xs text-gray-500 ml-2">
-                        {formatTime(chat.lastMessageTime)}
-                      </span>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {chats.map((chat) => (
+              <div
+                key={chat._id}
+                onClick={() => openChat(chat)}
+                className={`relative hover:bg-gray-50 transition-colors cursor-pointer ${
+                  selectedChat?._id === chat._id ? "bg-blue-50" : ""
+                }`}
+              >
+                <div className="px-4 py-3">
+                  <div className="flex items-start space-x-3">
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                      <img
+                        src={chat.patientImage || "/default-avatar.png"}
+                        alt={chat.patientName}
+                        className="w-12 h-12 rounded-full object-cover bg-gray-200 ring-2 ring-white"
+                      />
+                      {chat.unreadCount > 0 && (
+                        <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white">
+                          <span className="text-white text-xs font-medium">
+                            {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {chat.slotDate} • {chat.slotTime}
-                    </p>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-700 truncate">
-                        {chat.lastMessage || "No messages yet"}
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3
+                          className={`font-semibold text-gray-900 truncate ${
+                            chat.unreadCount > 0 ? "font-bold" : ""
+                          }`}
+                        >
+                          {chat.patientName}
+                        </h3>
+                        <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
+                          {formatTime(chat.lastMessageTime)}
+                        </span>
+                      </div>
+
+                      {/* Appointment info */}
+                      <p className="text-xs text-gray-500 mb-1">
+                        {chat.slotDate} • {chat.slotTime}
                       </p>
+
+                      {/* Last message */}
+                      <div className="flex items-center">
+                        <p
+                          className={`text-sm truncate ${
+                            chat.unreadCount > 0
+                              ? "text-gray-900 font-medium"
+                              : "text-gray-600"
+                          }`}
+                        >
+                          {chat.lastMessage || "Start a conversation"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Unread indicator line */}
                 {chat.unreadCount > 0 && (
-                  <div className="ml-3">
-                    <span className="inline-flex items-center justify-center w-6 h-6 bg-red-500 text-white text-xs rounded-full">
-                      {chat.unreadCount}
-                    </span>
-                  </div>
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
                 )}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Chat Window */}
       {showChatWindow && selectedChat && (
