@@ -46,7 +46,7 @@ const registerUser = async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, name: user.name, email: user.email }, // payload
       process.env.JWT_SECRET,
-      { expiresIn: "30d" } // token valid for 7 days
+      { expiresIn: "90d" } // token valid for 7 days
     );
 
     // Return token to frontend
@@ -239,24 +239,24 @@ if (!docData.available) {
     const newAppointment = new appointmentModel(appointmentData);
     await newAppointment.save();
     // Send confirmation email to patient
-// await appointmentBookedPatient({
-//   patientName: userData.name,
-//   patientEmail: userData.email,
-//   doctorName: docData.name,
-//   doctorEmail: docData.email,
-//   date: slotDate,
-//   time: slotTime,
-// });
+appointmentBookedPatient({
+  patientName: userData.name,
+  patientEmail: userData.email,
+  doctorName: docData.name,
+  doctorEmail: docData.email,
+  date: slotDate,
+  time: slotTime,
+});
 
-// // Notify doctor
-// await appointmentBookedDoctor({
-//   patientName: userData.name,
-//   patientEmail: userData.email,
-//   doctorName: docData.name,
-//   doctorEmail: docData.email,
-//   date: slotDate,
-//   time: slotTime,
-// });
+// Notify doctor
+appointmentBookedDoctor({
+  patientName: userData.name,
+  patientEmail: userData.email,
+  doctorName: docData.name,
+  doctorEmail: docData.email,
+  date: slotDate,
+  time: slotTime,
+});
 setTimeout(() => {
   appointmentReminder({
     patientName: userData.name,

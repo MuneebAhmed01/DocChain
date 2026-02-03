@@ -140,7 +140,7 @@ const appointmentCancel = async (req, res) => {
       });
       // Notify doctor about patient cancellation
 try {
-  await appointmentCancelledByPatientDoctor({
+   appointmentCancelledByPatientDoctor({
     patientName: appointmentData.userData.name,
     patientEmail: appointmentData.userData.email,
     doctorName: doctorData.name,
