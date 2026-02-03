@@ -18,53 +18,105 @@ const Appointment = () => {
   const [docSlots, setDocSlots] = useState([]);
   const [slotIndex, setSlotIndex] = useState(0);
   const [slotTime, setSlotTime] = useState("");
-const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState([]);
 
   const fetchDocInfo = async () => {
     const docInfo = doctors.find((doc) => doc._id === docId);
     setDocInfo(docInfo);
   };
-const fetchReviews = async () => {
-  try {
-    const { data } = await axiosInstance.get(
-      `/api/user/doctor-reviews/${docId}`
-    );
-    if (data.success) {
-      setReviews(data.reviews);
+  const fetchReviews = async () => {
+    try {
+      const { data } = await axiosInstance.get(
+        `/api/user/doctor-reviews/${docId}`,
+      );
+      if (data.success) {
+        setReviews(data.reviews);
+      }
+    } catch (err) {
+      console.log(err);
     }
-  } catch (err) {
-    console.log(err);
-  }
-};
+  };
 
   const getAvailableSlots = async () => {
     setDocSlots([]);
 
-    // getting current date
     let today = new Date();
+    const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
     for (let i = 0; i < 7; i++) {
-      // getting date with index
       let currentDate = new Date(today);
       currentDate.setDate(today.getDate() + i);
 
-      // setting end time of the date with index
+      const dayName = daysOfWeek[currentDate.getDay()];
+
+      // Check if doctor works on this day
+      const worksOnThisDay = docInfo.timeSettings?.useCustomSettings
+        ? docInfo.timeSettings.workingDays.includes(dayName)
+        : true; // Default: works all days
+
+      if (!worksOnThisDay) {
+        continue; // Skip this day if doctor doesn't work
+      }
+
+      // Set end time based on doctor's settings
       let endTime = new Date();
       endTime.setDate(today.getDate() + i);
-      endTime.setHours(21, 0, 0, 0);
 
-      // setting hours
-      if (today.getDate() === currentDate.getDate()) {
-        currentDate.setHours(
-          currentDate.getHours() > 10 ? currentDate.getHours() + 1 : 10
-        );
-        currentDate.setMinutes(currentDate.getMinutes() > 30 ? 30 : 0);
+      if (docInfo.timeSettings?.useCustomSettings) {
+        const [endHour, endMinute] = docInfo.timeSettings.endTime.split(":");
+        endTime.setHours(parseInt(endHour), parseInt(endMinute), 0, 0);
       } else {
-        currentDate.setHours(10);
-        currentDate.setMinutes(0);
+        endTime.setHours(21, 0, 0, 0); // Default 9 PM
+      }
+
+      // Set start time based on doctor's settings
+      if (today.getDate() === currentDate.getDate()) {
+        // For today, start from next available slot
+        if (docInfo.timeSettings?.useCustomSettings) {
+          const [startHour, startMinute] =
+            docInfo.timeSettings.startTime.split(":");
+          currentDate.setHours(
+            parseInt(startHour),
+            parseInt(startMinute),
+            0,
+            0,
+          );
+
+          // If current time is past start time, move to next slot
+          if (currentDate < new Date()) {
+            currentDate.setMinutes(
+              Math.ceil(
+                currentDate.getMinutes() /
+                  (docInfo.timeSettings.slotDuration || 30),
+              ) * (docInfo.timeSettings.slotDuration || 30),
+            );
+          }
+        } else {
+          currentDate.setHours(
+            currentDate.getHours() > 10 ? currentDate.getHours() + 1 : 10,
+          );
+          currentDate.setMinutes(currentDate.getMinutes() > 30 ? 30 : 0);
+        }
+      } else {
+        // For future days, start from doctor's start time
+        if (docInfo.timeSettings?.useCustomSettings) {
+          const [startHour, startMinute] =
+            docInfo.timeSettings.startTime.split(":");
+          currentDate.setHours(
+            parseInt(startHour),
+            parseInt(startMinute),
+            0,
+            0,
+          );
+        } else {
+          currentDate.setHours(10, 0, 0, 0); // Default 10 AM
+        }
       }
 
       let timeSlots = [];
+      const slotDuration = docInfo.timeSettings?.useCustomSettings
+        ? docInfo.timeSettings.slotDuration
+        : 30; // Default 30 minutes
 
       while (currentDate < endTime) {
         let formattedTime = currentDate.toLocaleTimeString([], {
@@ -86,18 +138,19 @@ const fetchReviews = async () => {
             : true;
 
         if (isSlotAvailable) {
-          // add slot to array
           timeSlots.push({
             datetime: new Date(currentDate),
             time: formattedTime,
           });
         }
 
-        // Increment current time by 30 minutes
-        currentDate.setMinutes(currentDate.getMinutes() + 30);
+        // Increment current time by slot duration
+        currentDate.setMinutes(currentDate.getMinutes() + slotDuration);
       }
 
-      setDocSlots((prev) => [...prev, timeSlots]);
+      if (timeSlots.length > 0) {
+        setDocSlots((prev) => [...prev, timeSlots]);
+      }
     }
   };
 
@@ -118,7 +171,7 @@ const fetchReviews = async () => {
 
       const { data } = await axiosInstance.post(
         // backendUrl +
-         "/api/user/book-appointment",
+        "/api/user/book-appointment",
         { docId, slotDate, slotTime },
         // { headers: { token } }
       );
@@ -135,11 +188,10 @@ const fetchReviews = async () => {
     }
   };
 
- useEffect(() => {
-  fetchDocInfo();
-  fetchReviews(); // ⭐ NEW
-}, [doctors, docId]);
-
+  useEffect(() => {
+    fetchDocInfo();
+    fetchReviews(); // ⭐ NEW
+  }, [doctors, docId]);
 
   useEffect(() => {
     getAvailableSlots();
@@ -164,32 +216,32 @@ const fetchReviews = async () => {
 
           <div className="flex-1 border border-gray-400 rounded-lg p-8 py-7 bg-white mx-2 sm:mx-0 mt-[-80px] sm:mt-0">
             <div className="flex items-center justify-between">
-            {/* -------------------- Doc Info : name, degree, experience -------------------- */}
-           <div>
-  <p className="flex items-center gap-2 text-2xl font-medium text-gray-900">
-    {docInfo.name}
-    <img className="w-5" src={assets.verified_icon} alt="" />
-  </p>
+              {/* -------------------- Doc Info : name, degree, experience -------------------- */}
+              <div>
+                <p className="flex items-center gap-2 text-2xl font-medium text-gray-900">
+                  {docInfo.name}
+                  <img className="w-5" src={assets.verified_icon} alt="" />
+                </p>
 
-  {/* ⭐ Rating */}
-  <div className="flex items-center gap-1 text-yellow-500 text-sm mt-1">
-    <span>★</span>
-    <span className="text-gray-700">
-      {docInfo.averageRating || "0.0"}
-    </span>
-    <span className="text-gray-500">
-      ({docInfo.ratingCount || 0} reviews)
-    </span>
-  </div>
-</div>
+                {/* ⭐ Rating */}
+                <div className="flex items-center gap-1 text-yellow-500 text-sm mt-1">
+                  <span>★</span>
+                  <span className="text-gray-700">
+                    {docInfo.averageRating || "0.0"}
+                  </span>
+                  <span className="text-gray-500">
+                    ({docInfo.ratingCount || 0} reviews)
+                  </span>
+                </div>
+              </div>
 
               {/* {docInfo.city && ( */}
-  <div className="flex items-center gap-2 text-sm mt-2 text-gray-600">
-    <span className="font-medium">Location:</span>
-    <span>{docInfo.city}</span>
-  </div>
-{/* )} */}
-</div>
+              <div className="flex items-center gap-2 text-sm mt-2 text-gray-600">
+                <span className="font-medium">Location:</span>
+                <span>{docInfo.city}</span>
+              </div>
+              {/* )} */}
+            </div>
             <div className="flex items-center gap-2 text-sm mt-1 text-gray-600">
               <p>
                 {docInfo.degree} - {docInfo.speciality}
@@ -198,9 +250,6 @@ const fetchReviews = async () => {
                 {docInfo.experience}
               </button>
             </div>
-          
-
-
 
             {/* -------------------- Doctor About -------------------- */}
             <div>
@@ -219,37 +268,36 @@ const fetchReviews = async () => {
               </span>
             </p>
             {/* ⭐ Reviews Section */}
-<div className="mt-6">
-  <p className="text-sm font-medium text-gray-700 mb-2">
-    Patient Reviews
-  </p>
+            <div className="mt-6">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                Patient Reviews
+              </p>
 
-  {reviews.length === 0 && (
-    <p className="text-sm text-gray-500">No reviews yet.</p>
-  )}
+              {reviews.length === 0 && (
+                <p className="text-sm text-gray-500">No reviews yet.</p>
+              )}
 
-  <div className="flex flex-col gap-3 max-h-60 overflow-y-auto">
-    {reviews.map((rev, idx) => (
-      <div key={idx} className="border p-3 rounded">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-gray-800">
-            {rev.user?.name || "User"}
-          </p>
-          <div className="flex items-center gap-1 text-yellow-500 text-sm">
-            <span>★</span>
-            <span className="text-gray-700">{rev.rating}</span>
-          </div>
-        </div>
-        {rev.comment && (
-          <p className="text-sm text-gray-600 mt-1">
-            {rev.comment}
-          </p>
-        )}
-      </div>
-    ))}
-  </div>
-</div>
-
+              <div className="flex flex-col gap-3 max-h-60 overflow-y-auto">
+                {reviews.map((rev, idx) => (
+                  <div key={idx} className="border p-3 rounded">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-800">
+                        {rev.user?.name || "User"}
+                      </p>
+                      <div className="flex items-center gap-1 text-yellow-500 text-sm">
+                        <span>★</span>
+                        <span className="text-gray-700">{rev.rating}</span>
+                      </div>
+                    </div>
+                    {rev.comment && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {rev.comment}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
