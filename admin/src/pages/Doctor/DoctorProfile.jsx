@@ -10,18 +10,28 @@ const DoctorProfile = () => {
   const { currency } = useContext(AppContext);
 
   const [isEdit, setIsEdit] = useState(false);
+  const [timeSettings, setTimeSettings] = useState({
+    useCustomSettings: false,
+    workingDays: [],
+    startTime: "10:00",
+    endTime: "20:00",
+    slotDuration: 30,
+  });
+
+  const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
   const updateProfile = async () => {
     try {
       const updateData = {
         address: profileData.address,
         fees: profileData.fees,
         available: profileData.available,
+        timeSettings: timeSettings,
       };
 
       const { data } = await axios.post(
         backendUrl + "/api/doctor/update-profile",
         updateData,
-        { headers: { dToken } }
+        { headers: { dToken } },
       );
 
       if (data.success) {
@@ -41,6 +51,12 @@ const DoctorProfile = () => {
     getProfileData();
   }, [dToken]);
 
+  useEffect(() => {
+    if (profileData && profileData.timeSettings) {
+      setTimeSettings(profileData.timeSettings);
+    }
+  }, [profileData]);
+
   return (
     profileData && (
       <div>
@@ -56,20 +72,20 @@ const DoctorProfile = () => {
           <div className="flex-1 border border-stone-100 rounded-lg p-8 py-7 bg-white">
             {/* ------- Doc Info: name, degree, experience ------- */}
 
-           <p className="flex items-center gap-2 text-3xl font-medium text-gray-700">
-  {profileData.name}
-</p>
+            <p className="flex items-center gap-2 text-3xl font-medium text-gray-700">
+              {profileData.name}
+            </p>
 
-{/* ⭐ Rating */}
-<div className="flex items-center gap-1 text-yellow-500 mt-1">
-  <span>★</span>
-  <span className="text-gray-700">
-    {profileData.averageRating || "0.0"}
-  </span>
-  <span className="text-gray-500 text-sm">
-    ({profileData.ratingCount || 0} reviews)
-  </span>
-</div>
+            {/* ⭐ Rating */}
+            <div className="flex items-center gap-1 text-yellow-500 mt-1">
+              <span>★</span>
+              <span className="text-gray-700">
+                {profileData.averageRating || "0.0"}
+              </span>
+              <span className="text-gray-500 text-sm">
+                ({profileData.ratingCount || 0} reviews)
+              </span>
+            </div>
 
             <div className="flex items-center gap-2 mt-1 text-gray-600">
               <p>
@@ -161,6 +177,152 @@ const DoctorProfile = () => {
                 id=""
               />
               <label htmlFor="">Available</label>
+            </div>
+
+            {/* Time Settings Section */}
+            <div className="mt-6 border-t pt-6">
+              <p className="text-lg font-medium text-gray-700 mb-4">
+                Time Settings
+              </p>
+
+              {isEdit ? (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={timeSettings.useCustomSettings}
+                      onChange={(e) =>
+                        setTimeSettings((prev) => ({
+                          ...prev,
+                          useCustomSettings: e.target.checked,
+                        }))
+                      }
+                    />
+                    <label className="text-sm text-gray-600">
+                      Use custom time settings
+                    </label>
+                  </div>
+
+                  {timeSettings.useCustomSettings && (
+                    <>
+                      <div>
+                        <label className="text-sm text-gray-600 block mb-2">
+                          Working Days:
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {daysOfWeek.map((day) => (
+                            <label
+                              key={day}
+                              className="flex items-center gap-1"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={timeSettings.workingDays.includes(day)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setTimeSettings((prev) => ({
+                                      ...prev,
+                                      workingDays: [...prev.workingDays, day],
+                                    }));
+                                  } else {
+                                    setTimeSettings((prev) => ({
+                                      ...prev,
+                                      workingDays: prev.workingDays.filter(
+                                        (d) => d !== day,
+                                      ),
+                                    }));
+                                  }
+                                }}
+                              />
+                              <span className="text-sm">{day}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-sm text-gray-600 block mb-1">
+                            Start Time:
+                          </label>
+                          <input
+                            type="time"
+                            value={timeSettings.startTime}
+                            onChange={(e) =>
+                              setTimeSettings((prev) => ({
+                                ...prev,
+                                startTime: e.target.value,
+                              }))
+                            }
+                            className="border rounded px-2 py-1 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-gray-600 block mb-1">
+                            End Time:
+                          </label>
+                          <input
+                            type="time"
+                            value={timeSettings.endTime}
+                            onChange={(e) =>
+                              setTimeSettings((prev) => ({
+                                ...prev,
+                                endTime: e.target.value,
+                              }))
+                            }
+                            className="border rounded px-2 py-1 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-gray-600 block mb-1">
+                          Slot Duration (minutes):
+                        </label>
+                        <select
+                          value={timeSettings.slotDuration}
+                          onChange={(e) =>
+                            setTimeSettings((prev) => ({
+                              ...prev,
+                              slotDuration: parseInt(e.target.value),
+                            }))
+                          }
+                          className="border rounded px-2 py-1 text-sm"
+                        >
+                          <option value={15}>15 minutes</option>
+                          <option value={30}>30 minutes</option>
+                          <option value={45}>45 minutes</option>
+                          <option value={60}>60 minutes</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600">
+                  {timeSettings.useCustomSettings ? (
+                    <div>
+                      <p>
+                        <strong>Working Days:</strong>{" "}
+                        {timeSettings.workingDays.join(", ")}
+                      </p>
+                      <p>
+                        <strong>Hours:</strong> {timeSettings.startTime} -{" "}
+                        {timeSettings.endTime}
+                      </p>
+                      <p>
+                        <strong>Slot Duration:</strong>{" "}
+                        {timeSettings.slotDuration} minutes
+                      </p>
+                    </div>
+                  ) : (
+                    <p>
+                      Using default schedule: Monday-Sunday, 10:00 AM - 8:00 PM
+                      (30 min slots)
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {isEdit ? (
