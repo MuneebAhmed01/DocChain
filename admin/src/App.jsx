@@ -14,6 +14,7 @@ import { DoctorContext } from "./context/DoctorContext";
 import DoctorDashboard from "./pages/Doctor/DoctorDashboard";
 import DoctorAppointments from "./pages/Doctor/DoctorAppointments";
 import DoctorProfile from "./pages/Doctor/DoctorProfile";
+import PatientChats from "./pages/Doctor/PatientChats";
 import BlogAdminIndex from "./pages/BlogAdmin/index";
 import PendingApprovals from "./pages/Admin/PendingApprovals";
 const App = () => {
@@ -34,20 +35,18 @@ const App = () => {
           <Route path="/add-doctor" element={<AddDoctor />} />
           <Route path="/doctor-list" element={<DoctorsList />} />
 
-
           {/* blog route */}
-       <Route 
-  path="/admin/blogs/*" 
-  element={<BlogAdminIndex token={aToken} />} 
-/>
-
+          <Route
+            path="/admin/blogs/*"
+            element={<BlogAdminIndex token={aToken} />}
+          />
 
           {/* Doctor Route */}
           <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
           <Route path="/doctor-appointments" element={<DoctorAppointments />} />
+          <Route path="/patient-chats" element={<PatientChats />} />
           <Route path="/doctor-profile" element={<DoctorProfile />} />
-          <Route path="/pending-approvals" element={<PendingApprovals/>} />
-
+          <Route path="/pending-approvals" element={<PendingApprovals />} />
         </Routes>
       </div>
     </div>
