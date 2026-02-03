@@ -11,7 +11,7 @@ const PatientChats = () => {
   useChatNotifications(dToken);
 
   return (
-    <div className="m-4">
+    <div className="h-full w-full">
       <DoctorChatList dToken={dToken} />
     </div>
   );

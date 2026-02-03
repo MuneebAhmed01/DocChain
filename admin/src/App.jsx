@@ -22,32 +22,37 @@ const App = () => {
   const { dToken } = useContext(DoctorContext);
 
   return aToken || dToken ? (
-    <div className="bg-[#F8F9FD]">
+    <div className="bg-[#F8F9FD] h-screen flex flex-col">
       <ToastContainer />
       <Navbar />
-      <div className="flex items-start">
+      <div className="flex flex-1">
         <Sidebar />
-        <Routes>
-          {/* Admin Route */}
-          <Route path="/" element={<></>} />
-          <Route path="/admin-dashboard" element={<Dashboard />} />
-          <Route path="/all-appointments" element={<AllAppointments />} />
-          <Route path="/add-doctor" element={<AddDoctor />} />
-          <Route path="/doctor-list" element={<DoctorsList />} />
+        <div className="flex-1">
+          <Routes>
+            {/* Admin Route */}
+            <Route path="/" element={<></>} />
+            <Route path="/admin-dashboard" element={<Dashboard />} />
+            <Route path="/all-appointments" element={<AllAppointments />} />
+            <Route path="/add-doctor" element={<AddDoctor />} />
+            <Route path="/doctor-list" element={<DoctorsList />} />
 
-          {/* blog route */}
-          <Route
-            path="/admin/blogs/*"
-            element={<BlogAdminIndex token={aToken} />}
-          />
+            {/* blog route */}
+            <Route
+              path="/admin/blogs/*"
+              element={<BlogAdminIndex token={aToken} />}
+            />
 
-          {/* Doctor Route */}
-          <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
-          <Route path="/doctor-appointments" element={<DoctorAppointments />} />
-          <Route path="/patient-chats" element={<PatientChats />} />
-          <Route path="/doctor-profile" element={<DoctorProfile />} />
-          <Route path="/pending-approvals" element={<PendingApprovals />} />
-        </Routes>
+            {/* Doctor Route */}
+            <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+            <Route
+              path="/doctor-appointments"
+              element={<DoctorAppointments />}
+            />
+            <Route path="/patient-chats" element={<PatientChats />} />
+            <Route path="/doctor-profile" element={<DoctorProfile />} />
+            <Route path="/pending-approvals" element={<PendingApprovals />} />
+          </Routes>
+        </div>
       </div>
     </div>
   ) : (
