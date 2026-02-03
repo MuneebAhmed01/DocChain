@@ -57,7 +57,7 @@ console.log("JWT_SECRET:", process.env.JWT_SECRET);
 //email auto
 app.get("/test-email", async (req, res) => {
   try {
-    await sendEmail(
+    sendEmail(
       "alaadinpubg2@gmail.com",
       "Docchain Test Email",
       "If you received this email, your backend email system is working."
@@ -105,7 +105,7 @@ app.use('/api/blogs', blogRoutes);
 // Demo login
 app.post("/api/login", (req, res) => {
   const user = { id: 1, username: "demo" };
-  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "30d" });
+  const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: "90d" });
   res.json({ success: true, token });
 });
 

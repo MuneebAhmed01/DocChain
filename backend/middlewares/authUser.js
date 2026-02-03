@@ -55,6 +55,7 @@ export default function authUser(req, res, next) {
 
   const token = parts[1];
 
+
   try {
     const decoded = jwt.verify(token, jwtSecret);
 

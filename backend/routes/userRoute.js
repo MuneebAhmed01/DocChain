@@ -84,7 +84,7 @@ router.post("/google-login", async (req, res) => {
     const appToken = jwt.sign(
       { userId: user._id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "90d" }
     );
 
     res.json({ success: true, token: appToken });
@@ -115,7 +115,7 @@ router.post("/register", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "90d" }
     );
 
     res.json({ success: true, token });
@@ -141,7 +141,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       JWT_SECRET,
-      { expiresIn: "30d" }
+      { expiresIn: "90d" }
     );
 
     res.json({ success: true, token });
