@@ -142,18 +142,18 @@ const MyAppointments = () => {
 
           return (
             <div
-              className="grid grid-cols-[1fr_2fr] gap-4 sm:flex sm:gap-6 py-2 border-b"
+              className="flex flex-col gap-4 sm:grid sm:grid-cols-[1fr_3fr_1fr] items-center sm:items-start py-5 border-b"
               key={index}
             >
               <div>
                 <img
-                  className="w-32 bg-indigo-50"
+                  className="w-40 sm:w-32 bg-indigo-50 rounded-lg"
                   src={item.docData.image}
                   alt=""
                 />
               </div>
 
-              <div className="flex-1 text-sm text-zinc-600">
+              <div className="flex-1 text-sm text-zinc-600 text-center sm:text-left">
                 <p className="text-neutral-800 font-semibold">
                   {item.docData.name}
                 </p>
@@ -187,7 +187,7 @@ const MyAppointments = () => {
                 )}
               </div>
 
-              <div className="flex flex-col gap-2 justify-end">
+              <div className="flex flex-col gap-2 justify-end w-full sm:w-auto">
                 {/* CHAT BUTTON */}
                 {!item.cancelled && (
                   <button
@@ -195,7 +195,7 @@ const MyAppointments = () => {
                       setSelectedChatAppt(item);
                       setShowChatWindow(true);
                     }}
-                    className="text-sm text-white bg-green-600 text-center sm:min-w-48 py-2 rounded hover:bg-green-700 transition-all"
+                    className="text-sm text-white bg-green-600 text-center w-full sm:min-w-48 py-2.5 rounded hover:bg-green-700 transition-all"
                   >
                     💬 Chat with Doctor
                   </button>
@@ -205,7 +205,7 @@ const MyAppointments = () => {
                 {!item.cancelled && !item.isCompleted && !item.isPaid && (
                   <button
                     onClick={() => payOnline(item._id)}
-                    className="text-sm text-white bg-blue-600 text-center sm:min-w-48 py-2 rounded hover:bg-blue-700 transition-all"
+                    className="text-sm text-white bg-blue-600 text-center w-full sm:min-w-48 py-2.5 rounded hover:bg-blue-700 transition-all"
                   >
                     Pay Online (10% OFF)
                   </button>
@@ -215,7 +215,7 @@ const MyAppointments = () => {
                 {!item.cancelled && !item.isCompleted && (
                   <button
                     onClick={() => cancelAppointment(item._id)}
-                    className="text-sm text-stone-500 text-center sm:min-w-48 py-2 border rounded hover:bg-red-600 hover:text-white transition-all"
+                    className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"
                   >
                     Cancel appointment
                   </button>

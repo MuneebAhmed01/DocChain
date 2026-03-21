@@ -26,10 +26,13 @@
 // }
 
 import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 export default function authUser(req, res, next) {
-  const jwtSecret = (process.env.JWT_SECRET || "").trim();
-  if (!jwtSecret) {
+  let jwtSecret;
+  try {
+    jwtSecret = getJwtSecret();
+  } catch (_err) {
     console.error("❌ JWT_SECRET is not defined in environment variables!");
     return res.status(500).json({
       success: false,
@@ -70,11 +73,6 @@ export default function authUser(req, res, next) {
     return next();
   } catch (err) {
     console.error("❌ JWT verification failed:", err.message);
-    // console.log("JWT_SECRET =", process.env.JWT_SECRET);
-    console.log("Using JWT_SECRET:", jwtSecret);
-console.log("Received token:", token);
-
-
     return res.status(401).json({
       success: false,
       message: "Invalid or expired token",

@@ -59,7 +59,6 @@ const onlineConsultSessionSchema = new mongoose.Schema({
 });
 
 // Indexes for performance
-onlineConsultSessionSchema.index({ roomId: 1 });
 onlineConsultSessionSchema.index({ doctorId: 1, status: 1 });
 onlineConsultSessionSchema.index({ patientId: 1, status: 1 });
 onlineConsultSessionSchema.index({ createdAt: 1 });

@@ -7,9 +7,9 @@ import chatModel from "../models/chatModel.js";
 import messageModel from "../models/messageModel.js";
 import appointmentModel from "../models/appointmentModel.js";
 import authChat from "../middlewares/authChat.js";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
 
 // JWT Middleware
 const authenticateToken = (req, res, next) => {
@@ -19,7 +19,7 @@ const authenticateToken = (req, res, next) => {
   if (!token) return res.status(401).json({ success: false, message: "No token provided" });
   
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = decoded;
     next();
   } catch (err) {

@@ -38,7 +38,7 @@ export default function BlogDetail() {
       {/* Blog Image */}
       <img
         src={blog.imageUrl || "/placeholder.jpg"}
-        className="w-full h-64 object-cover rounded-xl mb-4"
+       className="w-full h-48 sm:h-64 md:h-80 object-cover rounded-xl mb-4"
       />
 
       {/* Title */}
@@ -51,10 +51,12 @@ export default function BlogDetail() {
       </p>
 
       {/* Content */}
-      <div
-        className="prose max-w-none"
-        dangerouslySetInnerHTML={{ __html: blog.content }}
-      ></div>
+      <div className="w-full overflow-hidden"> 
+  <div
+    className="prose max-w-none break-words"
+    dangerouslySetInnerHTML={{ __html: blog.content }}
+  ></div>
+</div>
     </div>
   );
 }

@@ -26,7 +26,7 @@ const OnlineConsulting = () => {
 
   const cities = ["All", "Lahore", "Islamabad", "Karachi"];
 
-  const applyFilter = () => {
+  const applyFilter = () => {``
     let filtered = doctors.filter(doc => doc.status !== "suspended");
 
     // Filter for doctors who have online consultation enabled

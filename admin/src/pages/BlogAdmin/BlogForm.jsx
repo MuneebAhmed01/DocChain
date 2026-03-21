@@ -18,7 +18,6 @@ export function BlogForm({ token }) {
     published: true,
   });
 
-  
   useEffect(() => {
     if (id && id !== "new") {
       axios
@@ -54,25 +53,14 @@ export function BlogForm({ token }) {
 
     try {
       if (id && id !== "new") {
-        // UPDATE
-        await axios.put(
-          `http://localhost:4000/api/blogs/${id}`,
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        await axios.put(`http://localhost:4000/api/blogs/${id}`, payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       } else {
-        // CREATE
-        await axios.post(
-          "http://localhost:4000/api/blogs",
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        await axios.post("http://localhost:4000/api/blogs", payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
       }
-
       navigate("/admin/blogs");
     } catch (err) {
       console.error("SAVE ERROR:", err);
@@ -80,77 +68,123 @@ export function BlogForm({ token }) {
     }
   };
 
+  // Common Tailwind classes for inputs
+  const inputStyle = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
+
   return (
-    <form onSubmit={save} className="p-6 bg-white rounded-xl shadow space-y-4 overflow-hidden">
-      <h2 className="text-xl font-semibold">
-        {id === "new" ? "Create Blog" : "Edit Blog"}
-      </h2>
+    <div className="p-2 sm:p-6 max-w-4xl mx-auto">
+      <form onSubmit={save} className="bg-white rounded-xl shadow-md overflow-hidden">
+        {/* Header */}
+        <div className="bg-gray-50 px-6 py-4 border-b">
+          <h2 className="text-xl font-bold text-gray-800">
+            {id === "new" ? "Create New Post" : "Edit Post"}
+          </h2>
+        </div>
 
-      <input
-        className="input"
-        value={form.title}
-        onChange={(e) => setForm({ ...form, title: e.target.value })}
-        placeholder="Title"
-      />
+        <div className="p-4 sm:p-6 space-y-5">
+          {/* Title and Author Group */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-gray-600">Post Title</label>
+              <input
+                className={inputStyle}
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="The Future of Health..."
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-gray-600">Author Name</label>
+              <input
+                className={inputStyle}
+                value={form.author}
+                onChange={(e) => setForm({ ...form, author: e.target.value })}
+                placeholder="Dr. Smith"
+              />
+            </div>
+          </div>
 
-      <input
-        className="input"
-        value={form.excerpt}
-        onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
-        placeholder="Excerpt"
-      />
+          {/* Excerpt */}
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-gray-600">Short Excerpt</label>
+            <input
+              className={inputStyle}
+              value={form.excerpt}
+              onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
+              placeholder="A brief summary for the list view..."
+            />
+          </div>
 
-      <input
-        className="input"
-        value={form.author}
-        onChange={(e) => setForm({ ...form, author: e.target.value })}
-        placeholder="Author"
-      />
+          {/* Image URL & Tags Group */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-gray-600">Cover Image URL</label>
+              <input
+                className={inputStyle}
+                value={form.imageUrl}
+                onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                placeholder="https://images.unsplash.com/..."
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-gray-600">Tags</label>
+              <input
+                className={inputStyle}
+                value={form.tags}
+                onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                placeholder="Health, Technology, Lifestyle"
+              />
+            </div>
+          </div>
 
-      <input
-        className="input"
-        value={form.imageUrl}
-        onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-        placeholder="Image URL"
-      />
+          {/* Content Editor */}
+          <div className="space-y-1 pb-12 sm:pb-8">
+            <label className="text-sm font-semibold text-gray-600">Full Content</label>
+            <div className="h-64 sm:h-80">
+              <ReactQuill
+                theme="snow"
+                value={form.content}
+                onChange={(val) => setForm({ ...form, content: val })}
+                className="h-full bg-white"
+              />
+            </div>
+          </div>
 
-      <div>
-        <label className="font-medium">Content</label>
-        <ReactQuill
-          value={form.content}
-          onChange={(val) => setForm({ ...form, content: val })}
-          className="bg-white"
-        />
-      </div>
+          <hr className="mt-8" />
 
-      <input
-        className="input"
-        value={form.tags}
-        onChange={(e) => setForm({ ...form, tags: e.target.value })}
-        placeholder="Tags (comma separated)"
-      />
+          {/* Bottom Actions */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                className="w-5 h-5 rounded accent-primary cursor-pointer"
+                checked={form.published}
+                onChange={(e) => setForm({ ...form, published: e.target.checked })}
+              />
+              <span className="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">
+                Publish this post immediately
+              </span>
+            </label>
 
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={form.published}
-          onChange={(e) =>
-            setForm({ ...form, published: e.target.checked })
-          }
-        />
-        Published
-      </label>
-
-      <div className="flex gap-2 pt-2">
-        <button type="submit" className="btn">Save</button>
-        <button
-          type="button"
-          onClick={() => navigate("/admin/blogs")}
-          className="btn-ghost"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => navigate("/admin/blogs")}
+                className="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 sm:flex-none px-8 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-opacity-90 rounded-lg shadow-sm transition-all active:scale-95"
+              >
+                Save Post
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
   );
 }

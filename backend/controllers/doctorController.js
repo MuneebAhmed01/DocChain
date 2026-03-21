@@ -5,6 +5,7 @@ import appointmentModel from "../models/appointmentModel.js";
 import appointmentCompletedPatient from "../emailTemplates/appointmentCompletedPatient.js";
 import doctorRegistered from "../emailTemplates/doctorRegistered.js";
 import reviewModel from "../models/reviewModel.js";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 
 
@@ -58,7 +59,7 @@ const loginDoctor = async (req, res) => {
     const isMatch = await bycrypt.compare(password, doctor.password);
 
     if (isMatch) {
-      const token = jwt.sign({ id: doctor._id }, process.env.JWT_SECRET);
+      const token = jwt.sign({ id: doctor._id }, getJwtSecret());
       res.json({ success: true, token });
     } else {
         console.log("EMAIL:", email)

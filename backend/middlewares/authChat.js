@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import doctorModel from "../models/doctorModel.js";
 import userModel from "../models/userModel.js";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 // Chat authentication middleware that handles both user and doctor tokens
 const authChat = async (req, res, next) => {
@@ -32,7 +33,7 @@ const authChat = async (req, res, next) => {
       });
     }
 
-    const token_decode = jwt.verify(token, process.env.JWT_SECRET);
+    const token_decode = jwt.verify(token, getJwtSecret());
     
     if (userType === 'doctor') {
       const doctor = await doctorModel.findById(token_decode.id);

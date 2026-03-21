@@ -6,6 +6,7 @@ import doctorModel from "../models/doctorModel.js";
 import userModel from "../models/userModel.js";
 import { v4 as uuidv4 } from 'uuid';
 import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 const router = express.Router();
 
@@ -200,7 +201,7 @@ router.get("/:roomId/validate", async (req, res) => {
 
     // Decode token to get user info
     console.log("VALIDATE ROOM - Decoding token...");
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "demo-secret");
+    const decoded = jwt.verify(token, getJwtSecret());
     const userId = decoded.id || decoded.userId;
 
     // Check if user is part of this session

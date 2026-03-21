@@ -180,14 +180,14 @@ const DoctorOnlineSettings = ({
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md">
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
       <h2 className="text-xl font-semibold mb-4 text-gray-800">
         Online Consultation Settings
       </h2>
 
       {/* Settings Form */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-row items-center justify-between gap-4">
           <div>
             <label className="text-gray-700 font-medium">
               Enable Online Consultation
@@ -254,7 +254,7 @@ const DoctorOnlineSettings = ({
           </select>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-row items-center justify-between gap-4">
           <div>
             <label className="text-gray-700 font-medium">Go Online Now</label>
             <p className="text-sm text-gray-500">
@@ -300,9 +300,9 @@ const DoctorOnlineSettings = ({
             {incomingRequests.map((request, index) => (
               <div
                 key={index}
-                className="bg-yellow-50 border border-yellow-200 rounded-lg p-3"
+                className="bg-yellow-50 border border-yellow-200 rounded-lg p-4"
               >
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-3">
                   <div className="flex items-center gap-3">
                     <img
                       src={request.patient?.image || "/default-avatar.png"}
@@ -392,7 +392,7 @@ const DoctorOnlineSettings = ({
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => handleRequestResponse("accept")}
                 disabled={responding}

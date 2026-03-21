@@ -86,7 +86,7 @@ const DoctorChatList = ({ dToken }) => {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[calc(100vh-70px)] sm:h-full">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-4 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -134,13 +134,13 @@ const DoctorChatList = ({ dToken }) => {
                 }`}
               >
                 <div className="px-4 py-3">
-                  <div className="flex items-start space-x-3">
+                  <div className="flex items-start space-x-2 sm:space-x-3">
                     {/* Avatar */}
                     <div className="relative flex-shrink-0">
                       <img
                         src={chat.patientImage || "/default-avatar.png"}
                         alt={chat.patientName}
-                        className="w-12 h-12 rounded-full object-cover bg-gray-200 ring-2 ring-white"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover bg-gray-200 ring-2 ring-white"
                       />
                       {chat.unreadCount > 0 && (
                         <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white">
@@ -177,7 +177,7 @@ const DoctorChatList = ({ dToken }) => {
                           className={`text-sm truncate ${
                             chat.unreadCount > 0
                               ? "text-gray-900 font-medium"
-                              : "text-gray-600"
+                              : "text-gray-600 max-w-[180px] sm:max-w-none"
                           }`}
                         >
                           {chat.lastMessage || "Start a conversation"}

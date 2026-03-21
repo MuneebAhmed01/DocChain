@@ -34,6 +34,7 @@ import bcrypt from "bcryptjs";
 import userModel from "../models/userModel.js";
 import authUser from "../middlewares/authUser.js";
 import multer from "multer";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 import { 
   getProfile,
@@ -47,7 +48,6 @@ import {
 } from "../controllers/userController.js";
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
 const upload = multer({ dest: "uploads/" });
 
 import welcomeEmail from "../emailTemplates/welcomeEmail.js";
@@ -83,7 +83,7 @@ router.post("/google-login", async (req, res) => {
     // Create your normal JWT
     const appToken = jwt.sign(
       { userId: user._id, email: user.email },
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "90d" }
     );
 
@@ -114,7 +114,7 @@ router.post("/register", async (req, res) => {
     await welcomeEmail(user);
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "90d" }
     );
 
@@ -140,7 +140,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "90d" }
     );
 

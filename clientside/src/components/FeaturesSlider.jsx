@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function FeaturesSlider() {
   const cards = [
-   
   {
     title: "Doctor Booking",
     desc: "Easily find and book consultations with trusted specialists and general practitioners in just a few clicks",
@@ -25,23 +24,24 @@ export default function FeaturesSlider() {
     desc: "Keep your medical history and appointments organized securely in one place",
     to: "/doctors",
   },
-
   ];
 
   const [active, setActive] = useState(0);
   const [blinkLeft, setBlinkLeft] = useState(false);
   const [blinkRight, setBlinkRight] = useState(false);
 
-  const moveLeft = () => {
-    if (active === 0) return;
-    setActive(active - 1);
-    setBlinkLeft(true);
-    setTimeout(() => setBlinkLeft(false), 200);
-  };
+//👉 TALAL made changes to moveLeft and moveRight functions for infinite looping 
+// If you are on the first card and click left, it jumps to the last card
+ const moveLeft = () => {
+  const next = (active - 1 + cards.length) % cards.length;
+  setActive(next);
+  setBlinkLeft(true);
+  setTimeout(() => setBlinkLeft(false), 200);
+};
 
   const moveRight = () => {
-    if (active === cards.length - 1) return;
-    setActive(active + 1);
+    const next = (active + 1) % cards.length;
+    setActive(next);
     setBlinkRight(true);
     setTimeout(() => setBlinkRight(false), 200);
   };
@@ -55,19 +55,38 @@ export default function FeaturesSlider() {
     return () => window.removeEventListener("keydown", handleKey);
   });
 
+//👉 TALAL added useRef and useEffect to scroll the active card into view when it changes
+  const sliderRef = useRef(null);
+
+  useEffect(() => {
+  if (!sliderRef.current) return;
+
+  const card = sliderRef.current.children[active];
+  if (card) {
+    card.scrollIntoView({
+      behavior: "smooth",
+      inline: "start",
+      block: "nearest",
+    });
+  }
+}, [active]);
+
   return (
-    <div className="w-full flex flex-col items-start gap-6 p-6 mt-10 scroll-mt-24"id="features">
+    <div className="w-full flex flex-col items-start gap-6 px-2 sm:px-4 md:px-0 mt-6 sm:mt-10 scroll-mt-24" id="features">
+      
       {/* Heading */}
-
       <div className="w-full">
-        <div className="flex items-center justify-between w-full self-stretch">
-          <h1 className="text-4xl font-bold">Your One-Stop Health Hub</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
+          
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+            Your One-Stop Health Hub
+          </h1>
 
-          <div className="flex gap-4 ml-auto mt-2">
+          <div className="flex gap-3 sm:gap-4 sm:ml-auto">
             {/* Left */}
             <button
               onClick={moveLeft}
-              className={`p-3 rounded-full border transition-all duration-200
+              className={`p-2 sm:p-3 rounded-full border transition-all duration-200
             ${blinkLeft ? "bg-blue-600 text-white" : "bg-white text-black"}`}
             >
               <ArrowLeft size={20} />
@@ -76,35 +95,35 @@ export default function FeaturesSlider() {
             {/* Right */}
             <button
               onClick={moveRight}
-              className={`p-3 rounded-full border transition-all duration-200
+              className={`p-2 sm:p-3 rounded-full border transition-all duration-200
             ${blinkRight ? "bg-blue-600 text-white" : "bg-white text-black"}`}
             >
               <ArrowRight size={20} />
             </button>
           </div>
         </div>
-        <p className="text-gray-500 max-w-xl mt-2">
+
+        <p className="text-gray-500 max-w-full sm:max-w-xl mt-2 text-sm sm:text-base">
           From booking doctors to lab tests and beyond, we bring all your
           healthcare needs together under one roof — accessible anytime,
           anywhere
         </p>
       </div>
-      {/* Arrows */}
 
       {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
+      <div ref={sliderRef} className="flex lg:grid lg:grid-cols-4 gap-4 sm:gap-6 w-full overflow-x-auto lg:overflow-visible">
         {cards.map((card, i) => (
           <div
             key={i}
-            className={`p-5 rounded-3xl transition-all duration-300 border shadow-sm cursor-pointer select-none
-        ${
-          active === i
-            ? "bg-blue-600 text-white border-blue-600"
-            : "bg-white text-black border-gray-200"
-        }`}
+            className={`p-5 sm:p-6 rounded-3xl transition-all duration-300 border shadow-sm cursor-pointer select-none flex-none w-[85%] sm:w-[60%] lg:w-auto
+          ${
+            active === i
+              ? "bg-blue-600 text-white border-blue-600"
+              : "bg-white text-black border-gray-200"
+          }`}
           >
             <div
-              className={`text-2xl mb-2 ${
+              className={`text-xl sm:text-2xl mb-2 ${
                 active === i ? "text-blue-100" : "text-primary"
               }`}
             >
@@ -112,7 +131,7 @@ export default function FeaturesSlider() {
             </div>
 
             <h2
-              className={`text-base font-semibold mb-1 ${
+              className={`text-sm sm:text-base font-semibold mb-1 ${
                 active === i ? "text-white" : "text-black"
               }`}
             >
@@ -120,7 +139,7 @@ export default function FeaturesSlider() {
             </h2>
 
             <p
-              className={`text-sm leading-snug ${
+              className={`text-xs sm:text-sm leading-snug ${
                 active === i ? "text-blue-100" : "text-gray-500"
               }`}
             >

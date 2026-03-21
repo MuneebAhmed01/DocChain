@@ -8,6 +8,7 @@ import userModel from "../models/userModel.js";
 import { upload,uploadToCloudinary } from "../middlewares/multer.js";
 import doctorRegistered from "../emailTemplates/doctorRegistered.js";
 import doctorRemoved from "../emailTemplates/doctorRemoved.js";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 // API for adding doctor
 const addDoctor = async (req, res) => {
@@ -125,7 +126,7 @@ const loginAdmin = async (req, res) => {
       email === process.env.ADMIN_EMAIL &&
       password === process.env.ADMIN_PASSWORD
     ) {
-      const token = jwt.sign({ email }, process.env.JWT_SECRET,{expiresIn: "1d"});
+      const token = jwt.sign({ email }, getJwtSecret(),{expiresIn: "1d"});
       res.json({ success: true, token });
     } else {
       res.json({ success: false, message: "Invalid credentials" });

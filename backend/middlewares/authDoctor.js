@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import doctorModel from "../models/doctorModel.js";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 // doctor authentication middleware
 const authDoctor = async (req, res, next) => {
   try {
@@ -13,7 +14,7 @@ const authDoctor = async (req, res, next) => {
         message: "Not Authorized Login Again",
       });
     }
-    const token_decode = jwt.verify(dtoken, process.env.JWT_SECRET);
+    const token_decode = jwt.verify(dtoken, getJwtSecret());
     console.log("AuthDoctor - token_decode.id:", token_decode.id);
       
     const doctor = await doctorModel.findById(token_decode.id);

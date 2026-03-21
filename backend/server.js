@@ -20,6 +20,7 @@ import appointmentModel from "./models/appointmentModel.js";
 import chatModel from "./models/chatModel.js";
 import messageModel from "./models/messageModel.js";
 import onlineConsultRoute from "./routes/onlineConsultRoute.js";
+import { getJwtSecret } from "./utils/jwtSecret.js";
 
 
 
@@ -51,11 +52,7 @@ app.options("*", cors());
 app.use(express.json());
 app.use("/api/stripe", stripeWebhook);
 
-// JWT Secret
-const JWT_SECRET = process.env.JWT_SECRET || "demo-secret";
-
-
-console.log("JWT_SECRET:", process.env.JWT_SECRET);
+const JWT_SECRET = getJwtSecret();
 
 
 //email auto

@@ -35,9 +35,15 @@ const PaymentSuccess = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-[70vh] text-center">
-      <h1 className="text-3xl font-bold text-green-600">Payment Successful!</h1>
-      <p className="text-gray-600 mt-2">Redirecting you...</p>
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="bg-white shadow-lg rounded-2xl p-6 sm:p-8 md:p-10 text-center max-w-md w-full">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-green-600">
+          Payment Successful!
+        </h1>
+        <p className="text-gray-600 mt-3 text-sm sm:text-base md:text-lg">
+          Redirecting you...
+        </p>
+      </div>
     </div>
   );
 };

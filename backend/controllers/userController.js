@@ -12,6 +12,7 @@ import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDo
 import appointmentReminder from "../emailTemplates/appointmentReminder.js";
 import reviewModel from "../models/reviewModel.js";
 import sendEmail from "../utils/sendEmail.js";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 
 
@@ -45,7 +46,7 @@ const registerUser = async (req, res) => {
     // Generate JWT with expiration
     const token = jwt.sign(
       { userId: user._id, name: user.name, email: user.email }, // payload
-      process.env.JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: "90d" } // token valid for 7 days
     );
 
@@ -74,14 +75,13 @@ const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     
     if (isMatch) {
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET);
+      const token = jwt.sign({ userId: user._id }, getJwtSecret());
       
       res.json({ success: true, token });
     } else {
       res.json({ success: false, message: "Invalid credentials" });
     }
   } catch (error) {
-    console.log("Signing with JWT_SECRET:", process.env.JWT_SECRET);
     console.log(error);
     res.json({ success: false, message: error.message });
   }

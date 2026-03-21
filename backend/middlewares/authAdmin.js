@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { getJwtSecret } from "../utils/jwtSecret.js";
 
 export default function authAdmin(req, res, next) {
   console.log("AUTH ADMIN HIT");
@@ -26,7 +27,7 @@ export default function authAdmin(req, res, next) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = decoded;
 
     // your normal admin check
