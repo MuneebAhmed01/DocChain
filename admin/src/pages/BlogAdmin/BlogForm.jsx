@@ -51,9 +51,13 @@ export function BlogForm({ token }) {
 
     try {
       if (id && id !== "new") {
-        await axios.put(`http://localhost:4000/api/blogs/admin/${id}`, payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await axios.put(
+          `http://localhost:4000/api/blogs/admin/${id}`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        );
       } else {
         await axios.post("http://localhost:4000/api/blogs", payload, {
           headers: { Authorization: `Bearer ${token}` },
@@ -67,11 +71,15 @@ export function BlogForm({ token }) {
   };
 
   // Common Tailwind classes for inputs
-  const inputStyle = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
+  const inputStyle =
+    "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all";
 
   return (
     <div className="p-2 sm:p-6 max-w-4xl mx-auto">
-      <form onSubmit={save} className="bg-white rounded-xl shadow-md overflow-hidden">
+      <form
+        onSubmit={save}
+        className="bg-white rounded-xl shadow-md overflow-hidden"
+      >
         {/* Header */}
         <div className="bg-gray-50 px-6 py-4 border-b">
           <h2 className="text-xl font-bold text-gray-800">
@@ -83,7 +91,9 @@ export function BlogForm({ token }) {
           {/* Title and Author Group */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Post Title</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Post Title
+              </label>
               <input
                 className={inputStyle}
                 value={form.title}
@@ -93,7 +103,9 @@ export function BlogForm({ token }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Author Name</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Author Name
+              </label>
               <input
                 className={inputStyle}
                 value={form.author}
@@ -105,7 +117,9 @@ export function BlogForm({ token }) {
 
           {/* Excerpt */}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-600">Short Excerpt</label>
+            <label className="text-sm font-semibold text-gray-600">
+              Short Excerpt
+            </label>
             <input
               className={inputStyle}
               value={form.excerpt}
@@ -117,7 +131,9 @@ export function BlogForm({ token }) {
           {/* Image URL & Tags Group */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Cover Image URL</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Cover Image URL
+              </label>
               <input
                 className={inputStyle}
                 value={form.imageUrl}
@@ -126,7 +142,9 @@ export function BlogForm({ token }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Tags</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Tags
+              </label>
               <input
                 className={inputStyle}
                 value={form.tags}
@@ -138,7 +156,9 @@ export function BlogForm({ token }) {
 
           {/* Content Editor */}
           <div className="space-y-1 pb-12 sm:pb-8">
-            <label className="text-sm font-semibold text-gray-600">Full Content</label>
+            <label className="text-sm font-semibold text-gray-600">
+              Full Content
+            </label>
             <div className="h-64 sm:h-80">
               <ReactQuill
                 theme="snow"
@@ -153,7 +173,9 @@ export function BlogForm({ token }) {
 
           {/* Bottom Actions */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <p className="text-sm text-gray-500">Posts created by admin are approved immediately.</p>
+            <p className="text-sm text-gray-500">
+              Posts created by admin are approved immediately.
+            </p>
 
             <div className="flex gap-3 w-full sm:w-auto">
               <button

@@ -8,9 +8,12 @@ export default function PendingBlogs({ token }) {
 
   const fetchPendingBlogs = async () => {
     try {
-      const res = await axios.get("http://localhost:4000/api/blogs/admin/pending", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        "http://localhost:4000/api/blogs/admin/pending",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
 
       const data = Array.isArray(res.data) ? res.data : [];
       setBlogs(data);
@@ -30,7 +33,7 @@ export default function PendingBlogs({ token }) {
       await axios.patch(
         `http://localhost:4000/api/blogs/admin/${id}/status`,
         { status },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       setBlogs((prev) => prev.filter((item) => item._id !== id));
@@ -44,7 +47,9 @@ export default function PendingBlogs({ token }) {
   return (
     <div className="p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Pending Blogs</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+          Pending Blogs
+        </h2>
         <Link
           to="/admin/blogs"
           className="w-full sm:w-auto text-center bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-medium"

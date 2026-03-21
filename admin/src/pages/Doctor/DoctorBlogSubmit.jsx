@@ -34,7 +34,7 @@ export default function DoctorBlogSubmit() {
         },
         {
           headers: { dToken },
-        }
+        },
       );
 
       toast.success("Blog submitted for admin approval");
@@ -56,16 +56,23 @@ export default function DoctorBlogSubmit() {
 
   return (
     <div className="p-2 sm:p-6 max-w-4xl mx-auto">
-      <form onSubmit={onSubmit} className="bg-white rounded-xl shadow-md overflow-hidden">
+      <form
+        onSubmit={onSubmit}
+        className="bg-white rounded-xl shadow-md overflow-hidden"
+      >
         <div className="bg-gray-50 px-6 py-4 border-b">
           <h2 className="text-xl font-bold text-gray-800">Submit Blog</h2>
-          <p className="text-sm text-gray-500 mt-1">Your blog will be reviewed by admin before publishing.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Your blog will be reviewed by admin before publishing.
+          </p>
         </div>
 
         <div className="p-4 sm:p-6 space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Post Title</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Post Title
+              </label>
               <input
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"
                 value={form.title}
@@ -74,7 +81,9 @@ export default function DoctorBlogSubmit() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Author Name</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Author Name
+              </label>
               <input
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"
                 value={form.author}
@@ -84,7 +93,9 @@ export default function DoctorBlogSubmit() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-600">Short Excerpt</label>
+            <label className="text-sm font-semibold text-gray-600">
+              Short Excerpt
+            </label>
             <input
               className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"
               value={form.excerpt}
@@ -94,7 +105,9 @@ export default function DoctorBlogSubmit() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Cover Image URL</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Cover Image URL
+              </label>
               <input
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"
                 value={form.imageUrl}
@@ -102,7 +115,9 @@ export default function DoctorBlogSubmit() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-600">Tags</label>
+              <label className="text-sm font-semibold text-gray-600">
+                Tags
+              </label>
               <input
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none"
                 value={form.tags}
@@ -113,7 +128,9 @@ export default function DoctorBlogSubmit() {
           </div>
 
           <div className="space-y-1 pb-12 sm:pb-8">
-            <label className="text-sm font-semibold text-gray-600">Full Content</label>
+            <label className="text-sm font-semibold text-gray-600">
+              Full Content
+            </label>
             <div className="h-64 sm:h-80">
               <ReactQuill
                 theme="snow"

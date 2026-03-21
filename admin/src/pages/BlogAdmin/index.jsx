@@ -6,9 +6,6 @@ import { BlogForm } from "./BlogForm";
 import { BlogList } from "./BlogList";
 import PendingBlogs from "./PendingBlogs";
 
-
-
-
 export default function BlogAdminIndex({ token }) {
   return (
     <Routes>

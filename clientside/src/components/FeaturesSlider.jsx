@@ -4,40 +4,40 @@ import { Link } from "react-router-dom";
 
 export default function FeaturesSlider() {
   const cards = [
-  {
-    title: "Doctor Booking",
-    desc: "Easily find and book consultations with trusted specialists and general practitioners in just a few clicks",
-    to: "/doctors",
-  },
-  {
-    title: "Appointment Reminders",
-    desc: "Get timely reminders so you never miss your scheduled consultations",
-    to: "/doctors",
-  },
-  {
-    title: "Specialist Search",
-    desc: "Filter and find doctors by speciality, experience, and availability to make the best choice for your health",
-    to: "/doctors",
-  },
-  {
-    title: "Secure Records",
-    desc: "Keep your medical history and appointments organized securely in one place",
-    to: "/doctors",
-  },
+    {
+      title: "Doctor Booking",
+      desc: "Easily find and book consultations with trusted specialists and general practitioners in just a few clicks",
+      to: "/doctors",
+    },
+    {
+      title: "Appointment Reminders",
+      desc: "Get timely reminders so you never miss your scheduled consultations",
+      to: "/doctors",
+    },
+    {
+      title: "Specialist Search",
+      desc: "Filter and find doctors by speciality, experience, and availability to make the best choice for your health",
+      to: "/doctors",
+    },
+    {
+      title: "Secure Records",
+      desc: "Keep your medical history and appointments organized securely in one place",
+      to: "/doctors",
+    },
   ];
 
   const [active, setActive] = useState(0);
   const [blinkLeft, setBlinkLeft] = useState(false);
   const [blinkRight, setBlinkRight] = useState(false);
 
-//👉 TALAL made changes to moveLeft and moveRight functions for infinite looping 
-// If you are on the first card and click left, it jumps to the last card
- const moveLeft = () => {
-  const next = (active - 1 + cards.length) % cards.length;
-  setActive(next);
-  setBlinkLeft(true);
-  setTimeout(() => setBlinkLeft(false), 200);
-};
+  //👉 TALAL made changes to moveLeft and moveRight functions for infinite looping
+  // If you are on the first card and click left, it jumps to the last card
+  const moveLeft = () => {
+    const next = (active - 1 + cards.length) % cards.length;
+    setActive(next);
+    setBlinkLeft(true);
+    setTimeout(() => setBlinkLeft(false), 200);
+  };
 
   const moveRight = () => {
     const next = (active + 1) % cards.length;
@@ -55,29 +55,32 @@ export default function FeaturesSlider() {
     return () => window.removeEventListener("keydown", handleKey);
   });
 
-//👉 TALAL added useRef and useEffect to scroll the active card into view when it changes
+  //👉 TALAL added useRef and useEffect to scroll the active card into view when it changes
   const sliderRef = useRef(null);
 
   useEffect(() => {
-  if (!sliderRef.current) return;
+    if (!sliderRef.current) return;
 
-  const card = sliderRef.current.children[active];
-  if (card) {
-    card.scrollIntoView({
-      behavior: "smooth",
-      inline: "start",
-      block: "nearest",
-    });
-  }
-}, [active]);
+    const container = sliderRef.current;
+    const card = container.children[active];
+    if (!card) return;
+
+    const canScrollHorizontally = container.scrollWidth > container.clientWidth;
+    if (!canScrollHorizontally) return;
+
+    // Keep slider navigation horizontal-only to avoid pulling the full page down.
+    const targetLeft = card.offsetLeft - container.offsetLeft;
+    container.scrollTo({ left: targetLeft, behavior: "smooth" });
+  }, [active]);
 
   return (
-    <div className="w-full flex flex-col items-start gap-6 px-2 sm:px-4 md:px-0 mt-6 sm:mt-10 scroll-mt-24" id="features">
-      
+    <div
+      className="w-full flex flex-col items-start gap-6 px-2 sm:px-4 md:px-0 mt-6 sm:mt-10 scroll-mt-24"
+      id="features"
+    >
       {/* Heading */}
       <div className="w-full">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between w-full gap-4">
-          
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
             Your One-Stop Health Hub
           </h1>
@@ -111,7 +114,10 @@ export default function FeaturesSlider() {
       </div>
 
       {/* Cards */}
-      <div ref={sliderRef} className="flex lg:grid lg:grid-cols-4 gap-4 sm:gap-6 w-full overflow-x-auto lg:overflow-visible">
+      <div
+        ref={sliderRef}
+        className="flex lg:grid lg:grid-cols-4 gap-4 sm:gap-6 w-full overflow-x-auto lg:overflow-visible"
+      >
         {cards.map((card, i) => (
           <div
             key={i}

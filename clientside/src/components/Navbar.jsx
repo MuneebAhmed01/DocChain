@@ -18,14 +18,14 @@ const Navbar = () => {
   return (
     <div className="flex items-center justify-between text-sm py-4 mb-5 ">
       <p
-        onClick={() => navigate("/")}
+        onClick={() => navigate({ pathname: "/", hash: "" })}
         className="font-poppins font-extrabold w-36 cursor-pointer text-3xl"
       >
         <span className="text-blue-600">Doc</span>Chain
       </p>
       <ul className="hidden md:flex items-start gap-10 font-medium">
         <NavLink
-          to="/"
+          to={{ pathname: "/", hash: "" }}
           className={({ isActive }) =>
             `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
           }
@@ -131,7 +131,10 @@ const Navbar = () => {
             />
           </div>
           <ul className="flex flex-col items-center gap-2 mt-5 px-5 text-lg font-medium">
-            <NavLink onClick={() => setShowMenu(false)} to="/">
+            <NavLink
+              onClick={() => setShowMenu(false)}
+              to={{ pathname: "/", hash: "" }}
+            >
               <p className="px-4 py-2 rounded inline-block">HOME</p>
             </NavLink>
             <NavLink onClick={() => setShowMenu(false)} to="/doctors">
