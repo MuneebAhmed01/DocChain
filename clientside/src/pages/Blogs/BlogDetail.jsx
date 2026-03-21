@@ -19,7 +19,7 @@ export default function BlogDetail() {
     } else {
       // fallback → if user refreshes or comes from direct link
       fetch(`/api/blogs/${idOrSlug}`)
-        .then((res) => res.json())
+        .then((res) => (res.ok ? res.json() : null))
         .then((data) => setBlog(data))
         .catch(() => setBlog(null));
     }

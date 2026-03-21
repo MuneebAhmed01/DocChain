@@ -15,13 +15,12 @@ export function BlogForm({ token }) {
     author: "",
     tags: "",
     imageUrl: "",
-    published: true,
   });
 
   useEffect(() => {
     if (id && id !== "new") {
       axios
-        .get(`http://localhost:4000/api/blogs/${id}`, {
+        .get(`http://localhost:4000/api/blogs/admin/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {
@@ -48,12 +47,11 @@ export function BlogForm({ token }) {
       author: form.author,
       tags: form.tags.split(",").map((t) => t.trim()),
       imageUrl: form.imageUrl,
-      published: form.published,
     };
 
     try {
       if (id && id !== "new") {
-        await axios.put(`http://localhost:4000/api/blogs/${id}`, payload, {
+        await axios.put(`http://localhost:4000/api/blogs/admin/${id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
       } else {
@@ -155,17 +153,7 @@ export function BlogForm({ token }) {
 
           {/* Bottom Actions */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <label className="flex items-center gap-3 cursor-pointer group">
-              <input
-                type="checkbox"
-                className="w-5 h-5 rounded accent-primary cursor-pointer"
-                checked={form.published}
-                onChange={(e) => setForm({ ...form, published: e.target.checked })}
-              />
-              <span className="text-sm font-medium text-gray-700 group-hover:text-primary transition-colors">
-                Publish this post immediately
-              </span>
-            </label>
+            <p className="text-sm text-gray-500">Posts created by admin are approved immediately.</p>
 
             <div className="flex gap-3 w-full sm:w-auto">
               <button

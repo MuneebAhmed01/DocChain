@@ -78,6 +78,17 @@ const Sidebar = () => {
                 isActive ? "bg-[#F2F3FF] border-r-4 border-primary" : ""
               }`
             }
+            to="/admin/blogs/pending"
+          >
+            <img src={assets.appointment_icon} alt="" />
+            <span className="hidden md:block">Pending Blogs</span>
+          </NavLink>
+          <NavLink
+            className={({ isActive }) =>
+              `flex items-center gap-3 py-3.5 px-4 md:px-9 md:min-w-72 justify-center md:justify-start cursor-pointer ${
+                isActive ? "bg-[#F2F3FF] border-r-4 border-primary" : ""
+              }`
+            }
             to="/pending-approvals"
           >
             <img className="w-6" src={assets.pending_icon} alt="" />{" "}
@@ -135,6 +146,18 @@ const Sidebar = () => {
           >
             <img src={assets.people_icon} alt="" />
             <p className="hidden md:block">Profile</p>
+          </NavLink>
+
+          <NavLink
+            className={({ isActive }) =>
+              `flex items-center gap-3 py-3.5 px-4 md:px-9 md:min-w-72 justify-center md:justify-start cursor-pointer ${
+                isActive ? "bg-[#F2F3FF] border-r-4 border-primary" : ""
+              }`
+            }
+            to={"/doctor/blogs/new"}
+          >
+            <img src={assets.add_icon} alt="" />
+            <p className="hidden md:block">Submit Blog</p>
           </NavLink>
         </ul>
       )}

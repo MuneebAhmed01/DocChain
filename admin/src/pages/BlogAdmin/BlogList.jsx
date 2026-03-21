@@ -6,20 +6,24 @@ export function BlogList({ token }) {
   const [blogs, setBlogs] = useState([]);
 
   useEffect(() => {
-    axios.get("/api/blogs").then((res) => {
+    axios
+      .get("http://localhost:4000/api/blogs/admin/all", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then((res) => {
       const data = Array.isArray(res.data)
         ? res.data
         : res.data.blogs
         ? res.data.blogs
         : [];
       setBlogs(data);
-    });
+      });
   }, []);
 
   const deleteBlog = async (id) => {
     if (!confirm("Delete this blog?")) return;
     try {
-      await axios.delete(`/api/blogs/${id}`, {
+      await axios.delete(`http://localhost:4000/api/blogs/admin/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setBlogs((prev) => prev.filter((b) => b._id !== id));
@@ -38,6 +42,12 @@ export function BlogList({ token }) {
           className="w-full sm:w-auto text-center bg-primary text-white px-6 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-all"
         >
           + New Blog
+        </Link>
+        <Link
+          to="/admin/blogs/pending"
+          className="w-full sm:w-auto text-center bg-amber-100 text-amber-700 px-6 py-2 rounded-lg font-medium"
+        >
+          Pending Blogs
         </Link>
       </div>
 
@@ -59,7 +69,7 @@ export function BlogList({ token }) {
                 <td className="p-4 text-gray-600">{b.author}</td>
                 <td className="p-4">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${b.published ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                    {b.published ? "Published" : "Draft"}
+                    {b.status || (b.published ? "approved" : "pending")}
                   </span>
                 </td>
                 <td className="p-4 text-center">
@@ -83,7 +93,7 @@ export function BlogList({ token }) {
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-bold text-gray-800 flex-1 pr-2">{b.title}</h3>
               <span className={`shrink-0 px-2 py-1 rounded-full text-[10px] font-bold uppercase ${b.published ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                {b.published ? "Live" : "Draft"}
+                {b.status || (b.published ? "approved" : "pending")}
               </span>
             </div>
             <p className="text-sm text-gray-500 mb-4">By {b.author}</p>
