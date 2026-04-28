@@ -14,6 +14,12 @@ export const PAYMENT_TYPE = {
   TOKEN: "TOKEN",    // Rs. 500 advance, remaining at clinic
 };
 
+// Payment Method Constants
+export const PAYMENT_METHOD = {
+  STRIPE: "STRIPE",      // Online payment via Stripe
+  CASH: "CASH",          // Cash payment at clinic
+};
+
 // Payment Status Constants
 export const PAYMENT_STATUS = {
   PAID: "PAID",         // Full payment received (ONLINE)
@@ -24,6 +30,13 @@ export const PAYMENT_STATUS = {
 export const APPOINTMENT_STATUS = {
   CONFIRMED: "CONFIRMED",      // Payment received, slot locked
   CANCELLED: "CANCELLED",      // Cancelled by user or admin
+};
+
+// Refund Status Constants
+export const REFUND_STATUS = {
+  PENDING: "PENDING",          // Refund initiated, processing
+  COMPLETED: "COMPLETED",      // Refund successfully processed
+  FAILED: "FAILED",            // Refund failed
 };
 
 export const assertPkrAmount = (amount, fieldName = "amount") => {
