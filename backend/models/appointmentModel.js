@@ -4,7 +4,7 @@ const appointmentSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   docId: { type: String, required: true },
   slotDate: { type: String, required: true },
-  slotTime: { type: String, required: true },
+  slotTime: { type: String, required: [true, "Please select a slot"] },
   userData: { type: Object, required: true },
 
   paymentIntentId: { type: String, default: null },
