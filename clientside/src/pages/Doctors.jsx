@@ -84,7 +84,7 @@ const Doctors = () => {
   }, [location.pathname, location.state, speciality]);
 
   return (
-    <div>
+    <div className="pb-16 sm:pb-24">
       <div className="flex justify-between items-center">
         <p className="text-gray-600">Browse through the doctors specialist.</p>
         <div className="mb-4">
@@ -192,10 +192,25 @@ const Doctors = () => {
           </p>
         </div>
 
-        <div className="w-full grid grid-cols-auto gap-4 gap-y-6">
-          {filterDoc.map((item, index) => (
-            <DoctorCard key={index} doctor={item} showOnlineBadge={true} />
-          ))}
+        <div className="w-full min-h-[48vh]">
+          {filterDoc.length > 0 ? (
+            <div className="grid grid-cols-auto gap-4 gap-y-6">
+              {filterDoc.map((item, index) => (
+                <DoctorCard key={index} doctor={item} showOnlineBadge={true} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex min-h-[48vh] items-center justify-center px-4 text-center">
+              <div className="max-w-md rounded-2xl border border-gray-200 bg-white/80 p-8 shadow-sm">
+                <p className="text-lg sm:text-xl font-semibold text-gray-800">
+                  No doctors available right now
+                </p>
+                <p className="mt-2 text-sm sm:text-base text-gray-500">
+                  Please check back later or try another speciality.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

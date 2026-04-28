@@ -182,6 +182,10 @@ const bookAppointment = async (req, res) => {
 
     const {  docId, slotDate, slotTime } = req.body;
 
+    if (!slotTime || !String(slotTime).trim()) {
+      return res.json({ success: false, message: "Please select a slot" });
+    }
+
     const docData = await doctorModel.findById(docId).select("-password");
 const doctor = await doctorModel.findById(docId);
 
