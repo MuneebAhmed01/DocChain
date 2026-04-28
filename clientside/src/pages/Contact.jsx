@@ -94,29 +94,29 @@ const handleSubmit = async (e) => {
             <h1 className="text-4xl lg:text-5xl font-extrabold">Contact Us</h1>
             
             <p className="text-sm text-gray-600 max-w-lg">
-              Email, call, or complete the form to learn how Snappy can solve your messaging problem.
+              Have questions about booking an appointment, consulting online, or finding the right specialist? Our team is ready to help.
             </p>
 
             <div className="mt-4 text-sm text-gray-700">
-              <p>info@snappy.io</p>
-              <p className="mt-2">321-221-231</p>
-              <a className="mt-3 inline-block text-sm text-blue-600 underline" href="#">Customer Support</a>
+              <p>support@docchain.com</p>
+              <p className="mt-2">+1 (800) 123-4567</p>
+              <a className="mt-3 inline-block text-sm text-blue-600 underline" href="mailto:support@docchain.com">Email Support</a>
             </div>
 
             <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
               <div>
-                <h3 className="font-semibold text-gray-800">Customer Support</h3>
-                <p className="mt-2">Our support team is available around the clock to address any concerns or queries you may have.</p>
+                <h3 className="font-semibold text-gray-800">Appointment Support</h3>
+                <p className="mt-2">Need help scheduling or managing a consultation? Our support staff can guide you through every step.</p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">Feedback and Suggestions</h3>
-                <p className="mt-2">We value your feedback and are continuously working to improve Snappy.</p>
+                <h3 className="font-semibold text-gray-800">Doctor Inquiries</h3>
+                <p className="mt-2">Looking for a specialist or want to join our network? Contact us for detailed information and next steps.</p>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-800">Media Inquiries</h3>
-                <p className="mt-2">For media-related questions or press inquiries, please contact media@snappyapp.com.</p>
+                <h3 className="font-semibold text-gray-800">Feedback & Suggestions</h3>
+                <p className="mt-2">We welcome your feedback to improve patient experience and service quality.</p>
               </div>
             </div>
           </div>
@@ -257,13 +257,11 @@ const handleSubmit = async (e) => {
             <p className="text-sm text-gray-500">Our Location</p>
             <h2 className="text-3xl lg:text-4xl font-extrabold mt-2">Connecting Near and Far</h2>
             <div className="mt-4 text-sm text-gray-700">
-              <h3 className="font-semibold">Headquarters</h3>
+              <h3 className="font-semibold">DocChain Healthcare Center</h3>
               <address className="not-italic mt-2">
-                Snappy Inc.<br />
-                San Francisco, USA<br />
-                123 Tech Boulevard, Suite 456<br />
-                San Francisco, CA 12345<br />
-                United States
+                123 Wellness Avenue, Suite 100<br />
+                Islamabad, ISL 49600<br />
+                Pakistan
               </address>
             </div>
           </div>
