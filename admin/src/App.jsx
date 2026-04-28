@@ -26,9 +26,9 @@ const App = () => {
     <div className="bg-[#F8F9FD] h-screen flex flex-col">
       <ToastContainer />
       <Navbar />
-      <div className="flex flex-1">
+      <div className="flex flex-1 min-w-0 overflow-x-hidden">
         <Sidebar />
-        <div className="flex-1">
+        <div className="flex-1 min-w-0 overflow-x-hidden">
           <Routes>
             {/* Admin Route */}
             <Route path="/" element={<></>} />
