@@ -1,11 +1,11 @@
-import { ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useBlogs } from "../context/BlogContext";
 
 export default function HealthTips() {
   const { blogs } = useBlogs();
 
   const sorted = [...blogs].sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
   );
 
   const bigCards = sorted.slice(0, 2);
@@ -13,7 +13,6 @@ export default function HealthTips() {
 
   return (
     <div className="w-full p-4 sm:p-6 flex flex-col gap-6">
-
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
@@ -22,27 +21,27 @@ export default function HealthTips() {
           </h1>
 
           <p className="text-gray-500 max-w-full sm:max-w-2xl text-sm sm:text-base mt-1 leading-snug">
-            Stay informed with expert advice, health tips, and the latest medical updates.
+            Stay informed with expert advice, health tips, and the latest
+            medical updates.
           </p>
         </div>
 
-        <a
-          href="/blogs"
+        <Link
+          to="/blogs"
           className="bg-blue-600 text-white font-medium px-4 py-2 rounded-full hover:bg-blue-700 text-sm w-fit"
         >
           Read more
-        </a>
+        </Link>
       </div>
 
       {/* GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 w-full">
-
         {/* LEFT SIDE — 2 big cards */}
         <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {bigCards.map((item) => (
-            <a
+            <Link
               key={item._id}
-              href={`/blog/${item.slug || item._id}`}
+              to={`/blogs/${item.slug || item._id}`}
               className="rounded-xl overflow-hidden border shadow-sm bg-white hover:shadow-md transition cursor-pointer flex flex-col"
             >
               <img
@@ -59,24 +58,22 @@ export default function HealthTips() {
                   {item.title}
                 </h2>
 
-                <p className="text-gray-600 text-sm mt-2">
-                  {item.excerpt}
-                </p>
+                <p className="text-gray-600 text-sm mt-2">{item.excerpt}</p>
 
                 <span className="text-blue-600 font-medium text-sm mt-3 inline-block">
                   Read more →
                 </span>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
 
         {/* RIGHT SIDE — 4 small cards */}
         <div className="flex flex-col gap-3">
           {smallCards.map((item) => (
-            <a
+            <Link
               key={item._id}
-              href={`/blog/${item.slug || item._id}`}
+              to={`/blogs/${item.slug || item._id}`}
               className="flex gap-3 p-2 rounded-xl border bg-white shadow-sm hover:shadow-md transition cursor-pointer h-20 sm:h-24"
             >
               <img
@@ -93,10 +90,9 @@ export default function HealthTips() {
                   {item.title}
                 </h3>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
-
       </div>
     </div>
   );

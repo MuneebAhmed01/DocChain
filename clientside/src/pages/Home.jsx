@@ -24,10 +24,8 @@ const Home = () => {
 
   return (
     <div className="flex flex-col w-full overflow-x-hidden">
-
       <div className="w-full">
         <Headers />
-        
       </div>
 
       <div id="services" className="w-full py-10 sm:py-14 lg:py-16">
@@ -42,32 +40,43 @@ const Home = () => {
         </div>
       </div>
 
-      <div className="w-full py-10 sm:py-14 lg:py-16">
+      <div
+        id="health-tips"
+        className="w-full py-10 sm:py-14 lg:py-16 scroll-mt-24"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10">
           <HealthTips />
         </div>
       </div>
 
-      <div id="speciality" className="w-full py-10 sm:py-14 lg:py-16 bg-gray-50">
+      <div
+        id="speciality"
+        className="w-full py-10 sm:py-14 lg:py-16 bg-gray-50"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10">
           <SpecialityMenu />
         </div>
       </div>
 
       {/* Top Doctors Section */}
-      <div id="top-doctors" className="w-full py-12 sm:py-16 lg:py-20 relative z-10 block clear-both">
+      <div
+        id="top-doctors"
+        className="w-full py-12 sm:py-16 lg:py-20 relative z-10 block clear-both"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10">
           <TopDoctors />
         </div>
       </div>
 
       {/* FAQ Section */}
-      <div id="faq" className="w-full py-10 sm:py-14 lg:py-16 bg-gray-50 relative z-0 border-t border-gray-100">
+      <div
+        id="faq"
+        className="w-full py-10 sm:py-14 lg:py-16 bg-gray-50 relative z-0 border-t border-gray-100"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10">
           <FAQSection />
         </div>
       </div>
-
     </div>
   );
 };
