@@ -1,16 +1,37 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import DoctorCard from "../components/DoctorCard";
 
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+const resetWindowScrollInstantly = () => {
+  const html = document.documentElement;
+  const body = document.body;
+  const previousHtmlBehavior = html.style.scrollBehavior;
+  const previousBodyBehavior = body.style.scrollBehavior;
+
+  html.style.scrollBehavior = "auto";
+  body.style.scrollBehavior = "auto";
+
+  window.scrollTo(0, 0);
+  html.scrollTop = 0;
+  body.scrollTop = 0;
+
+  window.requestAnimationFrame(() => {
+    html.style.scrollBehavior = previousHtmlBehavior;
+    body.style.scrollBehavior = previousBodyBehavior;
+  });
+};
+
 const Doctors = () => {
   const { speciality } = useParams();
   const [filterDoc, setFilterDoc] = useState([]);
   const [showFilter, setShowFilter] = useState(false);
   const [city, setCity] = useState("All");
 
+  const location = useLocation();
   const navigate = useNavigate();
 
   const { doctors } = useContext(AppContext);
@@ -44,6 +65,23 @@ const Doctors = () => {
   useEffect(() => {
     applyFilter();
   }, [doctors, speciality, city]);
+
+  useLayoutEffect(() => {
+    // Always reset the speciality listing to the top on navigation.
+    resetWindowScrollInstantly();
+
+    const resetAfterPaint = () => {
+      resetWindowScrollInstantly();
+    };
+
+    const frameId = window.requestAnimationFrame(resetAfterPaint);
+    const timeoutId = window.setTimeout(resetAfterPaint, 50);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [location.pathname, location.state, speciality]);
 
   return (
     <div>
