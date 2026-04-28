@@ -2,11 +2,49 @@ import appointmentModel from "../models/appointmentModel.js";
 import { APPOINTMENT_STATUS } from "../config/payment.js";
 
 /**
- * Pending-hold cleanup is no longer needed because appointments
- * are only created after payment succeeds.
+ * 🔴 Clean up expired HOLD appointments
+ * - Finds all HOLD appointments where holdExpiry < now
+ * - Cancels them automatically to free up slots
+ * - Called periodically (e.g., every 5-10 minutes via a cron job)
  */
 export const cleanupExpiredHolds = async () => {
-  return { cleaned: 0 };
+  try {
+    const now = new Date();
+
+    // Find all expired HOLD appointments
+    const expiredHolds = await appointmentModel.find({
+      appointmentStatus: APPOINTMENT_STATUS.HOLD,
+      holdExpiry: { $lt: now },
+    });
+
+    if (expiredHolds.length === 0) {
+      console.log("✅ No expired HOLD appointments to clean up");
+      return { cleaned: 0 };
+    }
+
+    console.log(`🔄 Cleaning up ${expiredHolds.length} expired HOLD appointments...`);
+
+    // Batch update all expired holds to CANCELLED status
+    const result = await appointmentModel.updateMany(
+      {
+        appointmentStatus: APPOINTMENT_STATUS.HOLD,
+        holdExpiry: { $lt: now },
+      },
+      {
+        appointmentStatus: APPOINTMENT_STATUS.CANCELLED_BY_USER,
+        cancelledAt: now,
+        cancelledBy: "USER",
+        cancellationReason: "HOLD expired - no payment made within 10 minutes",
+      }
+    );
+
+    console.log(`✅ Successfully cleaned up ${result.modifiedCount} expired HOLD appointments`);
+
+    return { cleaned: result.modifiedCount };
+  } catch (error) {
+    console.error("❌ Error cleaning up expired HOLD appointments:", error);
+    throw error;
+  }
 };
 
 /**
@@ -28,13 +66,17 @@ export const getAppointmentWithDisplayInfo = async (appointmentId) => {
       doctorSpeciality: appointment.docData?.speciality,
       slotDate: appointment.slotDate,
       slotTime: appointment.slotTime,
-      status: appointment.status,
-      statusDisplay: getStatusDisplay(appointment.status),
+      status: appointment.appointmentStatus,
+      statusDisplay: getStatusDisplay(appointment.appointmentStatus),
       paymentStatus: appointment.paymentStatus,
-      paymentType: appointment.paymentType,
+      paymentMethod: appointment.paymentMethod,
       amount: appointment.amount,
       paidAmount: appointment.paidAmount,
+      tokenAmount: appointment.tokenAmount,
       cancellationReason: appointment.cancellationReason,
+      refundAmount: appointment.refundAmount,
+      refundStatus: appointment.refundStatus,
+      confirmationTime: appointment.confirmationTime,
       cancelledAt: appointment.cancelledAt,
     };
 
@@ -50,10 +92,12 @@ export const getAppointmentWithDisplayInfo = async (appointmentId) => {
  */
 export const getStatusDisplay = (status) => {
   const statusMap = {
+    HOLD: "Pending Payment",
     CONFIRMED: "Confirmed",
-    CANCELLED: "Cancelled",
-    CANCELLED_BY_PATIENT: "Cancelled",
-    CANCELLED_BY_DOCTOR: "Cancelled by doctor",
+    CANCELLED_BY_ADMIN: "Cancelled by Clinic",
+    CANCELLED_BY_USER: "Cancelled by You",
+    NO_SHOW: "No Show",
+    COMPLETED: "Completed",
   };
 
   return statusMap[status] || status;
@@ -63,26 +107,35 @@ export const getStatusDisplay = (status) => {
  * Get cancellation message for patient display
  */
 export const getCancellationMessage = (appointment) => {
-  if (
-    appointment.status === APPOINTMENT_STATUS.CANCELLED ||
-    appointment.status === APPOINTMENT_STATUS.CANCELLED_BY_PATIENT ||
-    appointment.status === APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR
-  ) {
-    if (appointment.status === APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR) {
-      return (
-        "Your appointment was canceled due to an emergency. Your advance payment (Rs. 500) will be refunded."
-      );
-    }
-    return appointment.cancellationReason || "This appointment was cancelled.";
+  if (appointment.appointmentStatus === APPOINTMENT_STATUS.CANCELLED_BY_ADMIN) {
+    const refundInfo = appointment.refundAmount 
+      ? ` Your ${appointment.paymentMethod === "ONLINE" ? "full payment" : "token payment"} of Rs. ${appointment.refundAmount} will be refunded.`
+      : "";
+    return `Your appointment was cancelled due to an emergency.${refundInfo}`;
   }
-  return "";
+
+  if (appointment.appointmentStatus === APPOINTMENT_STATUS.CANCELLED_BY_USER) {
+    const refundInfo = appointment.refundAmount 
+      ? ` Your ${appointment.paymentMethod === "ONLINE" ? "full payment" : "token payment"} of Rs. ${appointment.refundAmount} will be refunded.`
+      : "";
+    return `You cancelled this appointment.${refundInfo}`;
+  }
+
+  if (appointment.appointmentStatus === APPOINTMENT_STATUS.NO_SHOW) {
+    return "You did not show up for this appointment.";
+  }
+
+  return appointment.cancellationReason || "";
 };
 
 /**
  * Check if user can cancel appointment
  */
 export const canCancelAppointment = (appointment) => {
-  return appointment.status === APPOINTMENT_STATUS.CONFIRMED;
+  return [
+    APPOINTMENT_STATUS.HOLD,
+    APPOINTMENT_STATUS.CONFIRMED,
+  ].includes(appointment.appointmentStatus);
 };
 
 /**
@@ -95,7 +148,7 @@ export const getAppointmentSummary = (appointment) => {
     date: appointment.slotDate,
     time: appointment.slotTime,
     amount: appointment.amount,
-    status: appointment.status,
-    paymentType: appointment.paymentType,
+    status: appointment.appointmentStatus,
+    paymentMethod: appointment.paymentMethod,
   };
 };

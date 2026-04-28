@@ -14,9 +14,6 @@ import { getJwtSecret } from "../utils/jwtSecret.js";
 import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
-  PAYMENT_TYPE,
-  TOKEN_AMOUNT,
-  REFUND_STATUS,
 } from "../config/payment.js";
 import { triggerCleanup } from "../utils/backgroundTasks.js";
 
@@ -191,92 +188,83 @@ const appointmentCancel = async (req, res) => {
       });
     }
 
-    if (appointment.status !== APPOINTMENT_STATUS.CONFIRMED) {
+    // Can only cancel HOLD or CONFIRMED appointments
+    if (![APPOINTMENT_STATUS.HOLD, APPOINTMENT_STATUS.CONFIRMED].includes(appointment.appointmentStatus)) {
       return res.json({
         success: false,
         message: "Cannot cancel this appointment",
       });
     }
 
-    // 🟢 Update appointment status (admin/clinic side treated as doctor cancellation)
-    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR;
-    appointment.cancelled = true;
+    // 🟢 Update appointment status
+    appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_ADMIN;
     appointment.cancelledAt = new Date();
+    appointment.cancelledBy = "ADMIN";
     appointment.cancellationReason = cancellationReason || "Cancelled by clinic/doctor";
 
-    const refundAmount = appointment.paidAmount || 0;
-    if (refundAmount > 0) {
-      appointment.refundInitiated = true;
-      appointment.refundStatus = REFUND_STATUS.INITIATED;
-    }
-
-    // Doctor wallet reversal for token appointments (idempotent)
-    if (
-      appointment.paymentType === PAYMENT_TYPE.TOKEN &&
-      appointment.tokenPaid &&
-      !appointment.doctorWalletReversed
-    ) {
-      const doctor = await doctorModel.findById(appointment.docId).select("walletBalance");
-      const currentBalance = Number(doctor?.walletBalance || 0);
-      if (currentBalance < TOKEN_AMOUNT) {
-        return res.json({
-          success: false,
-          message:
-            "Insufficient doctor wallet balance to cancel this token appointment. Please top up or contact support.",
-        });
+    // 🟢 Handle refunds for CONFIRMED appointments with payments
+    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED &&
+        (appointment.isPaid || appointment.tokenPaid)) {
+      
+      const refundAmount = appointment.paidAmount || 0;
+      
+      if (refundAmount > 0) {
+        appointment.refundStatus = "PENDING";
+        appointment.refundAmount = refundAmount;
+        appointment.paymentStatus = PAYMENT_STATUS.REFUNDED;
+        // Stripe refund logic would be handled in a separate Stripe endpoint
       }
-
-      await doctorModel.findByIdAndUpdate(appointment.docId, {
-        $inc: { walletBalance: -TOKEN_AMOUNT },
-      });
-      appointment.doctorWalletReversed = true;
     }
 
     await appointment.save();
 
-    const { docId, slotDate, slotTime } = appointment;
-    const doctorData = await doctorModel.findById(docId);
+    // Release slot only if CONFIRMED
+    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED) {
+      const { docId, slotDate, slotTime } = appointment;
+      const doctorData = await doctorModel.findById(docId);
 
-    if (doctorData && doctorData.slots_booked) {
-      const slots_booked = doctorData.slots_booked;
-      if (slots_booked[slotDate]) {
-        slots_booked[slotDate] = slots_booked[slotDate].filter(
-          (e) => e !== slotTime
-        );
+      if (doctorData && doctorData.slots_booked) {
+        let slots_booked = doctorData.slots_booked;
+        if (slots_booked[slotDate]) {
+          slots_booked[slotDate] = slots_booked[slotDate].filter(
+            (e) => e !== slotTime
+          );
+        }
+        await doctorModel.findByIdAndUpdate(docId, { slots_booked });
       }
-      await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-    }
 
-    try {
-      await appointmentCancelledPatient({
-        patientName: appointment.userData.name,
-        patientEmail: appointment.userData.email,
-        doctorName: appointment.docData.name,
-        doctorEmail: appointment.docData.email,
-        date: slotDate,
-        time: slotTime,
-        reason: appointment.cancellationReason,
-        refundAmount,
-      });
+      // Send cancellation emails
+      try {
+        await appointmentCancelledPatient({
+          patientName: appointment.userData.name,
+          patientEmail: appointment.userData.email,
+          doctorName: appointment.docData.name,
+          doctorEmail: appointment.docData.email,
+          date: slotDate,
+          time: slotTime,
+          reason: appointment.cancellationReason,
+          refundAmount: appointment.refundAmount,
+        });
 
-      await appointmentCancelledDoctor({
-        patientName: appointment.userData.name,
-        patientEmail: appointment.userData.email,
-        doctorName: appointment.docData.name,
-        doctorEmail: appointment.docData.email,
-        date: slotDate,
-        time: slotTime,
-        reason: appointment.cancellationReason,
-      });
-    } catch (err) {
-      console.error("Failed to send cancellation emails:", err);
+        await appointmentCancelledDoctor({
+          patientName: appointment.userData.name,
+          patientEmail: appointment.userData.email,
+          doctorName: appointment.docData.name,
+          doctorEmail: appointment.docData.email,
+          date: slotDate,
+          time: slotTime,
+          reason: appointment.cancellationReason,
+        });
+      } catch (err) {
+        console.error("Failed to send cancellation emails:", err);
+      }
     }
 
     res.json({
       success: true,
       message: "Appointment cancelled successfully",
-      refundInitiated: appointment.refundInitiated,
-      refundAmount,
+      refundStatus: appointment.refundStatus,
+      refundAmount: appointment.refundAmount,
     });
   } catch (error) {
     console.log("appointmentCancel error:", error);
@@ -341,14 +329,14 @@ const changeDoctorStatus = async (req, res) => {
 };
 
 
-// Manual cleanup hook retained for backwards compatibility
+// 🆕 Trigger HOLD expiry cleanup (manual trigger)
 const triggerHoldCleanup = async (req, res) => {
   try {
     const result = await triggerCleanup();
     
     res.json({
       success: true,
-      message: `Cleanup completed. ${result.cleaned} records updated.`,
+      message: `Cleanup completed. ${result.cleaned} expired HOLD appointments were cancelled.`,
       cleaned: result.cleaned,
     });
   } catch (error) {
