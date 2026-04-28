@@ -1,12 +1,13 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { formatPkrAmount } from "../constants/payment";
 
-const DoctorCard = ({ 
-  doctor, 
-  showOnlineConsultButton = false, 
+const DoctorCard = ({
+  doctor,
+  showOnlineConsultButton = false,
   onOnlineConsultClick,
-  showOnlineBadge = false 
+  showOnlineBadge = false,
 }) => {
   const navigate = useNavigate();
 
@@ -31,7 +32,7 @@ const DoctorCard = ({
       className="relative border border-blue-200 rounded-xl overflow-hidden cursor-pointer hover:translate-y-[-10px] transition-all duration-500"
     >
       <img className="bg-blue-50" src={doctor.image} alt={doctor.name} />
-      
+
       <div className="p-4">
         {/* Status Badges */}
         <div className="absolute top-2 right-2 flex flex-col gap-1">
@@ -40,12 +41,14 @@ const DoctorCard = ({
               Suspended
             </span>
           )}
-          
-          {showOnlineBadge && doctor.onlineConsultEnabled && doctor.isOnlineNow && (
-            <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
-              Available Now
-            </span>
-          )}
+
+          {showOnlineBadge &&
+            doctor.onlineConsultEnabled &&
+            doctor.isOnlineNow && (
+              <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-semibold">
+                Available Now
+              </span>
+            )}
         </div>
 
         {/* Availability Status */}
@@ -59,12 +62,16 @@ const DoctorCard = ({
               doctor.available ? "bg-green-500" : "bg-gray-500"
             } rounded-full`}
           ></p>
-          <p className={doctor.status === "suspended" ? "text-red-500 font-semibold" : ""}>
+          <p
+            className={
+              doctor.status === "suspended" ? "text-red-500 font-semibold" : ""
+            }
+          >
             {doctor.status === "suspended"
               ? "Suspended"
               : doctor.available
-              ? "Available"
-              : "Not Available"}
+                ? "Available"
+                : "Not Available"}
           </p>
         </div>
 
@@ -78,9 +85,7 @@ const DoctorCard = ({
           <span className="text-gray-700">
             {doctor.averageRating ? doctor.averageRating : "0.0"}
           </span>
-          <span className="text-gray-500">
-            ({doctor.ratingCount || 0})
-          </span>
+          <span className="text-gray-500">({doctor.ratingCount || 0})</span>
         </div>
 
         {/* Online Consultation Info */}
@@ -90,7 +95,7 @@ const DoctorCard = ({
               Online Consultation
             </p>
             <p className="text-sm font-bold text-blue-800">
-              ${doctor.onlineConsultFee || 0}
+              {formatPkrAmount(doctor.onlineConsultFee || 0)}
             </p>
             <p className="text-xs text-gray-600">
               ~{doctor.averageConsultDuration || 15} min
@@ -99,14 +104,16 @@ const DoctorCard = ({
         )}
 
         {/* Online Consult Button */}
-        {showOnlineConsultButton && doctor.onlineConsultEnabled && doctor.isOnlineNow && (
-          <button
-            onClick={handleOnlineConsultClick}
-            className="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
-          >
-            Start Online Consult
-          </button>
-        )}
+        {showOnlineConsultButton &&
+          doctor.onlineConsultEnabled &&
+          doctor.isOnlineNow && (
+            <button
+              onClick={handleOnlineConsultClick}
+              className="mt-3 w-full bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition"
+            >
+              Start Online Consult
+            </button>
+          )}
       </div>
     </div>
   );

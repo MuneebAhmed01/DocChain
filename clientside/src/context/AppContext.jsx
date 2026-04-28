@@ -2,26 +2,27 @@ import { createContext, useEffect, useState } from "react";
 // import axios from "axios";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosInstance";
+import { PAYMENT_CURRENCY, PAYMENT_SYMBOL } from "../constants/payment";
 
 export const AppContext = createContext();
 
 const AppContextProvider = (props) => {
-  const currencySymbol = "$";
+  const currencySymbol = `${PAYMENT_SYMBOL} `;
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
   const [doctors, setDoctors] = useState([]);
   const [token, setToken] = useState(
-    localStorage.getItem("token") ? localStorage.getItem("token") : false
+    localStorage.getItem("token") ? localStorage.getItem("token") : false,
   );
   const [userData, setUserData] = useState(false);
 
   const getDoctorsData = async () => {
     try {
       const { data } = await axiosInstance.get(
-        
-        // backendUrl + 
-        
-        "/api/doctor/list");
+        // backendUrl +
+
+        "/api/doctor/list",
+      );
       if (data.success) {
         setDoctors(data.doctors);
       } else {
@@ -36,14 +37,13 @@ const AppContextProvider = (props) => {
   const loadUserProfileData = async () => {
     try {
       const { data } = await axiosInstance.get(
-        
         // backendUrl +
-        
-        "/api/user/get-profile"
-      //   , {
-      //   headers: { token },
-      // }
-    );
+
+        "/api/user/get-profile",
+        //   , {
+        //   headers: { token },
+        // }
+      );
       if (data.success) {
         setUserData(data.user);
       } else {
@@ -59,6 +59,7 @@ const AppContextProvider = (props) => {
     doctors,
     getDoctorsData,
     currencySymbol,
+    currencyCode: PAYMENT_CURRENCY,
     token,
     setToken,
     backendUrl,

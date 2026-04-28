@@ -4,11 +4,12 @@ import { AppContext } from "../context/AppContext";
 import DoctorCard from "../components/DoctorCard";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosInstance";
+import { PAYMENT_CURRENCY } from "../constants/payment";
 
 const OnlineConsulting = () => {
   const navigate = useNavigate();
   const { doctors, token, backendUrl } = useContext(AppContext);
-  
+
   const [filterDoc, setFilterDoc] = useState([]);
   const [showFilter, setShowFilter] = useState(false);
   const [speciality, setSpeciality] = useState("");
@@ -17,20 +18,21 @@ const OnlineConsulting = () => {
 
   const specialities = [
     "General physician",
-    "Gynecologist", 
+    "Gynecologist",
     "Dermatologist",
     "Pediatricians",
     "Neurologist",
-    "Gastroenterologist"
+    "Gastroenterologist",
   ];
 
   const cities = ["All", "Lahore", "Islamabad", "Karachi"];
 
-  const applyFilter = () => {``
-    let filtered = doctors.filter(doc => doc.status !== "suspended");
+  const applyFilter = () => {
+    ``;
+    let filtered = doctors.filter((doc) => doc.status !== "suspended");
 
     // Filter for doctors who have online consultation enabled
-    filtered = filtered.filter(doc => doc.onlineConsultEnabled);
+    filtered = filtered.filter((doc) => doc.onlineConsultEnabled);
 
     if (speciality) {
       filtered = filtered.filter((doc) => doc.speciality === speciality);
@@ -56,15 +58,16 @@ const OnlineConsulting = () => {
 
     try {
       setLoading(true);
-      
+
       // Create Stripe checkout session for online consultation
       const { data } = await axiosInstance.post(
         `${backendUrl}/api/stripe/create-online-consult-checkout`,
         {
           doctorId: doctor._id,
-          fee: doctor.onlineConsultFee,
-          doctorName: doctor.name
-        }
+          fee: Number(doctor.onlineConsultFee),
+          doctorName: doctor.name,
+          currency: PAYMENT_CURRENCY,
+        },
       );
 
       if (data.success) {
@@ -74,7 +77,9 @@ const OnlineConsulting = () => {
       }
     } catch (error) {
       console.error("Online consult error:", error);
-      toast.error(error.response?.data?.message || "Failed to start consultation");
+      toast.error(
+        error.response?.data?.message || "Failed to start consultation",
+      );
     } finally {
       setLoading(false);
     }
@@ -84,12 +89,14 @@ const OnlineConsulting = () => {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Online Consulting</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            Online Consulting
+          </h1>
           <p className="text-gray-600 mt-1">
             Connect with doctors instantly through video calls
           </p>
         </div>
-        
+
         <div className="flex gap-2">
           <select
             value={city}
@@ -187,7 +194,7 @@ const OnlineConsulting = () => {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
               2
@@ -199,7 +206,7 @@ const OnlineConsulting = () => {
               </p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
               3

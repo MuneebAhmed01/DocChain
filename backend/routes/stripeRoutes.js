@@ -6,6 +6,12 @@ import onlineConsultSessionModel from "../models/onlineConsultSessionModel.js";
 import authUser from "../middlewares/authUser.js";
 import { v4 as uuidv4 } from 'uuid';
 import userModel from "../models/userModel.js";
+import {
+  assertPkrAmount,
+  fromStripeMinorUnits,
+  toStripeMinorUnits,
+  PAYMENT_CURRENCY,
+} from "../config/payment.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -25,6 +31,10 @@ router.post("/create-checkout-session", async (req, res) => {
       return res.json({ success: false, message: "Doctor not found" });
     }
 
+    const appointmentAmount = assertPkrAmount(appointment.amount, "appointment amount");
+    const discountedAmount = Math.round(appointmentAmount * 0.9);
+    const stripeDiscountedAmount = toStripeMinorUnits(discountedAmount, PAYMENT_CURRENCY);
+
     // Create stripe session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -32,11 +42,11 @@ router.post("/create-checkout-session", async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: PAYMENT_CURRENCY,
             product_data: {
               name: `Appointment with Dr. ${doctor.name}`,
             },
-            unit_amount: Math.round(appointment.amount * 0.9 * 100), // 10% discount
+            unit_amount: stripeDiscountedAmount,
           },
           quantity: 1,
         },
@@ -54,7 +64,7 @@ router.post("/create-checkout-session", async (req, res) => {
     res.json({ success: true, url: session.url });
   } catch (err) {
     console.log("CHECKOUT SESSION ERROR:", err);
-    res.json({ success: false, message: "Checkout session error" });
+    res.json({ success: false, message: err.message || "Checkout session error" });
   }
 });
 
@@ -72,6 +82,10 @@ router.post("/verify-payment", async (req, res) => {
 
     if (!session) {
       return res.json({ success: false, message: "Session not found" });
+    }
+
+    if (session.currency && session.currency.toLowerCase() !== PAYMENT_CURRENCY) {
+      return res.json({ success: false, message: "Invalid payment currency" });
     }
 
     // Stripe new API
@@ -94,6 +108,8 @@ router.post("/verify-payment", async (req, res) => {
     // Mark appointment paid
     appointment.isPaid = true;
     appointment.paymentIntentId = session.payment_intent;
+    appointment.paidAmount = fromStripeMinorUnits(session.amount_total, PAYMENT_CURRENCY);
+    appointment.currency = PAYMENT_CURRENCY;
     await appointment.save();
        try {
   await paymentAccepted({
@@ -101,6 +117,7 @@ router.post("/verify-payment", async (req, res) => {
     patientEmail: appointment.userData.email,
     doctorName: appointment.docData.name,
     amount: appointment.amount,
+    paidAmount: appointment.paidAmount,
     date: appointment.slotDate,
     time: appointment.slotTime,
   });
@@ -110,7 +127,7 @@ router.post("/verify-payment", async (req, res) => {
     // Update doctor earnings
     const doctor = await doctorModel.findById(appointment.docId);
     if (doctor) {
-      const discounted = appointment.amount * 0.9;
+      const discounted = appointment.paidAmount;
       doctor.earnings = (doctor.earnings || 0) + discounted;
       await doctor.save();
     }
@@ -125,9 +142,9 @@ router.post("/verify-payment", async (req, res) => {
 // CREATE ONLINE CONSULTATION CHECKOUT SESSION
 router.post("/create-online-consult-checkout", async (req, res) => {
   try {
-    const { doctorId, fee, doctorName } = req.body;
+    const { doctorId } = req.body;
 
-    if (!doctorId || !fee || !doctorName) {
+    if (!doctorId) {
       return res.json({ success: false, message: "Missing required fields" });
     }
 
@@ -141,6 +158,9 @@ router.post("/create-online-consult-checkout", async (req, res) => {
       return res.json({ success: false, message: "Doctor is not available for online consultation" });
     }
 
+    const consultFee = assertPkrAmount(doctor.onlineConsultFee, "online consultation fee");
+    const stripeConsultFee = toStripeMinorUnits(consultFee, PAYMENT_CURRENCY);
+
     // Create stripe session
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -148,12 +168,12 @@ router.post("/create-online-consult-checkout", async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: "usd",
+            currency: PAYMENT_CURRENCY,
             product_data: {
-              name: `Online Consultation with Dr. ${doctorName}`,
+              name: `Online Consultation with Dr. ${doctor.name}`,
               description: `Instant video consultation (${doctor.averageConsultDuration || 15} minutes)`,
             },
-            unit_amount: Math.round(fee * 100), // Convert to cents
+            unit_amount: stripeConsultFee,
           },
           quantity: 1,
         },
@@ -163,14 +183,15 @@ router.post("/create-online-consult-checkout", async (req, res) => {
       metadata: {
         type: 'online_consultation',
         doctorId: doctorId,
-        fee: fee.toString()
+          fee: consultFee.toString(),
+        currency: PAYMENT_CURRENCY
       }
     });
 
     res.json({ success: true, url: session.url });
   } catch (err) {
     console.log("ONLINE CONSULT CHECKOUT SESSION ERROR:", err);
-    res.json({ success: false, message: "Checkout session error" });
+    res.json({ success: false, message: err.message || "Checkout session error" });
   }
 });
 
@@ -187,6 +208,10 @@ router.post("/verify-online-consult-payment", authUser, async (req, res) => {
 
     if (!session) {
       return res.json({ success: false, message: "Session not found" });
+    }
+
+    if (session.currency && session.currency.toLowerCase() !== PAYMENT_CURRENCY) {
+      return res.json({ success: false, message: "Invalid payment currency" });
     }
 
     if (session.status !== "complete") {
@@ -227,7 +252,8 @@ router.post("/verify-online-consult-payment", authUser, async (req, res) => {
       doctorId: doctorId,
       patientId: authUser.id || authUser.userId,
       roomId: roomId,
-      fee: parseFloat(session.metadata.fee),
+      fee: fromStripeMinorUnits(session.amount_total, PAYMENT_CURRENCY),
+      currency: PAYMENT_CURRENCY,
       durationEstimate: doctor.averageConsultDuration || 15,
       paymentIntentId: session.payment_intent,
       status: "pending_doctor_accept"
