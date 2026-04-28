@@ -13,6 +13,7 @@ import appointmentReminder from "../emailTemplates/appointmentReminder.js";
 import reviewModel from "../models/reviewModel.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
+import { PAYMENT_CURRENCY } from "../config/payment.js";
 
 
 
@@ -231,6 +232,7 @@ if (!docData.available) {
       userData,
       docData,
       amount: docData.fees,
+      currency: PAYMENT_CURRENCY,
       slotTime,
       slotDate,
       date: Date.now(),

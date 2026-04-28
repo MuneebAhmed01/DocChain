@@ -20,6 +20,10 @@ const onlineConsultSessionSchema = new mongoose.Schema({
     type: Number, 
     required: true 
   },
+  currency: {
+    type: String,
+    default: "pkr"
+  },
   durationEstimate: { 
     type: Number, 
     required: true,

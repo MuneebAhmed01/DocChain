@@ -2,6 +2,7 @@ import express from "express";
 import Stripe from "stripe";
 import appointmentModel from "../models/appointmentModel.js";
 import doctorModel from "../models/doctorModel.js";
+import { fromStripeMinorUnits, PAYMENT_CURRENCY } from "../config/payment.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -38,15 +39,15 @@ router.post(
         // Mark appointment as paid
         appt.isPaid = true;
         appt.paymentIntentId = session.payment_intent;
+        appt.currency = PAYMENT_CURRENCY;
 
-        // Save the actual amount paid (with discount)
-        const discountedAmount = Math.round(appt.amount * 0.9 * 100) / 100; // keep cents
-        appt.paidAmount = discountedAmount;
+        // Save the actual amount paid in PKR units
+        appt.paidAmount = fromStripeMinorUnits(session.amount_total, PAYMENT_CURRENCY);
 
         await appt.save();
 
         console.log(
-          `Appointment marked as paid. Paid amount: $${discountedAmount}`
+          `Appointment marked as paid. Paid amount: Rs. ${appt.paidAmount}`
         );
       }
     }

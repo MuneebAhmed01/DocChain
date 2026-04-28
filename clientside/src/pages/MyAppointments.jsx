@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import axiosInstance from "../axiosInstance";
 import ChatWindow from "../components/ChatWindow";
 import useChatNotifications from "../hooks/useChatNotifications";
+import { formatPkrAmount } from "../constants/payment";
 
 const MyAppointments = () => {
   const { backendUrl, token, getDoctorsData } = useContext(AppContext);
@@ -63,6 +64,8 @@ const MyAppointments = () => {
 
       if (data.url) {
         window.location.href = data.url; // Redirect to Stripe
+      } else if (data?.message) {
+        toast.error(data.message);
       } else {
         toast.error("Unable to process payment.");
       }
@@ -172,13 +175,16 @@ const MyAppointments = () => {
 
                 {/* ⭐ PRICE DISPLAY WITH DISCOUNT */}
                 <p className="mt-2">
-                  <span className="font-medium">Fee:</span> ${item.amount}
+                  <span className="font-medium">Fee:</span>{" "}
+                  {formatPkrAmount(item.amount)}
                 </p>
 
                 <p className="text-green-600 text-sm">
                   10% OFF on online payment
                 </p>
-                <p className="font-semibold">Pay Online: ${discounted}</p>
+                <p className="font-semibold">
+                  Pay Online: {formatPkrAmount(discounted)}
+                </p>
 
                 {item.isPaid && (
                   <span className="inline-block mt-1 px-3 py-1 bg-green-500 text-white rounded text-xs">

@@ -11,6 +11,7 @@ const appointmentSchema = new mongoose.Schema({
   checkoutSessionId: { type: String, default: null },
   isPaid: { type: Boolean, default: false },
   paidAmount: { type: Number, default: 0 }, // <-- actual paid amount
+  currency: { type: String, default: "pkr" },
   refundId: { type: String, default: null },
   
   docData: { type: Object, required: true },

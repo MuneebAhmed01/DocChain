@@ -4,6 +4,7 @@ import { AppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosInstance";
 import { io } from "socket.io-client";
+import { formatPkrAmount } from "../constants/payment";
 
 const ConsultWaiting = () => {
   const { roomId } = useParams();
@@ -269,7 +270,9 @@ const ConsultWaiting = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Fee:</span>
-              <span className="text-gray-800">${sessionData?.fee || 0}</span>
+              <span className="text-gray-800">
+                {formatPkrAmount(sessionData?.fee || 0)}
+              </span>
             </div>
           </div>
         </div>
