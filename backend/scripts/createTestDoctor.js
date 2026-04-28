@@ -20,7 +20,7 @@ const createTestDoctor = async () => {
       city: 'Lahore',
       about: 'Dr. Davis has a strong commitment to delivering comprehensive medical care, focusing on preventive medicine, early diagnosis, and effective treatment strategies.',
       available: true,
-      fees: 50,
+      fees: 1500,
       address: {
         line1: "123 Medical Center",
         line2: "Lahore, Pakistan"
