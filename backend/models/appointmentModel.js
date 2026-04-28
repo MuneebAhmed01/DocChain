@@ -26,27 +26,21 @@ const appointmentSchema = new mongoose.Schema({
   // Payment Status
   paymentStatus: {
     type: String,
-    enum: ["PAID", "PARTIAL", "REFUNDED"],
+    enum: ["PAID", "PARTIAL"],
     required: true
   },
 
   // Status (only CONFIRMED appointments block slots)
   status: {
     type: String,
-    enum: [
-      "CONFIRMED",
-      "CANCELLED",
-      "CANCELLED_BY_PATIENT",
-      "CANCELLED_BY_DOCTOR",
-    ],
+    enum: ["CONFIRMED", "CANCELLED"],
     default: "CONFIRMED"
   },
 
   // Payment Tracking
   paymentIntentId: { type: String, default: null },
   checkoutSessionId: { type: String, default: null },
-  isPaid: { type: Boolean, default: false },
-  tokenPaid: { type: Boolean, default: false },
+  isPaid: { type: Boolean, default: true }, // always true when appointment exists
   
   // Timestamps
   date: { type: Number, required: true }, // booking created timestamp
@@ -59,15 +53,6 @@ const appointmentSchema = new mongoose.Schema({
   // Refund Information
   refundId: { type: String, default: null },
   refundInitiated: { type: Boolean, default: false },
-  refundStatus: {
-    type: String,
-    enum: ["NONE", "INITIATED", "PROCESSING", "SUCCEEDED", "FAILED"],
-    default: "NONE",
-  },
-
-  // Doctor wallet consistency guards (idempotency)
-  doctorWalletCredited: { type: Boolean, default: false },
-  doctorWalletReversed: { type: Boolean, default: false },
 
   // Legacy fields for backward compatibility
   payment: { type: Boolean, default: true },

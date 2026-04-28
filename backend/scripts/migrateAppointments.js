@@ -7,13 +7,7 @@
 
 import mongoose from "mongoose";
 import appointmentModel from "../models/appointmentModel.js";
-import {
-  APPOINTMENT_STATUS,
-  PAYMENT_STATUS,
-  PAYMENT_TYPE,
-  REFUND_STATUS,
-  TOKEN_AMOUNT,
-} from "../config/payment.js";
+import { APPOINTMENT_STATUS, PAYMENT_STATUS } from "../config/payment.js";
 import "dotenv/config";
 
 const migrateAppointments = async () => {
@@ -35,56 +29,72 @@ const migrateAppointments = async () => {
       try {
         let needsUpdate = false;
 
-        // Status normalization
-        if (!appointment.status) {
-          appointment.status = appointment.cancelled
-            ? APPOINTMENT_STATUS.CANCELLED
-            : APPOINTMENT_STATUS.CONFIRMED;
-          needsUpdate = true;
-        }
-
-        // Payment type inference (best-effort)
-        if (!appointment.paymentType) {
-          appointment.paymentType = appointment.tokenPaid
-            ? PAYMENT_TYPE.TOKEN
-            : PAYMENT_TYPE.ONLINE;
-          needsUpdate = true;
-        }
-
-        // Payment status inference
-        if (!appointment.paymentStatus) {
-          appointment.paymentStatus = appointment.isPaid
-            ? PAYMENT_STATUS.PAID
-            : PAYMENT_STATUS.PARTIAL;
-          needsUpdate = true;
-        }
-
-        // Backfill paidAmount for legacy records (best-effort)
-        if (typeof appointment.paidAmount !== "number") {
-          if (appointment.paymentType === PAYMENT_TYPE.TOKEN && appointment.tokenPaid) {
-            appointment.paidAmount = TOKEN_AMOUNT;
-          } else if (appointment.isPaid) {
-            appointment.paidAmount = appointment.amount;
-          } else {
-            appointment.paidAmount = 0;
+        // Migrate based on old fields
+        if (!appointment.appointmentStatus) {
+          // If cancelled: true -> CANCELLED_BY_USER or CANCELLED_BY_ADMIN
+          if (appointment.cancelled) {
+            appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_USER;
+            appointment.cancelledBy = "USER";
+            appointment.cancellationReason = "Cancelled (migrated from old system)";
+          }
+          // If payment: true and isPaid: true -> CONFIRMED and PAID
+          else if (appointment.payment && appointment.isPaid) {
+            appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
+            appointment.paymentStatus = PAYMENT_STATUS.PAID;
+            appointment.confirmationTime = new Date(appointment.date);
+          }
+          // If payment: true and no isPaid -> CONFIRMED and PARTIAL
+          else if (appointment.payment && !appointment.isPaid) {
+            appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
+            appointment.paymentStatus = PAYMENT_STATUS.PARTIAL;
+            appointment.confirmationTime = new Date(appointment.date);
+          }
+          // If no payment data -> CONFIRMED (assumption for old bookings)
+          else {
+            appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
+            appointment.paymentStatus = appointment.isPaid ? PAYMENT_STATUS.PAID : PAYMENT_STATUS.NOT_PAID;
+            appointment.confirmationTime = new Date(appointment.date);
           }
           needsUpdate = true;
         }
 
-        // Refund fields
+        // Add paymentMethod if missing
+        if (!appointment.paymentMethod) {
+          appointment.paymentMethod = appointment.isPaid ? "ONLINE" : null;
+          needsUpdate = true;
+        }
+
+        // Add paymentStatus if missing
+        if (!appointment.paymentStatus) {
+          if (appointment.isPaid) {
+            appointment.paymentStatus = PAYMENT_STATUS.PAID;
+          } else if (appointment.cancelled) {
+            appointment.paymentStatus = PAYMENT_STATUS.NOT_PAID;
+          } else {
+            appointment.paymentStatus = PAYMENT_STATUS.NOT_PAID;
+          }
+          needsUpdate = true;
+        }
+
+        // Add default values for new fields
+        if (!appointment.holdExpiry) {
+          appointment.holdExpiry = null;
+        }
+
+        if (!appointment.tokenAmount) {
+          appointment.tokenAmount = 0;
+        }
+
+        if (!appointment.tokenPaid) {
+          appointment.tokenPaid = false;
+        }
+
         if (!appointment.refundStatus) {
-          appointment.refundStatus = REFUND_STATUS.NONE;
-          needsUpdate = true;
+          appointment.refundStatus = "NONE";
         }
 
-        if (typeof appointment.doctorWalletCredited !== "boolean") {
-          appointment.doctorWalletCredited = false;
-          needsUpdate = true;
-        }
-
-        if (typeof appointment.doctorWalletReversed !== "boolean") {
-          appointment.doctorWalletReversed = false;
-          needsUpdate = true;
+        if (!appointment.refundAmount) {
+          appointment.refundAmount = 0;
         }
 
         if (needsUpdate) {

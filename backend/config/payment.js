@@ -18,24 +18,12 @@ export const PAYMENT_TYPE = {
 export const PAYMENT_STATUS = {
   PAID: "PAID",         // Full payment received (ONLINE)
   PARTIAL: "PARTIAL",   // Token received (TOKEN)
-  REFUNDED: "REFUNDED", // Payment refunded after conflict/cancellation
 };
 
 // Appointment Status Constants
 export const APPOINTMENT_STATUS = {
   CONFIRMED: "CONFIRMED",      // Payment received, slot locked
-  CANCELLED: "CANCELLED",      // Backward compatible generic cancelled
-  CANCELLED_BY_PATIENT: "CANCELLED_BY_PATIENT",
-  CANCELLED_BY_DOCTOR: "CANCELLED_BY_DOCTOR",
-};
-
-// Refund Status Constants (for UI + ops)
-export const REFUND_STATUS = {
-  NONE: "NONE",
-  INITIATED: "INITIATED",
-  PROCESSING: "PROCESSING",
-  SUCCEEDED: "SUCCEEDED",
-  FAILED: "FAILED",
+  CANCELLED: "CANCELLED",      // Cancelled by user or admin
 };
 
 export const assertPkrAmount = (amount, fieldName = "amount") => {

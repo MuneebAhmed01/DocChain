@@ -20,7 +20,6 @@ import {
   PAYMENT_TYPE,
   TOKEN_AMOUNT,
   calculateDiscountedAmount,
-  REFUND_STATUS,
 } from "../config/payment.js";
 
 
@@ -321,14 +320,11 @@ const cancelAppointment = async (req, res) => {
     }
 
     // 🟢 Cancel appointment
-    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_PATIENT;
+    appointment.status = APPOINTMENT_STATUS.CANCELLED;
     appointment.cancelled = true;
     appointment.cancelledAt = new Date();
     appointment.cancellationReason = "Cancelled by patient";
     appointment.refundInitiated = appointment.paidAmount > 0; // Mark for refund if paid
-    if (appointment.refundInitiated) {
-      appointment.refundStatus = REFUND_STATUS.INITIATED;
-    }
 
     await appointment.save();
 
