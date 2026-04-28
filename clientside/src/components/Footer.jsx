@@ -1,4 +1,15 @@
+import React from "react";
+import { Link } from "react-router-dom";
+import { specialityData } from "../assets/assets";
+
 const Footer = () => {
+  const menuLinks = [
+    { label: "Home", to: { pathname: "/", hash: "#" } },
+    { label: "About Us", to: "/about" },
+    { label: "Services", to: { pathname: "/", hash: "#speciality" } },
+    { label: "Blog", to: "/blogs" },
+  ];
+
   return (
     <footer className="-mx-4 sm:-mx-[3.2%] bg-gradient-to-b from-[#0b0b0b] to-black text-gray-400 flex flex-col justify-between">
       
@@ -34,21 +45,33 @@ const Footer = () => {
         <div className="text-center sm:text-left">
           <h4 className="text-white font-medium mb-4">Menu</h4>
           <ul className="space-y-2 text-sm">
-            <li>Home</li>
-            <li>About Us</li>
-            <li>Services</li>
-            <li>Blog</li>
+            {menuLinks.map((item) => (
+              <li key={item.label}>
+                <Link
+                  to={item.to}
+                  className="text-gray-400 hover:text-white transition"
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
         {/* Services */}
         <div className="text-center sm:text-left">
-          <h4 className="text-white font-medium mb-4">Services</h4>
+          <h4 className="text-white font-medium mb-4">Specialties</h4>
           <ul className="space-y-2 text-sm">
-            <li>Cardiology</li>
-            <li>Neurology</li>
-            <li>Radiology</li>
-            <li>Urology</li>
+            {specialityData.map((item) => (
+              <li key={item.speciality}>
+                <Link
+                  to={`/doctors/${encodeURIComponent(item.speciality)}`}
+                  className="text-gray-400 hover:text-white transition"
+                >
+                  {item.speciality}
+                </Link>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -56,9 +79,17 @@ const Footer = () => {
         <div className="text-center sm:text-left">
           <h4 className="text-white font-medium mb-4">Further Information</h4>
           <ul className="space-y-2 text-sm">
-            <li>Terms & Condition</li>
-            <li>Privacy Policy</li>
-            <li>Support</li>
+            <li>
+              <Link to="/contact" className="text-gray-400 hover:text-white transition">
+                Contact Support
+              </Link>
+            </li>
+            <li>
+              <Link to="/about" className="text-gray-400 hover:text-white transition">
+                About Us
+              </Link>
+            </li>
+            <li className="text-gray-400">All rights reserved</li>
           </ul>
         </div>
       </div>
@@ -71,10 +102,14 @@ const Footer = () => {
             Doc<span className="text-gray-300">Chain</span>
           </h1>
 
-          <div className="flex flex-wrap justify-center lg:justify-end gap-4 sm:gap-6 text-sm">
-            <span>Privacy Policy</span>
-            <span>Terms & Condition</span>
-            <span>Healthcare Setting</span>
+          <div className="flex flex-wrap justify-center lg:justify-end gap-4 sm:gap-6 text-sm text-gray-400">
+            <span>© 2026 DocChain</span>
+            <Link to="/about" className="hover:text-white transition">
+              About
+            </Link>
+            <Link to="/contact" className="hover:text-white transition">
+              Contact
+            </Link>
           </div>
 
         </div>
