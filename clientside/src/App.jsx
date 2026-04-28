@@ -1,5 +1,5 @@
 import React from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import Home from "./pages/Home";
 import Doctors from "./pages/Doctors";
 import Login from "./pages/Login";
@@ -22,6 +22,12 @@ import ConsultRoom from "./pages/ConsultRoom";
 import ConsultWaiting from "./pages/ConsultWaiting";
 import ScrollToTop from "./components/ScrollToTop";
 
+const LegacyBlogRedirect = () => {
+  const { idOrSlug } = useParams();
+
+  return <Navigate replace to={`/blogs/${idOrSlug}`} />;
+};
+
 const App = () => {
   return (
     <div className="mx-4 sm:mx-[3%]  ">
@@ -40,7 +46,8 @@ const App = () => {
         {/* Blog route */}
 
         <Route path="/blogs" element={<BlogList />} />
-        <Route path="/blog/:idOrSlug" element={<BlogDetail />} />
+        <Route path="/blogs/:id" element={<BlogDetail />} />
+        <Route path="/blog/:idOrSlug" element={<LegacyBlogRedirect />} />
 
         <Route path="/contact" element={<Contact />} />
         <Route path="/my-profile" element={<MyProfile />} />

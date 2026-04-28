@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useBlogs } from "../../context/BlogContext";
 
 export default function BlogDetail() {
-  const { idOrSlug } = useParams();
+  const { id } = useParams();
+  const navigate = useNavigate();
   const { blogs } = useBlogs();
 
   const [blog, setBlog] = useState(null);
@@ -11,19 +13,18 @@ export default function BlogDetail() {
   // Try to find blog from context (no extra fetch)
   useEffect(() => {
     const fromContext =
-      blogs.find((b) => b._id === idOrSlug) ||
-      blogs.find((b) => b.slug === idOrSlug);
+      blogs.find((b) => b._id === id) || blogs.find((b) => b.slug === id);
 
     if (fromContext) {
       setBlog(fromContext);
     } else {
       // fallback → if user refreshes or comes from direct link
-      fetch(`/api/blogs/${idOrSlug}`)
+      fetch(`/api/blogs/${id}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => setBlog(data))
         .catch(() => setBlog(null));
     }
-  }, [idOrSlug, blogs]);
+  }, [id, blogs]);
 
   if (!blog) {
     return (
@@ -35,11 +36,23 @@ export default function BlogDetail() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {/* Blog Image */}
-      <img
-        src={blog.imageUrl || "/placeholder.jpg"}
-        className="w-full h-48 sm:h-64 md:h-80 object-cover rounded-xl mb-4"
-      />
+      <div className="relative mb-4 overflow-hidden rounded-xl">
+        <button
+          type="button"
+          onClick={() => navigate("/#health-tips")}
+          className="absolute left-4 top-4 z-10 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-2 text-sm font-medium text-gray-700 shadow-lg backdrop-blur-sm transition hover:bg-white"
+          aria-label="Go back"
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+
+        {/* Blog Image */}
+        <img
+          src={blog.imageUrl || "/placeholder.jpg"}
+          className="w-full h-48 sm:h-64 md:h-80 object-cover"
+        />
+      </div>
 
       {/* Title */}
       <h1 className="text-3xl font-bold mb-2">{blog.title}</h1>
