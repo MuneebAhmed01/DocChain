@@ -6,6 +6,7 @@ import {
   appointmentsAdmin,
   appointmentCancel,
   adminDashboard,
+  triggerHoldCleanup,
 } from "../controllers/adminController.js";
 
 import { upload } from "../middlewares/multer.js";
@@ -29,5 +30,6 @@ adminRouter.post(
 adminRouter.get("/appointments", authAdmin, appointmentsAdmin);
 adminRouter.post("/cancel-appointment", authAdmin, appointmentCancel);
 adminRouter.get("/dashboard", authAdmin, adminDashboard);
+adminRouter.post("/trigger-hold-cleanup", authAdmin, triggerHoldCleanup);
 
 export default adminRouter;

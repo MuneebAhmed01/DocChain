@@ -21,6 +21,7 @@ import chatModel from "./models/chatModel.js";
 import messageModel from "./models/messageModel.js";
 import onlineConsultRoute from "./routes/onlineConsultRoute.js";
 import { getJwtSecret } from "./utils/jwtSecret.js";
+import { startBackgroundTasks, stopBackgroundTasks } from "./utils/backgroundTasks.js";
 
 
 
@@ -368,6 +369,18 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(port, () => console.log(`Server started on port ${port} with Socket.IO`));
+server.listen(port, () => {
+  console.log(`Server started on port ${port} with Socket.IO`);
+  
+  // 🟢 Start background cleanup tasks
+  startBackgroundTasks();
+  
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down server...');
+    stopBackgroundTasks();
+    process.exit(0);
+  });
+});
 
 console.log("backend running")

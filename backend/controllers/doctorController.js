@@ -6,6 +6,12 @@ import appointmentCompletedPatient from "../emailTemplates/appointmentCompletedP
 import doctorRegistered from "../emailTemplates/doctorRegistered.js";
 import reviewModel from "../models/reviewModel.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
+import {
+  APPOINTMENT_STATUS,
+  PAYMENT_TYPE,
+  TOKEN_AMOUNT,
+  REFUND_STATUS,
+} from "../config/payment.js";
 
 
 
@@ -132,31 +138,84 @@ try {
 // API to cancel appointment for doctor panel
 const appointmentCancel = async (req, res) => {
   try {
-    const { docId, appointmentId } = req.body;
-    const appointmentData = await appointmentModel.findById(appointmentId);
+    const { docId, appointmentId, cancellationReason } = req.body;
 
-    if (appointmentData && appointmentData.docId === docId) {
-      await appointmentModel.findByIdAndUpdate(appointmentId, {
-        cancelled: true,
-      });
-      // Notify doctor about patient cancellation
-try {
-   appointmentCancelledByPatientDoctor({
-    patientName: appointmentData.userData.name,
-    patientEmail: appointmentData.userData.email,
-    doctorName: doctorData.name,
-    doctorEmail: doctorData.email,
-    date: appointmentData.slotDate,
-    time: appointmentData.slotTime,
-  });
-} catch (err) {
-  console.error("Failed to send doctor cancellation email:", err);
-}
-
-      return res.json({ success: true, message: "Appointment Cancelled" });
-    } else {
-      return res.json({ success: false, message: "Cancellation Failed" });
+    if (!docId || !appointmentId) {
+      return res.json({ success: false, message: "Missing details" });
     }
+
+    const appointment = await appointmentModel.findById(appointmentId);
+
+    if (!appointment) {
+      return res.json({ success: false, message: "Appointment not found" });
+    }
+
+    if (String(appointment.docId) !== String(docId)) {
+      return res.json({ success: false, message: "Not authorized" });
+    }
+
+    // Only allow cancelling confirmed appointments
+    if (appointment.status !== APPOINTMENT_STATUS.CONFIRMED) {
+      return res.json({ success: false, message: "Cannot cancel this appointment" });
+    }
+
+    // Wallet guard: for token appointments, ensure the doctor can reverse the token
+    if (
+      appointment.paymentType === PAYMENT_TYPE.TOKEN &&
+      appointment.tokenPaid &&
+      !appointment.doctorWalletReversed
+    ) {
+      const doctor = await doctorModel.findById(docId).select("walletBalance");
+      const currentBalance = Number(doctor?.walletBalance || 0);
+
+      if (currentBalance < TOKEN_AMOUNT) {
+        return res.json({
+          success: false,
+          message:
+            "Insufficient wallet balance to cancel this token appointment. Please contact admin.",
+        });
+      }
+
+      await doctorModel.findByIdAndUpdate(docId, {
+        $inc: { walletBalance: -TOKEN_AMOUNT },
+      });
+      appointment.doctorWalletReversed = true;
+    }
+
+    // Mark appointment cancelled by doctor + refund initiated (token/full paid amount)
+    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR;
+    appointment.cancelled = true;
+    appointment.cancelledAt = new Date();
+    appointment.cancellationReason =
+      cancellationReason || "Cancelled by doctor due to an emergency";
+
+    const refundAmount = Number(appointment.paidAmount || 0);
+    if (refundAmount > 0) {
+      appointment.refundInitiated = true;
+      appointment.refundStatus = REFUND_STATUS.INITIATED;
+    }
+
+    await appointment.save();
+
+    // Release slot from doctor's schedule
+    const doctorData = await doctorModel.findById(docId);
+    if (doctorData && doctorData.slots_booked) {
+      const slotsBooked = doctorData.slots_booked;
+      if (slotsBooked[appointment.slotDate]) {
+        slotsBooked[appointment.slotDate] = slotsBooked[appointment.slotDate].filter(
+          (t) => t !== appointment.slotTime
+        );
+      }
+      doctorData.slots_booked = slotsBooked;
+      await doctorData.save();
+    }
+
+    return res.json({
+      success: true,
+      message: "Appointment cancelled",
+      refundStatus: appointment.refundStatus,
+      refundAmount,
+    });
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });

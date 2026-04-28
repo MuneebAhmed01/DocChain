@@ -4,12 +4,11 @@ import { AppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
 import RelatedDoctors from "../components/RelatedDoctors";
 import { toast } from "react-toastify";
-import axios from "axios";
 import axiosInstance from "../axiosInstance";
+import { formatPkrAmount } from "../constants/payment";
 const Appointment = () => {
   const { docId } = useParams();
-  const { doctors, currencySymbol, backendUrl, token, getDoctorsData } =
-    useContext(AppContext);
+  const { doctors, currencySymbol, token } = useContext(AppContext);
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const navigate = useNavigate();
@@ -19,6 +18,8 @@ const Appointment = () => {
   const [slotIndex, setSlotIndex] = useState(0);
   const [slotTime, setSlotTime] = useState("");
   const [reviews, setReviews] = useState([]);
+  const [bookingOptions, setBookingOptions] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchDocInfo = async () => {
     const docInfo = doctors.find((doc) => doc._id === docId);
@@ -160,7 +161,13 @@ const Appointment = () => {
       return navigate("/login");
     }
 
+    if (!slotTime) {
+      toast.error("Please select a time slot");
+      return;
+    }
+
     try {
+      setIsSubmitting(true);
       const date = docSlots[slotIndex][0].datetime;
 
       let day = date.getDate();
@@ -170,21 +177,45 @@ const Appointment = () => {
       const slotDate = day + "_" + month + "_" + year;
 
       const { data } = await axiosInstance.post(
-        // backendUrl +
         "/api/user/book-appointment",
         { docId, slotDate, slotTime },
-        // { headers: { token } }
       );
       if (data.success) {
-        toast.success(data.message);
-        getDoctorsData();
-        navigate("/my-appointments");
+        setBookingOptions(data);
       } else {
         toast.error(data.message);
       }
     } catch (error) {
       console.log(error);
       toast.error(error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const startPayment = async (endpoint) => {
+    try {
+      setIsSubmitting(true);
+      const date = docSlots[slotIndex][0].datetime;
+      const slotDate = `${date.getDate()}_${date.getMonth() + 1}_${date.getFullYear()}`;
+
+      const { data } = await axiosInstance.post(endpoint, {
+        docId,
+        slotDate,
+        slotTime,
+      });
+
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      toast.error(data.message || "Unable to start payment.");
+    } catch (error) {
+      console.log(error);
+      toast.error("Unable to start payment.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -192,6 +223,10 @@ const Appointment = () => {
     fetchDocInfo();
     fetchReviews(); // ⭐ NEW
   }, [doctors, docId]);
+
+  useEffect(() => {
+    setBookingOptions(null);
+  }, [slotIndex, slotTime]);
 
   useEffect(() => {
     getAvailableSlots();
@@ -340,10 +375,53 @@ const Appointment = () => {
           </div>
           <button
             onClick={bookAppointment}
+            disabled={isSubmitting}
             className="bg-primary text-white text-sm font-light px-14 py-3 rounded-full my-6"
           >
-            Book an appointment
+            {isSubmitting ? "Please wait..." : "Continue to payment"}
           </button>
+
+          {bookingOptions?.success && (
+            <div className="border rounded-2xl p-5 max-w-2xl bg-white shadow-sm">
+              <p className="text-lg font-semibold text-gray-800">Choose payment option</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Your appointment is created only after successful payment.
+              </p>
+
+              <div className="mt-4 space-y-3">
+                <div className="border rounded-xl p-4">
+                  <p className="font-semibold text-gray-800">Pay Full Online (10% Discount)</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option1_online.youPay)}
+                  </p>
+                  <button
+                    onClick={() => startPayment("/api/stripe/create-checkout-session")}
+                    disabled={isSubmitting}
+                    className="mt-3 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg"
+                  >
+                    Pay Full Online
+                  </button>
+                </div>
+
+                <div className="border rounded-xl p-4">
+                  <p className="font-semibold text-gray-800">Pay Token (Rs. 500)</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.youPay)}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Pay at clinic later: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.remainingAtClinic)}
+                  </p>
+                  <button
+                    onClick={() => startPayment("/api/stripe/create-token-payment-session")}
+                    disabled={isSubmitting}
+                    className="mt-3 bg-emerald-600 text-white text-sm px-4 py-2 rounded-lg"
+                  >
+                    Pay Token
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* -------------------- Listing Related Doctors -------------------- */}

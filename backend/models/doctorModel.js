@@ -22,6 +22,7 @@ ratingCount: { type: Number, default: 0 },
 ,
     slots_booked: { type: Object, default: {} },
     earnings: { type: Number, default: 0 },
+    walletBalance: { type: Number, default: 0 },
     status: {
     type: String,
     enum: ["active", "suspended"],

@@ -1,0 +1,49 @@
+/**
+ * Background Tasks for DocChain
+ * Handles periodic cleanup and maintenance tasks
+ */
+
+import { cleanupExpiredHolds } from "../services/appointmentService.js";
+
+let cleanupInterval = null;
+
+/**
+ * Start background tasks
+ * Should be called once when server starts
+ */
+export const startBackgroundTasks = () => {
+  console.log("🚀 Starting background tasks...");
+
+  // Run cleanup every 5 minutes (300,000 ms)
+  // For testing, you can change this to 1 minute (60,000 ms)
+  cleanupInterval = setInterval(async () => {
+    try {
+      console.log(`🕐 Running HOLD expiry cleanup at ${new Date().toISOString()}`);
+      await cleanupExpiredHolds();
+    } catch (error) {
+      console.error("❌ Error in cleanup task:", error);
+      // Don't rethrow - let other tasks continue
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+
+  console.log("✅ Background tasks started");
+};
+
+/**
+ * Stop background tasks
+ * Call when shutting down server
+ */
+export const stopBackgroundTasks = () => {
+  if (cleanupInterval) {
+    clearInterval(cleanupInterval);
+    console.log("🛑 Background tasks stopped");
+  }
+};
+
+/**
+ * Manually trigger cleanup (useful for testing or admin panel)
+ */
+export const triggerCleanup = async () => {
+  console.log("🔄 Manually triggering HOLD expiry cleanup...");
+  return await cleanupExpiredHolds();
+};

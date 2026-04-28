@@ -13,7 +13,15 @@ import appointmentReminder from "../emailTemplates/appointmentReminder.js";
 import reviewModel from "../models/reviewModel.js";
 import sendEmail from "../utils/sendEmail.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
-import { PAYMENT_CURRENCY } from "../config/payment.js";
+import {
+  PAYMENT_CURRENCY,
+  APPOINTMENT_STATUS,
+  PAYMENT_STATUS,
+  PAYMENT_TYPE,
+  TOKEN_AMOUNT,
+  calculateDiscountedAmount,
+  REFUND_STATUS,
+} from "../config/payment.js";
 
 
 
@@ -175,110 +183,91 @@ const { name, phone, address, dob, gender } = req.body;
   }
 };
 
-// API to book appointment
+// API to check slot availability and get payment options
+// ❌ DO NOT create appointment here
+// ✅ Only check availability and return payment options
 const bookAppointment = async (req, res) => {
   try {
     const userId = req.user.userId;
-
-    const {  docId, slotDate, slotTime } = req.body;
+    const { docId, slotDate, slotTime } = req.body;
 
     if (!slotTime || !String(slotTime).trim()) {
       return res.json({ success: false, message: "Please select a slot" });
     }
 
+    // Fetch doctor data
     const docData = await doctorModel.findById(docId).select("-password");
-const doctor = await doctorModel.findById(docId);
-
-if (!doctor) {
-  return res.status(404).json({
-    success: false,
-    message: "Doctor not found"
-  });
-}
-
-  // / 🔴 NEW: block suspended doctors FIRST
-if (docData.status === "suspended") {
-  return res.json({
-    success: false,
-    message: "This doctor has been suspended",
-  });
-}
-
-// existing availability logic (unchanged)
-if (!docData.available) {
-  return res.json({
-    success: false,
-    message: "Doctor not available",
-  });
-}
-
-    let slots_booked = docData.slots_booked;
-
-    // checking for slot availability
-    if (slots_booked[slotDate]) {
-      if (slots_booked[slotDate].includes(slotTime)) {
-        return res.json({ success: false, message: "Slot not available" });
-      } else {
-        slots_booked[slotDate].push(slotTime);
-      }
-    } else {
-      slots_booked[slotDate] = [];
-      slots_booked[slotDate].push(slotTime);
+    if (!docData) {
+      return res.status(404).json({
+        success: false,
+        message: "Doctor not found",
+      });
     }
 
-    const userData = await userModel.findById(userId).select("-password");
+    // Check if doctor is suspended
+    if (docData.status === "suspended") {
+      return res.json({
+        success: false,
+        message: "This doctor has been suspended",
+      });
+    }
 
-    delete docData.slots_booked;
+    // Check if doctor is available
+    if (!docData.available) {
+      return res.json({
+        success: false,
+        message: "Doctor not available",
+      });
+    }
 
-    const appointmentData = {
-      userId,
+    // 🔴 CHECK: Is this slot already CONFIRMED by another user?
+    const existingConfirmedAppointment = await appointmentModel.findOne({
       docId,
-      userData,
-      docData,
-      amount: docData.fees,
-      currency: PAYMENT_CURRENCY,
-      slotTime,
       slotDate,
-      date: Date.now(),
-    };
+      slotTime,
+      status: APPOINTMENT_STATUS.CONFIRMED,
+    });
 
-    const newAppointment = new appointmentModel(appointmentData);
-    await newAppointment.save();
-    // Send confirmation email to patient
-appointmentBookedPatient({
-  patientName: userData.name,
-  patientEmail: userData.email,
-  doctorName: docData.name,
-  doctorEmail: docData.email,
-  date: slotDate,
-  time: slotTime,
-});
+    if (existingConfirmedAppointment) {
+      return res.json({
+        success: false,
+        message: "This slot is already booked. Please select another time.",
+      });
+    }
 
-// Notify doctor
-appointmentBookedDoctor({
-  patientName: userData.name,
-  patientEmail: userData.email,
-  doctorName: docData.name,
-  doctorEmail: docData.email,
-  date: slotDate,
-  time: slotTime,
-});
-setTimeout(() => {
-  appointmentReminder({
-    patientName: userData.name,
-    patientEmail: userData.email,
-    doctorName: docData.name,
-    date: slotDate,
-    time: slotTime,
-  }).catch(err => console.error("Failed to send reminder email:", err));
-}, 60000); // 60000 ms = 1 minute
+    // ✅ Slot is available - return payment options
+    const discountedAmount = calculateDiscountedAmount(docData.fees);
+    const fullAmount = docData.fees;
 
-    // save new slots data in docData
-    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-
-    res.json({ success: true, message: "Appointment Booked" });
+    res.json({
+      success: true,
+      message: "Slot is available. Choose payment option.",
+      slotDetails: {
+        docId,
+        docName: docData.name,
+        speciality: docData.speciality,
+        slotDate,
+        slotTime,
+        fullAmount,
+      },
+      paymentOptions: {
+        option1_online: {
+          type: PAYMENT_TYPE.ONLINE,
+          description: "Pay Full Amount with 10% Discount",
+          amount: discountedAmount,
+          youPay: discountedAmount,
+        },
+        option2_token: {
+          type: PAYMENT_TYPE.TOKEN,
+          description: "Pay Token (Rs. 500) Now, Rest at Clinic",
+          tokenAmount: TOKEN_AMOUNT,
+          youPay: TOKEN_AMOUNT,
+          remainingAtClinic: fullAmount - TOKEN_AMOUNT,
+        },
+      },
+    });
   } catch (error) {
-    console.log(error);
+    console.log("bookAppointment error:", error);
     res.json({ success: false, message: error.message });
   }
 };
@@ -296,12 +285,10 @@ const listAppointment = async (req, res) => {
   }
 };
 
-// API to cancel appointment
+// API to cancel appointment (USER cancellation)
 const cancelAppointment = async (req, res) => {
   try {
     const { appointmentId } = req.body;
-
-    // userId now comes from authUser middleware
     const userId = req.user.userId;
 
     if (!userId) {
@@ -311,63 +298,86 @@ const cancelAppointment = async (req, res) => {
       });
     }
 
-    const appointmentData = await appointmentModel.findById(appointmentId);
+    const appointment = await appointmentModel.findById(appointmentId);
 
-    if (!appointmentData) {
+    if (!appointment) {
       return res.json({ success: false, message: "Appointment not found" });
     }
 
-    // verify appointment belongs to logged in user
-    if (appointmentData.userId.toString() !== userId.toString()) {
+    // Verify appointment belongs to logged in user
+    if (appointment.userId.toString() !== userId.toString()) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized action",
       });
     }
 
-    // cancel appointment
-    await appointmentModel.findByIdAndUpdate(appointmentId, {
-      cancelled: true,
-    });
+    // Can only cancel CONFIRMED appointments
+    if (appointment.status !== APPOINTMENT_STATUS.CONFIRMED) {
+      return res.json({
+        success: false,
+        message: "Cannot cancel this appointment",
+      });
+    }
 
-    // release doctor slot
-    const { docId, slotDate, slotTime } = appointmentData;
+    // 🟢 Cancel appointment
+    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_PATIENT;
+    appointment.cancelled = true;
+    appointment.cancelledAt = new Date();
+    appointment.cancellationReason = "Cancelled by patient";
+    appointment.refundInitiated = appointment.paidAmount > 0; // Mark for refund if paid
+    if (appointment.refundInitiated) {
+      appointment.refundStatus = REFUND_STATUS.INITIATED;
+    }
+
+    await appointment.save();
+
+    // Release doctor slot
+    const { docId, slotDate, slotTime } = appointment;
     const doctorData = await doctorModel.findById(docId);
 
-    let slots_booked = doctorData.slots_booked;
+    if (doctorData && doctorData.slots_booked) {
+      let slots_booked = doctorData.slots_booked;
+      if (slots_booked[slotDate]) {
+        slots_booked[slotDate] = slots_booked[slotDate].filter(
+          (e) => e !== slotTime
+        );
+      }
+      await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+    }
 
-    slots_booked[slotDate] = slots_booked[slotDate].filter(
-      (e) => e !== slotTime
-    );
+    // Send cancellation emails
+    try {
+      await appointmentCancelledPatient({
+        patientName: appointment.userData.name,
+        patientEmail: appointment.userData.email,
+        doctorName: appointment.docData.name,
+        doctorEmail: appointment.docData.email,
+        date: slotDate,
+        time: slotTime,
+        reason: appointment.cancellationReason,
+        refundAmount: appointment.paidAmount,
+      });
 
-    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
-// // Send cancellation email to patient
+      await appointmentCancelledDoctor({
+        patientName: appointment.userData.name,
+        patientEmail: appointment.userData.email,
+        doctorName: appointment.docData.name,
+        doctorEmail: appointment.docData.email,
+        date: slotDate,
+        time: slotTime,
+      });
+    } catch (err) {
+      console.error("Failed to send cancellation emails:", err);
+    }
 
-// appointmentCancelledPatient({
-//   patientName: appointmentData.userData.name, patientEmail: appointmentData.userData.email,
-//   doctorName: doctorData.name,
-//   doctorEmail: doctorData.email,
-//   date: slotDate,
-//   time: slotTime,
-// });
-
-// // Notify doctor
-// appointmentCancelledDoctor({
-//   patientName: appointmentData.userData.name,
-//   patientEmail: appointmentData.userData.email,
-//   doctorName: doctorData.name,
-//   doctorEmail: doctorData.email,
-//   date: slotDate,
-//   time: slotTime,
-// });
-
-return res.json({
+    return res.json({
       success: true,
-      message: "Appointment Cancelled",
+      message: "Appointment cancelled successfully",
+      refundInitiated: appointment.refundInitiated,
     });
-
   } catch (error) {
-    console.log(error);
+    console.log("cancelAppointment error:", error);
     return res.json({ success: false, message: error.message });
   }
 };
