@@ -1,29 +1,59 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
+const resetWindowScroll = () => {
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+};
+
 const ScrollToTop = () => {
   const location = useLocation();
   const [visible, setVisible] = useState(false);
+  const isSpecialityRoute =
+    location.pathname.startsWith("/doctors/") && location.pathname !== "/doctors";
+  const shouldPreserveHashScroll = location.pathname === "/" && Boolean(location.hash);
 
   useEffect(() => {
     if (!("scrollRestoration" in window.history)) return;
 
-    const previous = window.history.scrollRestoration;
     window.history.scrollRestoration = "manual";
-
-    return () => {
-      window.history.scrollRestoration = previous;
-    };
   }, []);
 
   useLayoutEffect(() => {
-    if (location.hash) return;
+    if (shouldPreserveHashScroll && !isSpecialityRoute) return;
 
-    // Reset scroll before paint on route change to prevent mid-page flashes.
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [location.key, location.pathname, location.hash]);
+    // Reset before paint, then repeat after render to override restoration.
+    resetWindowScroll();
+
+    const frameId = window.requestAnimationFrame(resetWindowScroll);
+    const timeoutId = window.setTimeout(resetWindowScroll, 0);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [isSpecialityRoute, location.key, location.pathname, shouldPreserveHashScroll]);
+
+  useEffect(() => {
+    const handlePageShow = () => {
+      if (!isSpecialityRoute) return;
+      resetWindowScroll();
+    };
+
+    const handlePopState = () => {
+      if (!window.location.pathname.startsWith("/doctors/")) return;
+      resetWindowScroll();
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [isSpecialityRoute]);
 
   useEffect(() => {
     const toggleVisibility = () => {
