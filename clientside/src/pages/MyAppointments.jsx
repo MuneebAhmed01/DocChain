@@ -7,7 +7,7 @@ import useChatNotifications from "../hooks/useChatNotifications";
 import { formatPkrAmount } from "../constants/payment";
 
 const MyAppointments = () => {
-  const { backendUrl, token, getDoctorsData } = useContext(AppContext);
+  const { token, getDoctorsData } = useContext(AppContext);
   const [appointments, setAppointments] = useState([]);
   const [showRateModal, setShowRateModal] = useState(false);
   const [selectedAppt, setSelectedAppt] = useState(null);
@@ -51,27 +51,6 @@ const MyAppointments = () => {
     } catch (error) {
       console.log(error);
       toast.error(error.message);
-    }
-  };
-
-  // ⭐ FINAL WORKING ONLINE PAYMENT HANDLER
-  const payOnline = async (appointmentId) => {
-    try {
-      const { data } = await axiosInstance.post(
-        "/api/stripe/create-checkout-session",
-        { appointmentId },
-      );
-
-      if (data.url) {
-        window.location.href = data.url; // Redirect to Stripe
-      } else if (data?.message) {
-        toast.error(data.message);
-      } else {
-        toast.error("Unable to process payment.");
-      }
-    } catch (err) {
-      console.log(err);
-      toast.error("Payment failed to start.");
     }
   };
 
@@ -141,8 +120,6 @@ const MyAppointments = () => {
 
       <div>
         {appointments.map((item, index) => {
-          const discounted = Math.round(item.amount * 0.9); // ⭐ 10% OFF
-
           return (
             <div
               className="flex flex-col gap-4 sm:grid sm:grid-cols-[1fr_3fr_1fr] items-center sm:items-start py-5 border-b"
@@ -173,22 +150,43 @@ const MyAppointments = () => {
                   {slotDateFormat(item.slotDate)} | {item.slotTime}
                 </p>
 
-                {/* ⭐ PRICE DISPLAY WITH DISCOUNT */}
                 <p className="mt-2">
                   <span className="font-medium">Fee:</span>{" "}
                   {formatPkrAmount(item.amount)}
                 </p>
 
-                <p className="text-green-600 text-sm">
-                  10% OFF on online payment
+                <p className="text-sm mt-1">
+                  <span className="font-medium">Payment:</span> {item.paymentType}
                 </p>
-                <p className="font-semibold">
-                  Pay Online: {formatPkrAmount(discounted)}
+                <p className="text-sm">
+                  <span className="font-medium">Status:</span> {item.paymentStatus}
                 </p>
+                <p className="text-sm">
+                  <span className="font-medium">Paid:</span> {formatPkrAmount(item.paidAmount || 0)}
+                </p>
+                {item.paymentType === "TOKEN" && (
+                  <p className="text-sm text-amber-600">
+                    Remaining at clinic: {formatPkrAmount(item.amount - (item.paidAmount || 0))}
+                  </p>
+                )}
+
+                {item.status === "CANCELLED_BY_DOCTOR" && (
+                  <p
+                    id="msg1"
+                    className="mt-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded"
+                  >
+                    Your appointment was canceled due to an emergency. Your advance payment (Rs. 500) will be refunded.
+                  </p>
+                )}
 
                 {item.isPaid && (
                   <span className="inline-block mt-1 px-3 py-1 bg-green-500 text-white rounded text-xs">
-                    Paid
+                    Paid in full
+                  </span>
+                )}
+                {item.tokenPaid && (
+                  <span className="inline-block mt-1 px-3 py-1 bg-amber-500 text-white rounded text-xs">
+                    Token paid
                   </span>
                 )}
               </div>
@@ -204,16 +202,6 @@ const MyAppointments = () => {
                     className="text-sm text-white bg-green-600 text-center w-full sm:min-w-48 py-2.5 rounded hover:bg-green-700 transition-all"
                   >
                     💬 Chat with Doctor
-                  </button>
-                )}
-
-                {/* PAY ONLINE BUTTON */}
-                {!item.cancelled && !item.isCompleted && !item.isPaid && (
-                  <button
-                    onClick={() => payOnline(item._id)}
-                    className="text-sm text-white bg-blue-600 text-center w-full sm:min-w-48 py-2.5 rounded hover:bg-blue-700 transition-all"
-                  >
-                    Pay Online (10% OFF)
                   </button>
                 )}
 

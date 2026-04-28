@@ -56,7 +56,13 @@ const DoctorAppointments = () => {
                       : "bg-blue-100 text-primary"
                   }`}
                 >
-                  {item.isPaid ? "Paid" : item.payment ? "Online" : "CASH"}
+                  {item.paymentType === "TOKEN"
+                    ? "CASH"
+                    : item.isPaid
+                      ? "Paid"
+                      : item.payment
+                        ? "Online"
+                        : "CASH"}
                 </span>
               </div>
 
@@ -86,8 +92,30 @@ const DoctorAppointments = () => {
                       : "border-primary text-gray-500"
                   }`}
                 >
-                  {item.isPaid ? "Paid" : item.payment ? "Online" : "CASH"}
+                  {item.paymentType === "TOKEN"
+                    ? "CASH"
+                    : item.isPaid
+                      ? "Paid"
+                      : item.payment
+                        ? "Online"
+                        : "CASH"}
                 </p>
+
+                {/* TOKEN breakdown for doctor */}
+                {item.paymentType === "TOKEN" && (
+                  <div className="mt-2 space-y-0.5 text-[11px] text-gray-600">
+                    <p>
+                      <span className="font-semibold text-gray-700">Remaining Amount:</span>{" "}
+                      {currency}
+                      {Math.max(0, (item.amount || 0) - (item.paidAmount || 0))}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-700">Token Received (Wallet):</span>{" "}
+                      {currency}
+                      {item.paidAmount || 500}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Age (Desktop Only) */}
@@ -114,6 +142,25 @@ const DoctorAppointments = () => {
                   {currency}
                   {item.amount}
                 </p>
+
+                {/* Mobile TOKEN breakdown */}
+                {item.paymentType === "TOKEN" && (
+                  <div className="sm:hidden mt-2 text-[11px] text-gray-600 space-y-1">
+                    <p>
+                      <span className="font-semibold text-gray-700">Payment Type:</span> CASH
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-700">Remaining Amount:</span>{" "}
+                      {currency}
+                      {Math.max(0, (item.amount || 0) - (item.paidAmount || 0))}
+                    </p>
+                    <p>
+                      <span className="font-semibold text-gray-700">Token Received (Wallet):</span>{" "}
+                      {currency}
+                      {item.paidAmount || 500}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

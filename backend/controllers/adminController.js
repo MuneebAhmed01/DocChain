@@ -8,7 +8,17 @@ import userModel from "../models/userModel.js";
 import { upload,uploadToCloudinary } from "../middlewares/multer.js";
 import doctorRegistered from "../emailTemplates/doctorRegistered.js";
 import doctorRemoved from "../emailTemplates/doctorRemoved.js";
+import appointmentCancelledPatient from "../emailTemplates/appointmentCancelledPatient.js";
+import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDoctor.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
+import {
+  APPOINTMENT_STATUS,
+  PAYMENT_STATUS,
+  PAYMENT_TYPE,
+  TOKEN_AMOUNT,
+  REFUND_STATUS,
+} from "../config/payment.js";
+import { triggerCleanup } from "../utils/backgroundTasks.js";
 
 // API for adding doctor
 const addDoctor = async (req, res) => {
@@ -160,33 +170,116 @@ const appointmentsAdmin = async (req, res) => {
 };
 
 // API for appointment cancellation
+// 🔴 ADMIN/DOCTOR CANCELLATION WITH REFUNDS
 const appointmentCancel = async (req, res) => {
   try {
-    const { appointmentId } = req.body;
+    const { appointmentId, cancellationReason } = req.body;
 
-    const appointmentData = await appointmentModel.findById(appointmentId);
+    if (!appointmentId) {
+      return res.json({
+        success: false,
+        message: "Appointment ID is required",
+      });
+    }
 
-    await appointmentModel.findByIdAndUpdate(appointmentId, {
-      cancelled: true,
-    });
+    const appointment = await appointmentModel.findById(appointmentId);
 
-    // releasing doctor slot
+    if (!appointment) {
+      return res.json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
 
-    const { docId, slotDate, slotTime } = appointmentData;
+    if (appointment.status !== APPOINTMENT_STATUS.CONFIRMED) {
+      return res.json({
+        success: false,
+        message: "Cannot cancel this appointment",
+      });
+    }
 
+    // 🟢 Update appointment status (admin/clinic side treated as doctor cancellation)
+    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR;
+    appointment.cancelled = true;
+    appointment.cancelledAt = new Date();
+    appointment.cancellationReason = cancellationReason || "Cancelled by clinic/doctor";
+
+    const refundAmount = appointment.paidAmount || 0;
+    if (refundAmount > 0) {
+      appointment.refundInitiated = true;
+      appointment.refundStatus = REFUND_STATUS.INITIATED;
+    }
+
+    // Doctor wallet reversal for token appointments (idempotent)
+    if (
+      appointment.paymentType === PAYMENT_TYPE.TOKEN &&
+      appointment.tokenPaid &&
+      !appointment.doctorWalletReversed
+    ) {
+      const doctor = await doctorModel.findById(appointment.docId).select("walletBalance");
+      const currentBalance = Number(doctor?.walletBalance || 0);
+      if (currentBalance < TOKEN_AMOUNT) {
+        return res.json({
+          success: false,
+          message:
+            "Insufficient doctor wallet balance to cancel this token appointment. Please top up or contact support.",
+        });
+      }
+
+      await doctorModel.findByIdAndUpdate(appointment.docId, {
+        $inc: { walletBalance: -TOKEN_AMOUNT },
+      });
+      appointment.doctorWalletReversed = true;
+    }
+
+    await appointment.save();
+
+    const { docId, slotDate, slotTime } = appointment;
     const doctorData = await doctorModel.findById(docId);
 
-    let slots_booked = doctorData.slots_booked;
+    if (doctorData && doctorData.slots_booked) {
+      const slots_booked = doctorData.slots_booked;
+      if (slots_booked[slotDate]) {
+        slots_booked[slotDate] = slots_booked[slotDate].filter(
+          (e) => e !== slotTime
+        );
+      }
+      await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+    }
 
-    slots_booked[slotDate] = slots_booked[slotDate].filter(
-      (e) => e !== slotTime
-    );
+    try {
+      await appointmentCancelledPatient({
+        patientName: appointment.userData.name,
+        patientEmail: appointment.userData.email,
+        doctorName: appointment.docData.name,
+        doctorEmail: appointment.docData.email,
+        date: slotDate,
+        time: slotTime,
+        reason: appointment.cancellationReason,
+        refundAmount,
+      });
 
-    await doctorModel.findByIdAndUpdate(docId, { slots_booked });
+      await appointmentCancelledDoctor({
+        patientName: appointment.userData.name,
+        patientEmail: appointment.userData.email,
+        doctorName: appointment.docData.name,
+        doctorEmail: appointment.docData.email,
+        date: slotDate,
+        time: slotTime,
+        reason: appointment.cancellationReason,
+      });
+    } catch (err) {
+      console.error("Failed to send cancellation emails:", err);
+    }
 
-    res.json({ success: true, message: "Appointment Cancelled" });
+    res.json({
+      success: true,
+      message: "Appointment cancelled successfully",
+      refundInitiated: appointment.refundInitiated,
+      refundAmount,
+    });
   } catch (error) {
-    console.log(error);
+    console.log("appointmentCancel error:", error);
     res.json({ success: false, message: error.message });
   }
 };
@@ -248,6 +341,26 @@ const changeDoctorStatus = async (req, res) => {
 };
 
 
+// Manual cleanup hook retained for backwards compatibility
+const triggerHoldCleanup = async (req, res) => {
+  try {
+    const result = await triggerCleanup();
+    
+    res.json({
+      success: true,
+      message: `Cleanup completed. ${result.cleaned} records updated.`,
+      cleaned: result.cleaned,
+    });
+  } catch (error) {
+    console.error("Cleanup error:", error);
+    res.json({
+      success: false,
+      message: "Cleanup failed: " + error.message,
+    });
+  }
+};
+
+
 export {
   addDoctor,
   loginAdmin,
@@ -255,5 +368,6 @@ export {
   appointmentsAdmin,
   appointmentCancel,
   adminDashboard,
-    changeDoctorStatus,
+  changeDoctorStatus,
+  triggerHoldCleanup,
 };
