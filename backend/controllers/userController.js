@@ -137,8 +137,17 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    console.log("Fetched user data:", userData);
-    res.json({ success: true, user: userData });
+    // Ensure backward compatibility - if profilePic exists, use it, otherwise fall back to image field
+    const userResponse = userData.toObject();
+    if (!userResponse.profilePic || !userResponse.profilePic.url) {
+      userResponse.profilePic = {
+        url: userResponse.image || "",
+        public_id: ""
+      };
+    }
+
+    console.log("Fetched user data:", userResponse);
+    res.json({ success: true, user: userResponse });
   } catch (error) {
     console.error("getProfile error:", error);
     res.status(500).json({ success: false, message: error.message });
@@ -535,6 +544,67 @@ export const getDoctorReviewsUser = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+const uploadProfilePic = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const imageFile = req.file;
+
+    if (!imageFile) {
+      return res.json({ success: false, message: "No image file provided" });
+    }
+
+    // Get current user data to check if they have an existing profile picture
+    const currentUser = await userModel.findById(userId);
+    if (!currentUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Delete previous profile picture from Cloudinary if it exists
+    if (currentUser.profilePic && currentUser.profilePic.public_id) {
+      try {
+        await cloudinary.uploader.destroy(currentUser.profilePic.public_id);
+      } catch (deleteError) {
+        console.log("Failed to delete previous profile picture:", deleteError);
+        // Continue even if deletion fails
+      }
+    }
+
+    // Upload new image to Cloudinary
+    const imageUpload = await cloudinary.uploader.upload(imageFile.path, {
+      resource_type: "image",
+      folder: "docchain/profile-pics",
+      transformation: [
+        { width: 500, height: 500, crop: "fill" },
+        { quality: "auto" }
+      ]
+    });
+
+    // Update user profile with new image
+    await userModel.findByIdAndUpdate(userId, {
+      profilePic: {
+        url: imageUpload.secure_url,
+        public_id: imageUpload.public_id
+      }
+    });
+
+    // Get updated user data to return to frontend
+    const updatedUser = await userModel.findById(userId).select("-password");
+    
+    res.json({ 
+      success: true, 
+      message: "Profile picture uploaded successfully",
+      profilePic: {
+        url: imageUpload.secure_url,
+        public_id: imageUpload.public_id
+      },
+      user: updatedUser
+    });
+  } catch (error) {
+    console.log("uploadProfilePic error:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
 const sendContactEmail = async (req, res) => {
   try {
     const { firstName, lastName, phone, email, problem } = req.body;
@@ -586,6 +656,7 @@ export {
   loginUser,
   getProfile,
   updateProfile,
+  uploadProfilePic,
   bookAppointment,
   listAppointment,
   cancelAppointment,

@@ -55,6 +55,10 @@ const AppContextProvider = (props) => {
     }
   };
 
+  const refreshUserData = async () => {
+    await loadUserProfileData();
+  };
+
   const value = {
     doctors,
     getDoctorsData,
@@ -66,6 +70,7 @@ const AppContextProvider = (props) => {
     userData,
     setUserData,
     loadUserProfileData,
+    refreshUserData,
   };
 
   useEffect(() => {

@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema({
   gender: { type: String, default: "Not Selected" },
   dob: { type: String, default: "Not Selected" },
   phone: { type: String, default: "000000000" },
+  profilePic: {
+    url: { type: String, default: "" },
+    public_id: { type: String, default: "" }
+  },
 });
 
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);

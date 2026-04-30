@@ -41,6 +41,7 @@ import {
   bookAppointment,
   listAppointment,
   updateProfile,
+  uploadProfilePic,
   cancelAppointment,
   rateDoctor ,
   getDoctorReviewsUser,
@@ -179,6 +180,8 @@ router.post("/book-appointment", authUser, bookAppointment);
 router.post("/contact", sendContactEmail);
 //update profile 
 router.post("/update-profile", authUser, upload.single("image"), updateProfile);
+// Upload profile picture
+router.post("/upload-profile-pic", authUser, upload.single("image"), uploadProfilePic);
 // Get user appointments
 router.get("/appointments", authUser, listAppointment);
 
