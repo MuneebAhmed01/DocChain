@@ -14,54 +14,106 @@ import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
   PAYMENT_METHOD,
-  calculateDiscountedAmount,
+  PAYMENT_TYPE,
 } from "../config/payment.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 import paymentAccepted from "../emailTemplates/paymentAccepted.js"
 
-// 🔴 HELPER: Confirm appointment and lock slot
-// This handles race conditions - only first payment wins
-const confirmAppointmentAndLockSlot = async (appointmentId) => {
+const isTransactionUnsupportedError = (error) =>
+  error?.code === 20 ||
+  /Transaction numbers are only allowed on a replica set member or mongos/i.test(
+    error?.message || ""
+  );
+
+const runAppointmentUpdate = async (operation) => {
   const session = await appointmentModel.startSession();
-  session.startTransaction();
+  let sessionEnded = false;
+
+  const endSessionSafely = async () => {
+    if (sessionEnded) {
+      return;
+    }
+
+    sessionEnded = true;
+    await session.endSession();
+  };
 
   try {
-    const appointment = await appointmentModel.findById(appointmentId).session(session);
-    
+    session.startTransaction();
+    const result = await operation(session);
+    await session.commitTransaction();
+    return result;
+  } catch (error) {
+    if (isTransactionUnsupportedError(error)) {
+      try {
+        await endSessionSafely();
+      } catch (endSessionError) {
+        console.warn("Failed to end Mongo session after transaction fallback:", endSessionError);
+      }
+
+      return operation(null);
+    }
+
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    await endSessionSafely();
+  }
+};
+
+const finalizeAppointmentPayment = async ({ appointmentId, stripeSession, paymentType }) => {
+  return runAppointmentUpdate(async (session) => {
+    const appointmentQuery = appointmentModel.findById(appointmentId);
+    const appointment = session ? await appointmentQuery.session(session) : await appointmentQuery;
+
     if (!appointment) {
-      await session.abortTransaction();
       throw new Error("Appointment not found");
     }
 
-    // Check if already confirmed (race condition protection)
+    if (appointment.walletCredited && appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED) {
+      return appointment;
+    }
+
     if (appointment.appointmentStatus !== APPOINTMENT_STATUS.HOLD) {
-      await session.abortTransaction();
       throw new Error("Appointment already confirmed or cancelled");
     }
 
-    // Check if slot is still available (another user didn't confirm first)
-    const conflictingConfirmed = await appointmentModel.findOne({
+    const conflictingQuery = appointmentModel.findOne({
       docId: appointment.docId,
       slotDate: appointment.slotDate,
       slotTime: appointment.slotTime,
       appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
-      _id: { $ne: appointmentId }
-    }).session(session);
+      _id: { $ne: appointmentId },
+    });
+    const conflictingConfirmed = session
+      ? await conflictingQuery.session(session)
+      : await conflictingQuery;
 
     if (conflictingConfirmed) {
-      await session.abortTransaction();
       throw new Error("Slot no longer available - another user booked it");
     }
 
-    // Atomically update appointment to CONFIRMED
-    appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
-    appointment.confirmationTime = new Date();
-    await appointment.save({ session });
+    const paidAmount = fromStripeMinorUnits(stripeSession.amount_total, PAYMENT_CURRENCY);
 
-    // Update doctor's slots_booked (for backward compatibility)
-    let slots_booked = appointment.docData?.slots_booked || {};
+    appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
+    appointment.status = APPOINTMENT_STATUS.CONFIRMED;
+    appointment.confirmationTime = new Date();
+    appointment.paymentType = paymentType;
+    appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
+    appointment.paymentIntentId = stripeSession.payment_intent;
+    appointment.paidAmount = paidAmount;
+    appointment.paymentStatus = paymentType === PAYMENT_TYPE.TOKEN ? PAYMENT_STATUS.PARTIAL : PAYMENT_STATUS.PAID;
+    appointment.isPaid = paymentType === PAYMENT_TYPE.FULL;
+    appointment.tokenPaid = paymentType === PAYMENT_TYPE.TOKEN;
+    appointment.currency = PAYMENT_CURRENCY;
+    appointment.walletCredited = true;
+    appointment.walletCreditedAmount = paidAmount;
+
+    await appointment.save(session ? { session } : undefined);
+
+    const slots_booked = { ...(appointment.docData?.slots_booked || {}) };
     if (!slots_booked[appointment.slotDate]) {
       slots_booked[appointment.slotDate] = [];
     }
@@ -71,18 +123,15 @@ const confirmAppointmentAndLockSlot = async (appointmentId) => {
 
     await doctorModel.findByIdAndUpdate(
       appointment.docId,
-      { slots_booked },
-      { session }
+      {
+        slots_booked,
+        $inc: { walletBalance: paidAmount, earnings: paidAmount },
+      },
+      session ? { session } : undefined
     );
 
-    await session.commitTransaction();
     return appointment;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    await session.endSession();
-  }
+  });
 };
 
 // CREATE STRIPE CHECKOUT SESSION FOR FULL ONLINE PAYMENT
@@ -109,8 +158,11 @@ router.post("/create-checkout-session", async (req, res) => {
     }
 
     const appointmentAmount = assertPkrAmount(appointment.amount, "appointment amount");
-    const discountedAmount = calculateDiscountedAmount(appointmentAmount);
-    const stripeDiscountedAmount = toStripeMinorUnits(discountedAmount, PAYMENT_CURRENCY);
+    const stripeAppointmentAmount = toStripeMinorUnits(appointmentAmount, PAYMENT_CURRENCY);
+
+    appointment.paymentType = PAYMENT_TYPE.FULL;
+    appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
+    await appointment.save();
 
     // Create stripe session
     const session = await stripe.checkout.sessions.create({
@@ -122,20 +174,19 @@ router.post("/create-checkout-session", async (req, res) => {
             currency: PAYMENT_CURRENCY,
             product_data: {
               name: `Appointment with Dr. ${doctor.name}`,
-              description: `Full payment with 10% discount`,
+              description: `Pay full appointment amount`,
             },
-            unit_amount: stripeDiscountedAmount,
+            unit_amount: stripeAppointmentAmount,
           },
           quantity: 1,
         },
       ],
-      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&payment_type=FULL&doc_id=${appointment.docId}`,
       cancel_url: `${process.env.FRONTEND_URL}/my-appointments`,
     });
 
     // Save session ID and payment method to appointment
     appointment.checkoutSessionId = session.id;
-    appointment.paymentMethod = PAYMENT_METHOD.ONLINE;
     await appointment.save();
 
     res.json({ success: true, url: session.url });
@@ -177,21 +228,16 @@ router.post("/verify-payment", async (req, res) => {
     }
 
     // Check if already processed
-    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED && appointment.isPaid) {
+    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED && appointment.walletCredited) {
       return res.json({ success: true, message: "Already paid and confirmed" });
     }
 
     try {
-      // 🟢 CONFIRM APPOINTMENT AND LOCK SLOT (atomic operation with race condition handling)
-      const confirmedAppointment = await confirmAppointmentAndLockSlot(appointment._id);
-
-      // Mark appointment as paid
-      confirmedAppointment.isPaid = true;
-      confirmedAppointment.paymentIntentId = stripeSession.payment_intent;
-      confirmedAppointment.paidAmount = fromStripeMinorUnits(stripeSession.amount_total, PAYMENT_CURRENCY);
-      confirmedAppointment.paymentStatus = PAYMENT_STATUS.PAID;
-      confirmedAppointment.currency = PAYMENT_CURRENCY;
-      await confirmedAppointment.save();
+      const confirmedAppointment = await finalizeAppointmentPayment({
+        appointmentId: appointment._id,
+        stripeSession,
+        paymentType: PAYMENT_TYPE.FULL,
+      });
 
       try {
         await paymentAccepted({
@@ -205,13 +251,6 @@ router.post("/verify-payment", async (req, res) => {
         });
       } catch (err) {
         console.error("Failed to send payment accepted email:", err);
-      }
-
-      // Update doctor earnings
-      const doctor = await doctorModel.findById(confirmedAppointment.docId);
-      if (doctor) {
-        doctor.earnings = (doctor.earnings || 0) + confirmedAppointment.paidAmount;
-        await doctor.save();
       }
 
       return res.json({ 
@@ -263,6 +302,10 @@ router.post("/create-token-payment-session", async (req, res) => {
     const tokenAmount = assertPkrAmount(appointment.tokenAmount, "token amount");
     const stripeTokenAmount = toStripeMinorUnits(tokenAmount, PAYMENT_CURRENCY);
 
+    appointment.paymentType = PAYMENT_TYPE.TOKEN;
+    appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
+    await appointment.save();
+
     // Create stripe session for token payment
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -280,13 +323,12 @@ router.post("/create-token-payment-session", async (req, res) => {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.FRONTEND_URL}/token-payment-success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.FRONTEND_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}&payment_type=TOKEN&doc_id=${appointment.docId}`,
       cancel_url: `${process.env.FRONTEND_URL}/my-appointments`,
     });
 
     // Save session ID and mark payment method as CASH
     appointment.checkoutSessionId = session.id;
-    appointment.paymentMethod = PAYMENT_METHOD.CASH;
     await appointment.save();
 
     res.json({ success: true, url: session.url });
@@ -323,20 +365,18 @@ router.post("/verify-token-payment", async (req, res) => {
       return res.json({ success: false, message: "Appointment not found" });
     }
 
-    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED && appointment.tokenPaid) {
+    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED && appointment.walletCredited) {
       return res.json({ success: true, message: "Token already paid and confirmed" });
     }
 
     try {
-      // 🟢 CONFIRM APPOINTMENT AND LOCK SLOT
-      const confirmedAppointment = await confirmAppointmentAndLockSlot(appointment._id);
+      const confirmedAppointment = await finalizeAppointmentPayment({
+        appointmentId: appointment._id,
+        stripeSession,
+        paymentType: PAYMENT_TYPE.TOKEN,
+      });
 
-      // Mark token as paid
-      confirmedAppointment.tokenPaid = true;
       confirmedAppointment.tokenPaymentIntentId = stripeSession.payment_intent;
-      confirmedAppointment.paidAmount = fromStripeMinorUnits(stripeSession.amount_total, PAYMENT_CURRENCY);
-      confirmedAppointment.paymentStatus = PAYMENT_STATUS.PARTIAL;
-      confirmedAppointment.currency = PAYMENT_CURRENCY;
       await confirmedAppointment.save();
 
       try {

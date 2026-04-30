@@ -2,13 +2,17 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import { toast } from "react-toastify";
+import { AppContext } from "../context/AppContext";
+import { useContext } from "react";
 
 const PaymentSuccess = () => {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
   const paymentType = params.get("payment_type");
+  const doctorId = params.get("doc_id");
   const navigate = useNavigate();
   const [message, setMessage] = useState("Verifying your payment...");
+  const { getDoctorsData } = useContext(AppContext);
 
   useEffect(() => {
     if (sessionId) {
@@ -18,14 +22,25 @@ const PaymentSuccess = () => {
 
   const verifyPayment = async () => {
     try {
+      const verifyEndpoint =
+        paymentType === "TOKEN"
+          ? "/api/stripe/verify-token-payment"
+          : "/api/stripe/verify-payment";
+
+      const payload = { sessionId };
+
       const { data } = await axiosInstance.post(
-        "/api/stripe/verify-payment",
-        { sessionId }
+        verifyEndpoint,
+        payload
       );
 
       if (data.success) {
         setMessage(data.message || "Payment successful!");
         toast.success(data.message || "Payment successful!");
+        getDoctorsData();
+        if (doctorId) {
+          localStorage.removeItem(`appointmentSelection:${doctorId}`);
+        }
       } else {
         setMessage(data.message || "Payment verification failed.");
         toast.error(data.message || "Payment verification failed.");

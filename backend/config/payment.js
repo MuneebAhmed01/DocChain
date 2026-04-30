@@ -4,39 +4,47 @@ export const CURRENCY_MINOR_UNIT_MULTIPLIER = {
   pkr: 100,
 };
 
-// 🔴 Token Payment: Fixed Amount (Rs. 500)
-export const TOKEN_AMOUNT = 500; // Fixed token payment in PKR
-export const ONLINE_DISCOUNT_PERCENT = 10; // 10% discount for online payment
+// Token payment is a fixed advance amount in PKR.
+export const TOKEN_AMOUNT = 500;
 
 // Payment Type Constants
 export const PAYMENT_TYPE = {
-  ONLINE: "ONLINE",  // Full payment with 10% discount
-  TOKEN: "TOKEN",    // Rs. 500 advance, remaining at clinic
+  FULL: "FULL",
+  TOKEN: "TOKEN",
 };
 
 // Payment Method Constants
 export const PAYMENT_METHOD = {
-  STRIPE: "STRIPE",      // Online payment via Stripe
-  CASH: "CASH",          // Cash payment at clinic
+  STRIPE: "STRIPE",
+  CASH: "CASH",
 };
 
 // Payment Status Constants
 export const PAYMENT_STATUS = {
-  PAID: "PAID",         // Full payment received (ONLINE)
-  PARTIAL: "PARTIAL",   // Token received (TOKEN)
+  PENDING: "PENDING",
+  PAID: "PAID",
+  PARTIAL: "PARTIAL",
+  PAYMENT_FAILED: "PAYMENT_FAILED",
+  REFUNDED: "REFUNDED",
 };
 
 // Appointment Status Constants
 export const APPOINTMENT_STATUS = {
-  CONFIRMED: "CONFIRMED",      // Payment received, slot locked
-  CANCELLED: "CANCELLED",      // Cancelled by user or admin
+  HOLD: "HOLD",
+  CONFIRMED: "CONFIRMED",
+  CANCELLED_BY_USER: "CANCELLED_BY_USER",
+  CANCELLED_BY_DOCTOR: "CANCELLED_BY_DOCTOR",
+  CANCELLED_BY_ADMIN: "CANCELLED_BY_ADMIN",
+  PAYMENT_FAILED: "PAYMENT_FAILED",
+  COMPLETED: "COMPLETED",
 };
 
 // Refund Status Constants
 export const REFUND_STATUS = {
-  PENDING: "PENDING",          // Refund initiated, processing
-  COMPLETED: "COMPLETED",      // Refund successfully processed
-  FAILED: "FAILED",            // Refund failed
+  NONE: "NONE",
+  PENDING: "PENDING",
+  COMPLETED: "COMPLETED",
+  FAILED: "FAILED",
 };
 
 export const assertPkrAmount = (amount, fieldName = "amount") => {
@@ -77,8 +85,7 @@ export const fromStripeMinorUnits = (amount, currency = PAYMENT_CURRENCY) => {
 
 export const formatPkrAmount = (amount) => `${PAYMENT_SYMBOL} ${amount}`;
 
-// Calculate discounted amount (90% for online payment)
-export const calculateDiscountedAmount = (fullAmount) => {
+export const calculateTokenAmount = (fullAmount) => {
   const validatedAmount = assertPkrAmount(fullAmount, "fullAmount");
-  return Math.round(validatedAmount * ((100 - ONLINE_DISCOUNT_PERCENT) / 100));
+  return Math.min(TOKEN_AMOUNT, validatedAmount);
 };

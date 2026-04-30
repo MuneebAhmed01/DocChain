@@ -19,7 +19,7 @@ import {
   PAYMENT_STATUS,
   PAYMENT_TYPE,
   TOKEN_AMOUNT,
-  calculateDiscountedAmount,
+  REFUND_STATUS,
 } from "../config/payment.js";
 
 
@@ -224,7 +224,7 @@ const bookAppointment = async (req, res) => {
       docId,
       slotDate,
       slotTime,
-      status: APPOINTMENT_STATUS.CONFIRMED,
+      appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
     });
 
     if (existingConfirmedAppointment) {
@@ -234,13 +234,79 @@ const bookAppointment = async (req, res) => {
       });
     }
 
-    // ✅ Slot is available - return payment options
-    const discountedAmount = calculateDiscountedAmount(docData.fees);
-    const fullAmount = docData.fees;
+    const existingHold = await appointmentModel.findOne({
+      userId,
+      docId,
+      slotDate,
+      slotTime,
+      appointmentStatus: APPOINTMENT_STATUS.HOLD,
+    });
+
+    const userData = await userModel.findById(userId).select("-password");
+    const fullAmount = Number(docData.fees || 0);
+    const tokenAmount = Math.min(TOKEN_AMOUNT, fullAmount);
+    const paymentOptions = {
+      option1_full: {
+        type: PAYMENT_TYPE.FULL,
+        description: "Pay Full Amount Now",
+        amount: fullAmount,
+        youPay: fullAmount,
+      },
+      option2_token: {
+        type: PAYMENT_TYPE.TOKEN,
+        description: "Pay Token Now, Rest at Clinic",
+        tokenAmount,
+        youPay: tokenAmount,
+        remainingAtClinic: Math.max(0, fullAmount - tokenAmount),
+      },
+    };
+
+    if (existingHold) {
+      return res.json({
+        success: true,
+        message: "Slot is already on hold. Choose a payment option.",
+        appointmentId: existingHold._id,
+        slotDetails: {
+          docId,
+          docName: docData.name,
+          speciality: docData.speciality,
+          slotDate,
+          slotTime,
+          fullAmount,
+        },
+        paymentOptions,
+        holdExpiry: existingHold.holdExpiry,
+      });
+    }
+
+    const holdExpiry = new Date(Date.now() + 10 * 60 * 1000);
+    const appointment = await appointmentModel.create({
+      userId,
+      docId,
+      userData: userData ? userData.toObject() : {},
+      docData: docData.toObject(),
+      slotDate,
+      slotTime,
+      amount: fullAmount,
+      currency: PAYMENT_CURRENCY,
+      tokenAmount,
+      paidAmount: 0,
+      paymentType: "PENDING",
+      paymentStatus: PAYMENT_STATUS.PENDING,
+      appointmentStatus: APPOINTMENT_STATUS.HOLD,
+      status: APPOINTMENT_STATUS.HOLD,
+      holdExpiry,
+      date: Date.now(),
+      isPaid: false,
+      tokenPaid: false,
+      payment: false,
+      refundStatus: REFUND_STATUS.NONE,
+    });
 
     res.json({
       success: true,
       message: "Slot is available. Choose payment option.",
+      appointmentId: appointment._id,
       slotDetails: {
         docId,
         docName: docData.name,
@@ -249,21 +315,8 @@ const bookAppointment = async (req, res) => {
         slotTime,
         fullAmount,
       },
-      paymentOptions: {
-        option1_online: {
-          type: PAYMENT_TYPE.ONLINE,
-          description: "Pay Full Amount with 10% Discount",
-          amount: discountedAmount,
-          youPay: discountedAmount,
-        },
-        option2_token: {
-          type: PAYMENT_TYPE.TOKEN,
-          description: "Pay Token (Rs. 500) Now, Rest at Clinic",
-          tokenAmount: TOKEN_AMOUNT,
-          youPay: TOKEN_AMOUNT,
-          remainingAtClinic: fullAmount - TOKEN_AMOUNT,
-        },
-      },
+      paymentOptions,
+      holdExpiry,
     });
   } catch (error) {
     console.log("bookAppointment error:", error);
@@ -274,8 +327,8 @@ const bookAppointment = async (req, res) => {
 // API to get user appointments for frontend my-appointments page
 const listAppointment = async (req, res) => {
   try {
-   const userId = req.user.userId;
-    const appointments = await appointmentModel.find({ userId });
+    const userId = req.user.userId;
+    const appointments = await appointmentModel.find({ userId }).sort({ date: -1 });
 
     res.json({ success: true, appointments });
   } catch (error) {
@@ -311,20 +364,39 @@ const cancelAppointment = async (req, res) => {
       });
     }
 
-    // Can only cancel CONFIRMED appointments
-    if (appointment.status !== APPOINTMENT_STATUS.CONFIRMED) {
+    // Can cancel HOLD or CONFIRMED appointments
+    if (
+      ![APPOINTMENT_STATUS.HOLD, APPOINTMENT_STATUS.CONFIRMED].includes(
+        appointment.appointmentStatus,
+      )
+    ) {
       return res.json({
         success: false,
         message: "Cannot cancel this appointment",
       });
     }
 
+    const refundAmount = Number(appointment.paidAmount || 0);
+
+    if (refundAmount > 0 && !appointment.walletReversed) {
+      await doctorModel.findByIdAndUpdate(appointment.docId, {
+        $inc: { walletBalance: -refundAmount, earnings: -refundAmount },
+      });
+      appointment.walletReversed = true;
+      appointment.walletReversedAmount = refundAmount;
+    }
+
     // 🟢 Cancel appointment
-    appointment.status = APPOINTMENT_STATUS.CANCELLED;
+    appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_USER;
+    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_USER;
     appointment.cancelled = true;
     appointment.cancelledAt = new Date();
     appointment.cancellationReason = "Cancelled by patient";
-    appointment.refundInitiated = appointment.paidAmount > 0; // Mark for refund if paid
+    appointment.cancelledBy = "USER";
+    appointment.refundInitiated = refundAmount > 0;
+    appointment.refundAmount = refundAmount;
+    appointment.refundStatus = refundAmount > 0 ? REFUND_STATUS.PENDING : REFUND_STATUS.NONE;
+    appointment.paymentStatus = refundAmount > 0 ? PAYMENT_STATUS.REFUNDED : appointment.paymentStatus;
 
     await appointment.save();
 
@@ -370,6 +442,9 @@ const cancelAppointment = async (req, res) => {
     return res.json({
       success: true,
       message: "Appointment cancelled successfully",
+      cancellation_reason: appointment.cancellationReason,
+      refund_status: refundAmount > 0,
+      refundAmount,
       refundInitiated: appointment.refundInitiated,
     });
   } catch (error) {

@@ -38,7 +38,17 @@ const DoctorAppointments = () => {
 
         {/* Appointment Rows/Cards */}
         <div className="max-h-[80vh] overflow-y-auto">
-          {[...appointments].reverse().map((item, index) => (
+          {[...appointments].reverse().map((item, index) => {
+            const paymentLabel =
+              item.paymentType === "TOKEN"
+                ? "Token"
+                : item.paymentType === "FULL"
+                  ? "Full"
+                  : item.paymentStatus === "PAID"
+                    ? "Paid"
+                    : "Pending";
+
+            return (
             <div
               key={index}
               className="flex flex-col gap-3 sm:grid sm:grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] sm:gap-1 sm:items-center text-gray-500 py-4 px-6 border-b hover:bg-gray-50 transition-colors"
@@ -51,18 +61,12 @@ const DoctorAppointments = () => {
                 <span className="font-bold text-gray-400">#{index + 1}</span>
                 <span
                   className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                    item.isPaid
+                    item.paymentStatus === "PAID" || item.paymentStatus === "PARTIAL"
                       ? "bg-green-100 text-green-700"
                       : "bg-blue-100 text-primary"
                   }`}
                 >
-                  {item.paymentType === "TOKEN"
-                    ? "CASH"
-                    : item.isPaid
-                      ? "Paid"
-                      : item.payment
-                        ? "Online"
-                        : "CASH"}
+                  {paymentLabel}
                 </span>
               </div>
 
@@ -87,18 +91,12 @@ const DoctorAppointments = () => {
               <div className="hidden sm:block">
                 <p
                   className={`text-xs inline border px-2 rounded-full ${
-                    item.isPaid
+                    item.paymentStatus === "PAID" || item.paymentStatus === "PARTIAL"
                       ? "border-green-500 text-green-500"
                       : "border-primary text-gray-500"
                   }`}
                 >
-                  {item.paymentType === "TOKEN"
-                    ? "CASH"
-                    : item.isPaid
-                      ? "Paid"
-                      : item.payment
-                        ? "Online"
-                        : "CASH"}
+                  {paymentLabel}
                 </p>
 
                 {/* TOKEN breakdown for doctor */}
@@ -167,7 +165,7 @@ const DoctorAppointments = () => {
               <div className="flex justify-end sm:justify-center pt-2 sm:pt-0">
                 {item.cancelled ? (
                   <p className="text-red-400 text-xs font-bold uppercase tracking-wider">
-                    Cancelled
+                    {item.appointmentStatus || item.status || "Cancelled"}
                   </p>
                 ) : item.isCompleted ? (
                   <p className="text-green-500 text-xs font-bold uppercase tracking-wider">
@@ -199,7 +197,8 @@ const DoctorAppointments = () => {
                 )}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

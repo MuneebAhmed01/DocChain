@@ -19,6 +19,18 @@ const DoctorDashboard = () => {
     }
   }, [dToken]);
 
+  useEffect(() => {
+    if (!dToken) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      getDashData();
+    }, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [dToken, getDashData]);
+
   return (
     dashData && (
       <div className="m-5">
@@ -32,7 +44,7 @@ const DoctorDashboard = () => {
               <p className="text-xl font-bold text-gray-700">
                 {currency} {dashData.earnings.toLocaleString()}
               </p>
-              <p className="text-gray-500 text-sm">Total Earnings</p>
+              <p className="text-gray-500 text-sm">Wallet Balance</p>
             </div>
           </div>
 

@@ -11,6 +11,7 @@ import doctorRemoved from "../emailTemplates/doctorRemoved.js";
 import appointmentCancelledPatient from "../emailTemplates/appointmentCancelledPatient.js";
 import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDoctor.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
+import WalletService from "../services/walletService.js";
 import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
@@ -188,6 +189,9 @@ const appointmentCancel = async (req, res) => {
       });
     }
 
+    const wasConfirmed = appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED;
+    const refundAmount = Number(appointment.paidAmount || 0);
+
     // Can only cancel HOLD or CONFIRMED appointments
     if (![APPOINTMENT_STATUS.HOLD, APPOINTMENT_STATUS.CONFIRMED].includes(appointment.appointmentStatus)) {
       return res.json({
@@ -196,30 +200,49 @@ const appointmentCancel = async (req, res) => {
       });
     }
 
+    // ✅ Use wallet service for atomic refund operation
+    let walletResult = null;
+    if (refundAmount > 0) {
+      walletResult = await WalletService.debitFullRefund(
+        appointmentId,
+        String(appointment.docId),
+        refundAmount,
+        "ADMIN"
+      );
+
+      if (!walletResult.success) {
+        console.error("Failed to process admin refund:", walletResult.message);
+        return res.status(400).json({
+          success: false,
+          message: `Failed to process refund: ${walletResult.message}`,
+        });
+      }
+    }
+
     // 🟢 Update appointment status
     appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_ADMIN;
+    appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_ADMIN;
     appointment.cancelledAt = new Date();
     appointment.cancelledBy = "ADMIN";
     appointment.cancellationReason = cancellationReason || "Cancelled by clinic/doctor";
 
     // 🟢 Handle refunds for CONFIRMED appointments with payments
-    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED &&
-        (appointment.isPaid || appointment.tokenPaid)) {
-      
-      const refundAmount = appointment.paidAmount || 0;
-      
-      if (refundAmount > 0) {
-        appointment.refundStatus = "PENDING";
-        appointment.refundAmount = refundAmount;
-        appointment.paymentStatus = PAYMENT_STATUS.REFUNDED;
-        // Stripe refund logic would be handled in a separate Stripe endpoint
-      }
+    if (refundAmount > 0) {
+      appointment.refundStatus = "PENDING";
+      appointment.refundAmount = refundAmount;
+      appointment.paymentStatus = PAYMENT_STATUS.REFUNDED;
+      appointment.refundInitiated = true;
+        // ✅ Mark wallet as reversed if refund was processed
+        if (walletResult?.success) {
+          appointment.walletReversed = true;
+          appointment.walletReversedAmount = refundAmount;
+        }
     }
 
     await appointment.save();
 
-    // Release slot only if CONFIRMED
-    if (appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED) {
+    // Release slot only if the appointment had been confirmed before cancellation
+    if (wasConfirmed) {
       const { docId, slotDate, slotTime } = appointment;
       const doctorData = await doctorModel.findById(docId);
 
@@ -263,6 +286,8 @@ const appointmentCancel = async (req, res) => {
     res.json({
       success: true,
       message: "Appointment cancelled successfully",
+      cancellation_reason: appointment.cancellationReason,
+      refund_status: refundAmount > 0,
       refundStatus: appointment.refundStatus,
       refundAmount: appointment.refundAmount,
     });
@@ -348,6 +373,51 @@ const triggerHoldCleanup = async (req, res) => {
   }
 };
 
+// 💰 Get wallet summary for a doctor (Admin View)
+const getDoctorWalletSummary = async (req, res) => {
+  try {
+    const { docId } = req.body;
+
+    if (!docId) {
+      return res.json({ success: false, message: "Doctor ID required" });
+    }
+
+    const summary = await WalletService.getWalletSummary(docId);
+
+    if (!summary.success) {
+      return res.json(summary);
+    }
+
+    res.json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    console.error("Failed to fetch wallet summary:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// 📊 Get transaction history for a doctor (Admin Audit)
+const getDoctorTransactionHistory = async (req, res) => {
+  try {
+    const { docId, limit = 50, skip = 0 } = req.body;
+
+    if (!docId) {
+      return res.json({ success: false, message: "Doctor ID required" });
+    }
+
+    const result = await WalletService.getTransactionHistory(docId, {
+      limit: Math.min(Number(limit), 100),
+      skip: Number(skip),
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch transaction history:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
 
 export {
   addDoctor,
@@ -358,4 +428,6 @@ export {
   adminDashboard,
   changeDoctorStatus,
   triggerHoldCleanup,
+  getDoctorWalletSummary,
+  getDoctorTransactionHistory,
 };

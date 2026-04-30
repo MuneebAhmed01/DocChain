@@ -69,7 +69,7 @@ const AllAppointments = () => {
             {/* 7. Actions: Always Visible */}
             <div className="w-full flex justify-end sm:justify-start">
               {item.cancelled ? (
-                <p className="text-red-400 text-xs font-medium">Cancelled</p>
+                <p className="text-red-400 text-xs font-medium">{item.appointmentStatus || item.status || "Cancelled"}</p>
               ) : item.isCompleted ? (
                 <p className="text-green-500 text-xs font-medium">Completed</p>
               ) : (

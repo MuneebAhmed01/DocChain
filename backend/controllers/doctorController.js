@@ -6,10 +6,15 @@ import appointmentCompletedPatient from "../emailTemplates/appointmentCompletedP
 import doctorRegistered from "../emailTemplates/doctorRegistered.js";
 import reviewModel from "../models/reviewModel.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
+import WalletService from "../services/walletService.js";
+import {
+  canCompleteAppointment,
+  shouldCreditRemainingAmount,
+  calculateRemainingAmount,
+} from "../services/appointmentService.js";
 import {
   APPOINTMENT_STATUS,
-  PAYMENT_TYPE,
-  TOKEN_AMOUNT,
+  PAYMENT_STATUS,
   REFUND_STATUS,
 } from "../config/payment.js";
 
@@ -84,7 +89,11 @@ console.log("PASSWORD:", password)
 const appointmentsDoctor = async (req, res) => {
   try {
     const { docId } = req.body;
-    const appointments = await appointmentModel.find({ docId });
+    // ✅ Sort by date descending (newest first) and by time
+    const appointments = await appointmentModel
+      .find({ docId })
+      .sort({ slotDate: -1, slotTime: -1 })
+      .lean();
 
     res.json({ success: true, appointments });
   } catch (error) {
@@ -93,49 +102,115 @@ const appointmentsDoctor = async (req, res) => {
   }
 };
 
-// API to mark appointment completed for doctor panel
-// doctorController.js
- const appointmentComplete = async (req, res) => {
+/**
+ * 🔧 UPDATED: Mark appointment as completed with remaining amount crediting
+ * - Only CONFIRMED appointments can be completed
+ * - For TOKEN payments: credit remaining amount (if not already done)
+ * - Idempotent: safe to call multiple times
+ * - Atomic: wallet operations are tracked in transaction log
+ */
+const appointmentComplete = async (req, res) => {
   try {
     const { appointmentId } = req.body;
 
-    const appt = await appointmentModel.findById(appointmentId);
-    if (!appt) return res.status(404).json({ success: false, message: "Appointment not found" });
-
-    // Mark appointment as completed
-    appt.isCompleted = true;
-    await appt.save();
-try {
-  await appointmentCompletedPatient({
-    patientName: appt.userData.name,
-    patientEmail: appt.userData.email,
-    doctorName: appt.docData.name,
-    date: appt.slotDate,
-    time: appt.slotTime,
-  });
-} catch (err) {
-  console.error("Failed to send completed appointment email:", err);
-}
-
-    // Calculate earnings
-    let earningsToAdd = appt.amount; // default full price
-
-    if (appt.isPaid) {
-      earningsToAdd = appt.amount * 0.9; // actual paid amount if online
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
     }
 
-    // Update doctor earnings
-    await doctorModel.findByIdAndUpdate(appt.docId, { $inc: { earnings: earningsToAdd } });
+    // ✅ Only CONFIRMED appointments can be completed
+    if (!canCompleteAppointment(appointment)) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot complete appointment with status: ${appointment.appointmentStatus}`,
+      });
+    }
 
-    res.json({ success: true, message: "Appointment completed and earnings updated" });
+    // ✅ Prevent double completion
+    if (appointment.appointmentStatus === APPOINTMENT_STATUS.COMPLETED) {
+      return res.json({
+        success: true,
+        message: "Appointment already completed",
+        isDuplicate: true,
+      });
+    }
+
+    // ✅ For TOKEN payments: credit remaining amount if not yet credited
+    let remainingAmountResult = null;
+    if (shouldCreditRemainingAmount(appointment)) {
+      const remainingAmount = calculateRemainingAmount(appointment);
+
+      remainingAmountResult = await WalletService.creditRemainingAmount(
+        appointmentId,
+        String(appointment.docId),
+        remainingAmount
+      );
+
+      if (!remainingAmountResult.success) {
+        console.error(
+          "Failed to credit remaining amount:",
+          remainingAmountResult.message
+        );
+        return res.status(400).json({
+          success: false,
+          message: `Failed to credit remaining amount: ${remainingAmountResult.message}`,
+        });
+      }
+    }
+
+    // ✅ Mark appointment as completed
+    appointment.appointmentStatus = APPOINTMENT_STATUS.COMPLETED;
+    appointment.status = APPOINTMENT_STATUS.COMPLETED;
+    appointment.isCompleted = true;
+    appointment.completionTime = new Date();
+
+    // ✅ Track that remaining amount was credited (if applicable)
+    if (remainingAmountResult?.success) {
+      appointment.remainingAmountCredited = true;
+      appointment.remainingAmountCreditedAmount = remainingAmountResult.transaction?.amount || 0;
+    }
+
+    await appointment.save();
+
+    // ✅ Send completion email
+    try {
+      await appointmentCompletedPatient({
+        patientName: appointment.userData.name,
+        patientEmail: appointment.userData.email,
+        doctorName: appointment.docData.name,
+        date: appointment.slotDate,
+        time: appointment.slotTime,
+      });
+    } catch (err) {
+      console.error("Failed to send completed appointment email:", err);
+    }
+
+    res.json({
+      success: true,
+      message: "Appointment completed successfully",
+      remainingAmountCredited: remainingAmountResult?.success || false,
+      remainingAmountCreatedAmount:
+        remainingAmountResult?.transaction?.amount || 0,
+    });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Appointment completion error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
 
-
-// API to cancel appointment for doctor panel
+/**
+ * 🔧 UPDATED: Cancel appointment with wallet reversal
+ * - Uses wallet service for atomic operations
+ * - Prevents double reversals with idempotency checks
+ * - Properly reverses token/full payments
+ * - Releases slot from schedule
+ */
 const appointmentCancel = async (req, res) => {
   try {
     const { docId, appointmentId, cancellationReason } = req.body;
@@ -154,57 +229,67 @@ const appointmentCancel = async (req, res) => {
       return res.json({ success: false, message: "Not authorized" });
     }
 
-    // Only allow cancelling confirmed appointments
-    if (appointment.status !== APPOINTMENT_STATUS.CONFIRMED) {
-      return res.json({ success: false, message: "Cannot cancel this appointment" });
+    // ✅ Only allow cancelling HOLD or CONFIRMED appointments
+    if (
+      ![APPOINTMENT_STATUS.HOLD, APPOINTMENT_STATUS.CONFIRMED].includes(
+        appointment.appointmentStatus
+      )
+    ) {
+      return res.json({
+        success: false,
+        message: "Cannot cancel this appointment",
+      });
     }
 
-    // Wallet guard: for token appointments, ensure the doctor can reverse the token
-    if (
-      appointment.paymentType === PAYMENT_TYPE.TOKEN &&
-      appointment.tokenPaid &&
-      !appointment.doctorWalletReversed
-    ) {
-      const doctor = await doctorModel.findById(docId).select("walletBalance");
-      const currentBalance = Number(doctor?.walletBalance || 0);
+    const paidAmount = Number(appointment.paidAmount || 0);
 
-      if (currentBalance < TOKEN_AMOUNT) {
-        return res.json({
+    // ✅ Reverse payment using wallet service (atomic with idempotency)
+    let walletResult = null;
+    if (paidAmount > 0) {
+      walletResult = await WalletService.debitFullRefund(
+        appointmentId,
+        String(docId),
+        paidAmount,
+        "DOCTOR"
+      );
+
+      if (!walletResult.success) {
+        console.error("Failed to reverse payment:", walletResult.message);
+        return res.status(400).json({
           success: false,
-          message:
-            "Insufficient wallet balance to cancel this token appointment. Please contact admin.",
+          message: `Failed to process refund: ${walletResult.message}`,
         });
       }
-
-      await doctorModel.findByIdAndUpdate(docId, {
-        $inc: { walletBalance: -TOKEN_AMOUNT },
-      });
-      appointment.doctorWalletReversed = true;
     }
 
-    // Mark appointment cancelled by doctor + refund initiated (token/full paid amount)
+    // ✅ Update appointment status
+    appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR;
     appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_DOCTOR;
     appointment.cancelled = true;
     appointment.cancelledAt = new Date();
     appointment.cancellationReason =
-      cancellationReason || "Cancelled by doctor due to an emergency";
+      cancellationReason ||
+      "Cancelled by doctor due to an emergency. Your amount will be refunded soon.";
 
-    const refundAmount = Number(appointment.paidAmount || 0);
-    if (refundAmount > 0) {
+    if (paidAmount > 0) {
       appointment.refundInitiated = true;
-      appointment.refundStatus = REFUND_STATUS.INITIATED;
+      appointment.refundStatus = REFUND_STATUS.PENDING;
+      appointment.refundAmount = paidAmount;
+      appointment.paymentStatus = PAYMENT_STATUS.REFUNDED;
+      appointment.walletReversed = true;
+      appointment.walletReversedAmount = paidAmount;
     }
 
     await appointment.save();
 
-    // Release slot from doctor's schedule
+    // ✅ Release slot from doctor's schedule
     const doctorData = await doctorModel.findById(docId);
     if (doctorData && doctorData.slots_booked) {
       const slotsBooked = doctorData.slots_booked;
       if (slotsBooked[appointment.slotDate]) {
-        slotsBooked[appointment.slotDate] = slotsBooked[appointment.slotDate].filter(
-          (t) => t !== appointment.slotTime
-        );
+        slotsBooked[appointment.slotDate] = slotsBooked[
+          appointment.slotDate
+        ].filter((t) => t !== appointment.slotTime);
       }
       doctorData.slots_booked = slotsBooked;
       await doctorData.save();
@@ -212,12 +297,14 @@ const appointmentCancel = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Appointment cancelled",
+      message: "Appointment cancelled successfully",
+      cancellation_reason: appointment.cancellationReason,
+      refund_status: paidAmount > 0,
       refundStatus: appointment.refundStatus,
-      refundAmount,
+      refundAmount: paidAmount,
     });
   } catch (error) {
-    console.log(error);
+    console.error("Appointment cancellation error:", error);
     res.json({ success: false, message: error.message });
   }
 };
@@ -226,29 +313,28 @@ const appointmentCancel = async (req, res) => {
 const doctorDashboard = async (req, res) => {
   try {
     const { docId } = req.body;
-    const appointments = await appointmentModel.find({ docId });
+    // ✅ Sort appointments: newest first (descending by date, then by time)
+    const appointments = await appointmentModel
+      .find({ docId })
+      .sort({ slotDate: -1, slotTime: -1 })
+      .lean();
 
-    let earnings = 0;
-
-    appointments.map((item) => {
-      if (item.isCompleted || item.payment) {
-        earnings += item.amount;
-      }
-    });
+    const doctor = await doctorModel.findById(docId).select("walletBalance");
 
     let patients = [];
 
-    appointments.map((item) => {
+    appointments.forEach((item) => {
       if (!patients.includes(item.userId)) {
         patients.push(item.userId);
       }
     });
 
     const dashData = {
-      earnings,
+      earnings: Number(doctor?.walletBalance || 0),
       appointments: appointments.length,
       patients: patients.length,
-      latestAppointments: appointments.reverse().slice(0, 5),
+      // ✅ Latest appointments already sorted (newest first)
+      latestAppointments: appointments.slice(0, 5),
     };
 
     res.json({ success: true, dashData });

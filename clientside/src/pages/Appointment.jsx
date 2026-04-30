@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
@@ -8,7 +8,7 @@ import axiosInstance from "../axiosInstance";
 import { formatPkrAmount } from "../constants/payment";
 const Appointment = () => {
   const { docId } = useParams();
-  const { doctors, currencySymbol, token } = useContext(AppContext);
+  const { doctors, currencySymbol, token, getDoctorsData } = useContext(AppContext);
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ const Appointment = () => {
   const [reviews, setReviews] = useState([]);
   const [bookingOptions, setBookingOptions] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const restoreAttemptedRef = useRef(false);
 
   const fetchDocInfo = async () => {
     const docInfo = doctors.find((doc) => doc._id === docId);
@@ -155,33 +156,40 @@ const Appointment = () => {
     }
   };
 
-  const bookAppointment = async () => {
+  const bookAppointment = async (selectedSlotIndex, selectedSlotTime, selectedDate) => {
     if (!token) {
       toast.warn("Login to book appointment");
       return navigate("/login");
     }
 
-    if (!slotTime) {
+    if (!selectedSlotTime) {
       toast.error("Please select a time slot");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const date = docSlots[slotIndex][0].datetime;
-
-      let day = date.getDate();
-      let month = date.getMonth() + 1;
-      let year = date.getFullYear();
-
-      const slotDate = day + "_" + month + "_" + year;
+      const slotDate = selectedDate;
 
       const { data } = await axiosInstance.post(
         "/api/user/book-appointment",
-        { docId, slotDate, slotTime },
+        { docId, slotDate, slotTime: selectedSlotTime },
       );
       if (data.success) {
-        setBookingOptions(data);
+        setBookingOptions({
+          ...data,
+          slotDate,
+          slotTime: selectedSlotTime,
+          slotIndex: selectedSlotIndex,
+        });
+        localStorage.setItem(
+          `appointmentSelection:${docId}`,
+          JSON.stringify({
+            slotIndex: selectedSlotIndex,
+            slotTime: selectedSlotTime,
+            slotDate,
+          }),
+        );
       } else {
         toast.error(data.message);
       }
@@ -193,16 +201,11 @@ const Appointment = () => {
     }
   };
 
-  const startPayment = async (endpoint) => {
+  const startPayment = async (endpoint, appointmentId) => {
     try {
       setIsSubmitting(true);
-      const date = docSlots[slotIndex][0].datetime;
-      const slotDate = `${date.getDate()}_${date.getMonth() + 1}_${date.getFullYear()}`;
-
       const { data } = await axiosInstance.post(endpoint, {
-        docId,
-        slotDate,
-        slotTime,
+        appointmentId,
       });
 
       if (data.url) {
@@ -227,6 +230,56 @@ const Appointment = () => {
   useEffect(() => {
     setBookingOptions(null);
   }, [slotIndex, slotTime]);
+
+  useEffect(() => {
+    const syncDoctors = () => {
+      if (docId) {
+        getDoctorsData();
+      }
+    };
+
+    syncDoctors();
+    const intervalId = window.setInterval(syncDoctors, 30000);
+
+    return () => window.clearInterval(intervalId);
+  }, [docId, getDoctorsData]);
+
+  useEffect(() => {
+    if (!docSlots.length || restoreAttemptedRef.current) {
+      return;
+    }
+
+    const savedSelectionRaw = localStorage.getItem(`appointmentSelection:${docId}`);
+    if (!savedSelectionRaw) {
+      restoreAttemptedRef.current = true;
+      return;
+    }
+
+    try {
+      const savedSelection = JSON.parse(savedSelectionRaw);
+      const restoredDayIndex = docSlots.findIndex((daySlots) => {
+        const firstSlot = daySlots?.[0];
+        if (!firstSlot) return false;
+        const currentDate = firstSlot.datetime;
+        const currentSlotDate = `${currentDate.getDate()}_${currentDate.getMonth() + 1}_${currentDate.getFullYear()}`;
+        return currentSlotDate === savedSelection.slotDate;
+      });
+
+      if (restoredDayIndex >= 0) {
+        const restoredDay = docSlots[restoredDayIndex];
+        const restoredSlot = restoredDay.find((item) => item.time === savedSelection.slotTime);
+        if (restoredSlot) {
+          setSlotIndex(restoredDayIndex);
+          setSlotTime(savedSelection.slotTime);
+          bookAppointment(restoredDayIndex, savedSelection.slotTime, savedSelection.slotDate);
+        }
+      }
+    } catch (error) {
+      console.log("Failed to restore appointment selection:", error);
+    } finally {
+      restoreAttemptedRef.current = true;
+    }
+  }, [docSlots, docId]);
 
   useEffect(() => {
     getAvailableSlots();
@@ -339,90 +392,126 @@ const Appointment = () => {
         {/* -------------------- Booking Slots -------------------- */}
         <div className="sm:ml-72 sm:pl-4 mt-4 font-medium text-gray-700">
           <p>Booking slots</p>
-          <div className="flex gap-3 items-center w-full overflow-x-scroll mt-4">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {docSlots.length &&
               docSlots.map((item, index) => (
                 <div
                   onClick={() => setSlotIndex(index)}
-                  className={`text-center py-6 min-w-16 rounded-full cursor-pointer ${
+                  className={`cursor-pointer rounded-xl border px-3 py-3 text-center transition-all ${
                     slotIndex === index
-                      ? "bg-primary text-white"
-                      : "border border-gray-200"
+                      ? "border-primary bg-primary text-white shadow-sm"
+                      : "border-gray-200 bg-white hover:border-primary/40"
                   }`}
                   key={index}
                 >
-                  <p>{item[0] && daysOfWeek[item[0].datetime.getDay()]}</p>
-                  <p>{item[0] && item[0].datetime.getDate()}</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] opacity-80">
+                    {item[0] && daysOfWeek[item[0].datetime.getDay()]}
+                  </p>
+                  <p className="mt-1 text-xl font-semibold leading-none">
+                    {item[0] && item[0].datetime.getDate()}
+                  </p>
                 </div>
               ))}
           </div>
 
-          <div className="flex items-center gap-3 w-full overflow-x-scroll mt-4">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {docSlots.length &&
               docSlots[slotIndex].map((item, index) => (
-                <p
-                  onClick={() => setSlotTime(item.time)}
-                  className={`text-sm font-light flex-shrink-0 px-5 py-2 rounded-full cursor-pointer ${
-                    item.time === slotTime
-                      ? "bg-primary text-white"
-                      : "text-gray-400 border border-gray-300"
-                  }`}
-                  key={index}
-                >
-                  {item.time.toLowerCase()}
-                </p>
+                <div key={index} className="min-w-0">
+                  <p
+                    onClick={() => {
+                      const selectedDate = `${item.datetime.getDate()}_${item.datetime.getMonth() + 1}_${item.datetime.getFullYear()}`;
+                      setSlotTime(item.time);
+                      setBookingOptions(null);
+                      bookAppointment(slotIndex, item.time, selectedDate);
+                    }}
+                    className={`block w-full cursor-pointer rounded-lg px-3 py-2.5 text-center text-sm font-medium transition-all ${
+                      item.time === slotTime
+                        ? "bg-primary text-white shadow-sm"
+                        : "border border-gray-300 bg-white text-gray-500 hover:border-primary hover:text-primary"
+                    }`}
+                  >
+                    {item.time.toLowerCase()}
+                  </p>
+                </div>
               ))}
           </div>
-          <button
-            onClick={bookAppointment}
-            disabled={isSubmitting}
-            className="bg-primary text-white text-sm font-light px-14 py-3 rounded-full my-6"
+          {isSubmitting && (
+            <p className="text-sm text-gray-500 mt-4">Preparing payment options...</p>
+          )}
+        </div>
+
+        {bookingOptions?.success && (
+          <div
+            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setBookingOptions(null)}
           >
-            {isSubmitting ? "Please wait..." : "Continue to payment"}
-          </button>
-
-          {bookingOptions?.success && (
-            <div className="border rounded-2xl p-5 max-w-2xl bg-white shadow-sm">
-              <p className="text-lg font-semibold text-gray-800">Choose payment option</p>
-              <p className="text-sm text-gray-600 mt-1">
-                Your appointment is created only after successful payment.
-              </p>
-
-              <div className="mt-4 space-y-3">
-                <div className="border rounded-xl p-4">
-                  <p className="font-semibold text-gray-800">Pay Full Online (10% Discount)</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option1_online.youPay)}
+            <div
+              className="w-full max-w-xl rounded-3xl bg-white shadow-2xl border border-gray-100 overflow-hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="payment-options-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 sm:px-6 py-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
+                    Select payment method
                   </p>
-                  <button
-                    onClick={() => startPayment("/api/stripe/create-checkout-session")}
-                    disabled={isSubmitting}
-                    className="mt-3 bg-blue-600 text-white text-sm px-4 py-2 rounded-lg"
-                  >
-                    Pay Full Online
-                  </button>
+                  <h3 id="payment-options-title" className="text-xl font-semibold text-gray-900 mt-1">
+                    Selected slot: {bookingOptions.slotTime}
+                  </h3>
                 </div>
+                <button
+                  onClick={() => setBookingOptions(null)}
+                  className="w-9 h-9 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center justify-center"
+                  aria-label="Close payment modal"
+                >
+                  ✕
+                </button>
+              </div>
 
-                <div className="border rounded-xl p-4">
-                  <p className="font-semibold text-gray-800">Pay Token (Rs. 500)</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.youPay)}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Pay at clinic later: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.remainingAtClinic)}
-                  </p>
-                  <button
-                    onClick={() => startPayment("/api/stripe/create-token-payment-session")}
-                    disabled={isSubmitting}
-                    className="mt-3 bg-emerald-600 text-white text-sm px-4 py-2 rounded-lg"
-                  >
-                    Pay Token
-                  </button>
+              <div className="px-5 sm:px-6 py-5">
+                <p className="text-sm text-gray-500">
+                  Pick how you want to confirm this booking. The selected slot will remain held while you complete payment.
+                </p>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
+                    <p className="font-semibold text-gray-900 text-lg">Pay Full Amount</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option1_full.youPay)}
+                    </p>
+                    <button
+                      onClick={() => startPayment("/api/stripe/create-checkout-session", bookingOptions.appointmentId)}
+                      disabled={isSubmitting}
+                      className="mt-4 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95 disabled:opacity-60"
+                    >
+                      Pay Full
+                    </button>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5">
+                    <p className="font-semibold text-gray-900 text-lg">Pay Token</p>
+                    <p className="text-sm text-gray-600 mt-2">
+                      Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.youPay)}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Pay at clinic later: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.remainingAtClinic)}
+                    </p>
+                    <button
+                      onClick={() => startPayment("/api/stripe/create-token-payment-session", bookingOptions.appointmentId)}
+                      disabled={isSubmitting}
+                      className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      Pay Token
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* -------------------- Listing Related Doctors -------------------- */}
         <RelatedDoctors docId={docId} speciality={docInfo.speciality} />

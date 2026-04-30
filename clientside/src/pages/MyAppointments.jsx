@@ -46,7 +46,7 @@ const MyAppointments = () => {
     try {
       const { data } = await axiosInstance.get("/api/user/appointments");
       if (data.success) {
-        setAppointments(data.appointments.reverse());
+        setAppointments(data.appointments);
       }
     } catch (error) {
       console.log(error);
@@ -120,6 +120,12 @@ const MyAppointments = () => {
 
       <div>
         {appointments.map((item, index) => {
+          const appointmentStatus = item.appointmentStatus || item.status;
+          const refundDue = Boolean(item.refund_status || item.refundStatus === "PENDING" || (item.refundAmount || 0) > 0);
+          const cancellationMessage = refundDue
+            ? "Your appointment has been cancelled By Doctor Due to Emergency. You will be refunded."
+            : item.cancellationReason || "Appointment cancelled.";
+
           return (
             <div
               className="flex flex-col gap-4 sm:grid sm:grid-cols-[1fr_3fr_1fr] items-center sm:items-start py-5 border-b"
@@ -170,21 +176,27 @@ const MyAppointments = () => {
                   </p>
                 )}
 
-                {item.status === "CANCELLED_BY_DOCTOR" && (
+                {(appointmentStatus === "CANCELLED_BY_DOCTOR" || appointmentStatus === "CANCELLED_BY_ADMIN" || appointmentStatus === "PAYMENT_FAILED") && (
                   <p
                     id="msg1"
                     className="mt-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded"
                   >
-                    Your appointment was canceled due to an emergency. Your advance payment (Rs. 500) will be refunded.
+                    {cancellationMessage}
                   </p>
                 )}
 
-                {item.isPaid && (
+                {appointmentStatus === "CANCELLED_BY_USER" && (
+                  <p className="mt-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded">
+                    {cancellationMessage}
+                  </p>
+                )}
+
+                {item.paymentStatus === "PAID" && (
                   <span className="inline-block mt-1 px-3 py-1 bg-green-500 text-white rounded text-xs">
                     Paid in full
                   </span>
                 )}
-                {item.tokenPaid && (
+                {(item.paymentStatus === "PARTIAL" || item.tokenPaid) && (
                   <span className="inline-block mt-1 px-3 py-1 bg-amber-500 text-white rounded text-xs">
                     Token paid
                   </span>
@@ -206,7 +218,7 @@ const MyAppointments = () => {
                 )}
 
                 {/* CANCEL BUTTON */}
-                {!item.cancelled && !item.isCompleted && (
+                {!item.cancelled && appointmentStatus !== "CANCELLED_BY_DOCTOR" && appointmentStatus !== "CANCELLED_BY_ADMIN" && !item.isCompleted && (
                   <button
                     onClick={() => cancelAppointment(item._id)}
                     className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"

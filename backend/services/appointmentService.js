@@ -1,5 +1,5 @@
 import appointmentModel from "../models/appointmentModel.js";
-import { APPOINTMENT_STATUS } from "../config/payment.js";
+import { APPOINTMENT_STATUS, PAYMENT_STATUS } from "../config/payment.js";
 
 /**
  * 🔴 Clean up expired HOLD appointments
@@ -31,9 +31,12 @@ export const cleanupExpiredHolds = async () => {
         holdExpiry: { $lt: now },
       },
       {
-        appointmentStatus: APPOINTMENT_STATUS.CANCELLED_BY_USER,
+        appointmentStatus: APPOINTMENT_STATUS.PAYMENT_FAILED,
+        status: APPOINTMENT_STATUS.PAYMENT_FAILED,
+        paymentStatus: PAYMENT_STATUS.PAYMENT_FAILED,
         cancelledAt: now,
-        cancelledBy: "USER",
+        cancelled: true,
+        cancelledBy: "SYSTEM",
         cancellationReason: "HOLD expired - no payment made within 10 minutes",
       }
     );
@@ -96,6 +99,8 @@ export const getStatusDisplay = (status) => {
     CONFIRMED: "Confirmed",
     CANCELLED_BY_ADMIN: "Cancelled by Clinic",
     CANCELLED_BY_USER: "Cancelled by You",
+    CANCELLED_BY_DOCTOR: "Cancelled by Clinic",
+    PAYMENT_FAILED: "Payment Failed",
     NO_SHOW: "No Show",
     COMPLETED: "Completed",
   };
@@ -125,6 +130,10 @@ export const getCancellationMessage = (appointment) => {
     return "You did not show up for this appointment.";
   }
 
+  if (appointment.appointmentStatus === APPOINTMENT_STATUS.PAYMENT_FAILED) {
+    return "Payment failed. This slot is available again.";
+  }
+
   return appointment.cancellationReason || "";
 };
 
@@ -151,4 +160,33 @@ export const getAppointmentSummary = (appointment) => {
     status: appointment.appointmentStatus,
     paymentMethod: appointment.paymentMethod,
   };
+};
+
+/**
+ * Check if appointment can be marked as completed
+ * Only CONFIRMED appointments can be completed
+ */
+export const canCompleteAppointment = (appointment) => {
+  return appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED;
+};
+
+/**
+ * Check if remaining amount should be credited on completion
+ * TRUE if: TOKEN payment + not yet credited
+ */
+export const shouldCreditRemainingAmount = (appointment) => {
+  if (!appointment.tokenPaid) return false;
+  if (appointment.remainingAmountCredited) return false;
+  
+  const remainingAmount = Number(appointment.amount) - Number(appointment.paidAmount || 0);
+  return remainingAmount > 0;
+};
+
+/**
+ * Calculate remaining amount for TOKEN payments
+ */
+export const calculateRemainingAmount = (appointment) => {
+  const totalAmount = Number(appointment.amount || 0);
+  const paidAmount = Number(appointment.paidAmount || 0);
+  return Math.max(0, totalAmount - paidAmount);
 };
