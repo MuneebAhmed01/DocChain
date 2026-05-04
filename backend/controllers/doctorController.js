@@ -321,6 +321,13 @@ const doctorDashboard = async (req, res) => {
 
     const doctor = await doctorModel.findById(docId).select("walletBalance");
 
+    // Get reviews data for dashboard
+    const reviews = await reviewModel.find({ doctor: docId });
+    const totalReviews = reviews.length;
+    const averageRating = totalReviews > 0 
+      ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(1)
+      : 0;
+
     let patients = [];
 
     appointments.forEach((item) => {
@@ -333,6 +340,8 @@ const doctorDashboard = async (req, res) => {
       earnings: Number(doctor?.walletBalance || 0),
       appointments: appointments.length,
       patients: patients.length,
+      reviews: totalReviews,
+      averageRating: parseFloat(averageRating),
       // ✅ Latest appointments already sorted (newest first)
       latestAppointments: appointments.slice(0, 5),
     };

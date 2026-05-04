@@ -7,6 +7,10 @@ const reviewSchema = new mongoose.Schema(
     appointment: { type: mongoose.Schema.Types.ObjectId, ref: "appointment", required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, default: "" },
+    reply: {
+      text: { type: String, default: "" },
+      createdAt: { type: Date, default: null }
+    }
   },
   { timestamps: true }
 );

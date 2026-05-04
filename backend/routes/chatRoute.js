@@ -3,6 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
 import streamifier from "streamifier";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 import chatModel from "../models/chatModel.js";
 import messageModel from "../models/messageModel.js";
 import appointmentModel from "../models/appointmentModel.js";
@@ -78,7 +79,7 @@ router.get("/doctor-chats", authChat, async (req, res) => {
     }
 
     const chats = await chatModel
-      .find({ doctorId: req.user.userId })
+      .find({ doctorId: req.user.userId, isDeleted: false }) // Filter out deleted chats
       .populate({
         path: 'appointmentId',
         model: 'appointment',
@@ -86,18 +87,35 @@ router.get("/doctor-chats", authChat, async (req, res) => {
       })
       .sort({ lastMessageTime: -1 });
 
-    const chatList = chats.map(chat => ({
-      _id: chat._id,
-      appointmentId: chat.appointmentId,
-      patientName: chat.appointmentId?.userData?.name || 'Unknown Patient',
-      patientImage: chat.appointmentId?.userData?.image || '',
-      slotDate: chat.appointmentId?.slotDate || '',
-      slotTime: chat.appointmentId?.slotTime || '',
-      lastMessage: chat.lastMessage,
-      lastMessageTime: chat.lastMessageTime,
-      unreadCount: chat.unreadDoctorCount,
-      isActive: chat.isActive
-    }));
+    // Get patient data for chats without appointments
+    const patientIds = chats
+      .filter(chat => !chat.appointmentId)
+      .map(chat => chat.patientId);
+
+    let patientsData = {};
+    if (patientIds.length > 0) {
+      const patients = await mongoose.model('user').find({ _id: { $in: patientIds } }, 'name image');
+      patientsData = patients.reduce((acc, patient) => {
+        acc[patient._id] = patient;
+        return acc;
+      }, {});
+    }
+
+    const chatList = chats.map(chat => {
+      const patientData = chat.appointmentId?.userData || patientsData[chat.patientId] || {};
+      return {
+        _id: chat._id,
+        appointmentId: chat.appointmentId,
+        patientName: patientData.name || 'Unknown Patient',
+        patientImage: patientData.image || '',
+        slotDate: chat.appointmentId?.slotDate || '',
+        slotTime: chat.appointmentId?.slotTime || '',
+        lastMessage: chat.lastMessage,
+        lastMessageTime: chat.lastMessageTime,
+        unreadCount: chat.unreadDoctorCount,
+        isDeleted: chat.isDeleted
+      };
+    });
 
     res.json({ success: true, chats: chatList });
   } catch (error) {
@@ -238,17 +256,106 @@ router.post("/upload-file", authChat, upload.single('file'), async (req, res) =>
   }
 });
 
+// Find or create chat between doctor and patient
+router.post("/find-or-create", authChat, async (req, res) => {
+  try {
+    const { doctorId, patientId, appointmentId } = req.body;
+    
+    // Verify user is either the doctor or patient in this chat
+    const isDoctor = req.user.type === 'doctor' && req.user.userId === doctorId;
+    const isPatient = req.user.type === 'user' && req.user.userId === patientId;
+    
+    if (!isDoctor && !isPatient) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    // Find existing chat
+    let chat = await chatModel.findOne({
+      doctorId,
+      patientId,
+      isDeleted: false
+    });
+
+    if (!chat) {
+      // Create new chat
+      chat = new chatModel({
+        doctorId,
+        patientId,
+        appointmentId: appointmentId || null
+      });
+      await chat.save();
+    }
+
+    // Get participant data
+    const doctor = await mongoose.model('doctor').findById(doctorId, 'name image');
+    const patient = await mongoose.model('user').findById(patientId, 'name image');
+
+    res.json({
+      success: true,
+      chat: {
+        _id: chat._id,
+        doctorId: chat.doctorId,
+        patientId: chat.patientId,
+        appointmentId: chat.appointmentId,
+        lastMessage: chat.lastMessage,
+        lastMessageTime: chat.lastMessageTime,
+        doctorName: doctor?.name || 'Unknown Doctor',
+        doctorImage: doctor?.image || '',
+        patientName: patient?.name || 'Unknown Patient',
+        patientImage: patient?.image || ''
+      }
+    });
+  } catch (error) {
+    console.error("Error finding/creating chat:", error);
+    res.status(500).json({ success: false, message: "Failed to find/create chat" });
+  }
+});
+
+// Delete chat (doctor only)
+router.delete("/delete/:chatId", authChat, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    
+    // Verify user is a doctor
+    if (req.user.type !== 'doctor') {
+      return res.status(403).json({ success: false, message: "Only doctors can delete chats" });
+    }
+
+    // Find chat and verify ownership
+    const chat = await chatModel.findOne({
+      _id: chatId,
+      doctorId: req.user.userId,
+      isDeleted: false
+    });
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found or already deleted" });
+    }
+
+    // Soft delete the chat
+    chat.isDeleted = true;
+    chat.deletedBy = 'doctor';
+    chat.deletedAt = new Date();
+    await chat.save();
+
+    res.json({ success: true, message: "Chat deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+    res.status(500).json({ success: false, message: "Failed to delete chat" });
+  }
+});
+
 // Get unread counts for user
 router.get("/unread-counts", authChat, async (req, res) => {
   try {
     let chats;
 
     if (req.user.type === 'doctor') {
-      chats = await chatModel.find({ doctorId: req.user.userId });
+      chats = await chatModel.find({ doctorId: req.user.userId, isDeleted: false });
       const totalUnread = chats.reduce((sum, chat) => sum + chat.unreadDoctorCount, 0);
       res.json({ success: true, totalUnread, chats: chats.length });
     } else {
-      chats = await chatModel.find({ patientId: req.user.userId });
+      chats = await chatModel.find({ patientId: req.user.userId, isDeleted: false });
       const totalUnread = chats.reduce((sum, chat) => sum + chat.unreadPatientCount, 0);
       res.json({ success: true, totalUnread, chats: chats.length });
     }

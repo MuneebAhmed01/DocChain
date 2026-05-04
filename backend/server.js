@@ -20,6 +20,7 @@ import appointmentModel from "./models/appointmentModel.js";
 import chatModel from "./models/chatModel.js";
 import messageModel from "./models/messageModel.js";
 import onlineConsultRoute from "./routes/onlineConsultRoute.js";
+import reviewRouter from "./routes/reviewRoute.js";
 import { getJwtSecret } from "./utils/jwtSecret.js";
 import { startBackgroundTasks, stopBackgroundTasks } from "./utils/backgroundTasks.js";
 
@@ -100,6 +101,7 @@ app.use("/api/stripe", stripeRoutes);
 app.use("/api/pending-doctor", pendingDoctorRouter);
 app.use("/api/chat", chatRoutes);
 app.use("/api/online-consult", onlineConsultRoute);
+app.use("/api", reviewRouter);
 
 // blog routes
 app.use('/api/blogs', blogRoutes);

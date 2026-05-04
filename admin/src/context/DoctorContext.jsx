@@ -7,17 +7,18 @@ export const DoctorContext = createContext();
 const DoctorContextProvider = (props) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL;
   const [dToken, setDToken] = useState(
-    localStorage.getItem("dToken") ? localStorage.getItem("dToken") : ""
+    localStorage.getItem("dToken") ? localStorage.getItem("dToken") : "",
   );
   const [appointments, setAppointments] = useState([]);
   const [dashData, setDashData] = useState(false);
   const [profileData, setProfileData] = useState(false);
+  const [reviewsData, setReviewsData] = useState(null);
 
   const getAppointments = async () => {
     try {
       const { data } = await axios.get(
         backendUrl + "/api/doctor/appointments",
-        { headers: { dToken } }
+        { headers: { dToken } },
       );
       if (data.success) {
         setAppointments(data.appointments);
@@ -36,7 +37,7 @@ const DoctorContextProvider = (props) => {
       const { data } = await axios.post(
         backendUrl + "/api/doctor/complete-appointment",
         { appointmentId },
-        { headers: { dToken } }
+        { headers: { dToken } },
       );
 
       if (data.success) {
@@ -57,7 +58,7 @@ const DoctorContextProvider = (props) => {
       const { data } = await axios.post(
         backendUrl + "/api/doctor/cancel-appointment",
         { appointmentId },
-        { headers: { dToken } }
+        { headers: { dToken } },
       );
 
       if (data.success) {
@@ -106,6 +107,88 @@ const DoctorContextProvider = (props) => {
     }
   };
 
+  const getReviewsData = async () => {
+    try {
+      console.log("Fetching reviews from:", backendUrl + "/api/doctor/reviews");
+      console.log("Token available:", !!dToken);
+
+      const { data } = await axios.get(backendUrl + "/api/doctor/reviews", {
+        headers: { dtoken: dToken },
+      });
+
+      console.log("API Response:", data);
+
+      if (data.success) {
+        setReviewsData(data.data);
+        console.log("Reviews data set:", data.data);
+      } else {
+        console.log("API Error:", data.message);
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log("Fetch Error:", error);
+      toast.error(error.message);
+    }
+  };
+
+  const addReviewReply = async (reviewId, replyText) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/review/reply",
+        { reviewId, replyText },
+        { headers: { dtoken: dToken } },
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getReviewsData(); // Refresh reviews data
+        return data.data;
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const updateReviewReply = async (reviewId, replyText) => {
+    try {
+      const { data } = await axios.put(
+        backendUrl + "/api/review/reply",
+        { reviewId, replyText },
+        { headers: { dtoken: dToken } },
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getReviewsData(); // Refresh reviews data
+        return data.data;
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const deleteReviewReply = async (reviewId) => {
+    try {
+      const { data } = await axios.delete(
+        backendUrl + `/api/review/reply/${reviewId}`,
+        { headers: { dtoken: dToken } },
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getReviewsData(); // Refresh reviews data
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
   const value = {
     dToken,
     setDToken,
@@ -121,6 +204,12 @@ const DoctorContextProvider = (props) => {
     profileData,
     setProfileData,
     getProfileData,
+    reviewsData,
+    setReviewsData,
+    getReviewsData,
+    addReviewReply,
+    updateReviewReply,
+    deleteReviewReply,
   };
 
   return (

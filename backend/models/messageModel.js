@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const messageSchema = new mongoose.Schema({
   chatId: { type: String, required: true, ref: 'chat' },
-  appointmentId: { type: String, required: true, ref: 'appointment' },
+  appointmentId: { type: String, ref: 'appointment' }, // Optional - messages can exist independently
   senderId: { type: String, required: true },
   senderType: { type: String, enum: ['patient', 'doctor'], required: true },
   receiverId: { type: String, required: true },

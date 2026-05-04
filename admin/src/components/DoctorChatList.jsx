@@ -8,6 +8,8 @@ const DoctorChatList = ({ dToken }) => {
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState(null);
   const [showChatWindow, setShowChatWindow] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
 
   useEffect(() => {
     if (dToken) {
@@ -50,6 +52,46 @@ const DoctorChatList = ({ dToken }) => {
     setSelectedChat(null);
     // Refresh chat list to update unread counts
     fetchDoctorChats();
+  };
+
+  const handleDeleteChat = (chat, e) => {
+    e.stopPropagation(); // Prevent opening chat when clicking delete
+    setChatToDelete(chat);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return;
+
+    try {
+      const response = await axios.delete(
+        `http://localhost:4000/api/chat/delete/${chatToDelete._id}`,
+        {
+          headers: {
+            dToken: dToken,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        toast.success("Chat deleted successfully");
+        // Remove chat from list
+        setChats(chats.filter((chat) => chat._id !== chatToDelete._id));
+        // Close modal
+        setShowDeleteModal(false);
+        setChatToDelete(null);
+      } else {
+        toast.error(response.data.message || "Failed to delete chat");
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+      toast.error("Failed to delete chat");
+    }
+  };
+
+  const cancelDeleteChat = () => {
+    setShowDeleteModal(false);
+    setChatToDelete(null);
   };
 
   const formatTime = (dateString) => {
@@ -161,9 +203,30 @@ const DoctorChatList = ({ dToken }) => {
                         >
                           {chat.patientName}
                         </h3>
-                        <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
-                          {formatTime(chat.lastMessageTime)}
-                        </span>
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                          <span className="text-xs text-gray-500">
+                            {formatTime(chat.lastMessageTime)}
+                          </span>
+                          <button
+                            onClick={(e) => handleDeleteChat(chat, e)}
+                            className="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50"
+                            title="Delete chat"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Appointment info */}
@@ -206,6 +269,61 @@ const DoctorChatList = ({ dToken }) => {
           onClose={closeChatWindow}
           dToken={dToken}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && chatToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mr-4">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Delete Chat
+                </h3>
+                <p className="text-sm text-gray-600">
+                  with {chatToDelete.patientName}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-700">
+                Are you sure you want to delete this chat? This action cannot be
+                undone and all messages will be permanently lost.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDeleteChat}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteChat}
+                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              >
+                Delete Chat
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
