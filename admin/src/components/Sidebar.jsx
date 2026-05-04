@@ -26,6 +26,7 @@ const Sidebar = () => {
           </NavLink>
 
           <NavLink
+            end
             className={({ isActive }) =>
               `flex items-center gap-3 py-3.5 px-4 md:px-9 md:min-w-72 justify-center md:justify-start cursor-pointer ${
                 isActive ? "bg-[#F2F3FF] border-r-4 border-primary" : ""
@@ -38,6 +39,7 @@ const Sidebar = () => {
           </NavLink>
 
           <NavLink
+            end
             className={({ isActive }) =>
               `flex items-center gap-3 py-3.5 px-4 md:px-9 md:min-w-72 justify-center md:justify-start cursor-pointer ${
                 isActive ? "bg-[#F2F3FF] border-r-4 border-primary" : ""
@@ -50,6 +52,7 @@ const Sidebar = () => {
           </NavLink>
 
           <NavLink
+            end
             className={({ isActive }) =>
               `flex items-center gap-3 py-3.5 px-4 md:px-9 md:min-w-72 justify-center md:justify-start cursor-pointer ${
                 isActive ? "bg-[#F2F3FF] border-r-4 border-primary" : ""

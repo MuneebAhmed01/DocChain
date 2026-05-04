@@ -37,12 +37,12 @@ const App = () => {
   const { dToken } = useContext(DoctorContext);
 
   return aToken || dToken ? (
-    <div className="bg-[#F8F9FD] h-screen flex flex-col">
+    <div className="bg-[#F8F9FD] h-screen flex w-full max-w-full flex-col overflow-hidden">
       <ToastContainer />
       <Navbar />
-      <div className="flex flex-1 min-w-0 overflow-x-hidden">
+      <div className="flex flex-1 min-w-0 overflow-hidden">
         <Sidebar />
-        <div className="flex-1 min-w-0 overflow-x-hidden">
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
           <Routes>
             {/* Admin Route */}
             <Route path="/" element={<DefaultRoute />} />

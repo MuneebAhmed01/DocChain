@@ -176,6 +176,19 @@ const appointmentComplete = async (req, res) => {
 
     await appointment.save();
 
+    // ✅ Increment doctor's successful appointments counter (+2 reliability points)
+    try {
+      const doctor = await doctorModel.findById(appointment.docId);
+      if (doctor) {
+        doctor.successfulAppointments = Number(doctor.successfulAppointments || 0) + 1;
+        // pre-save hook recalculates reliabilityScore
+        await doctor.save();
+      }
+    } catch (err) {
+      console.error("Failed to update doctor reliability after completion:", err);
+      // Don't fail the appointment completion if doctor update fails
+    }
+
     // ✅ Send completion email
     try {
       await appointmentCompletedPatient({

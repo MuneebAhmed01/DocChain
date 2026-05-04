@@ -60,6 +60,13 @@ const Doctors = () => {
       filtered = filtered.filter((doc) => doc.city === city);
     }
 
+    // Sort the filtered list by reliabilityScore descending so the most reliable
+    // doctors in the selected speciality/category appear first.
+    filtered.sort(
+      (a, b) =>
+        Number(b.reliabilityScore || 0) - Number(a.reliabilityScore || 0),
+    );
+
     setFilterDoc(filtered);
   };
   useEffect(() => {

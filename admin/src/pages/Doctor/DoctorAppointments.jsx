@@ -39,14 +39,12 @@ const DoctorAppointments = () => {
         {/* Appointment Rows/Cards */}
         <div className="max-h-[80vh] overflow-y-auto">
           {[...appointments].reverse().map((item, index) => {
-            const paymentLabel =
-              item.paymentType === "TOKEN"
-                ? "Token"
-                : item.paymentType === "FULL"
-                  ? "Full"
-                  : item.paymentStatus === "PAID"
-                    ? "Paid"
-                    : "Pending";
+            const isTokenPayment = item.paymentType === "TOKEN";
+            const isFullPayment = item.paymentType === "FULL";
+            const paymentLabel = isTokenPayment ? "Token" : "Full";
+            const paymentBadgeClass = isTokenPayment
+              ? "border-blue-500 text-blue-600 bg-blue-50"
+              : "border-green-500 text-green-600 bg-green-50";
 
             return (
             <div
@@ -60,11 +58,7 @@ const DoctorAppointments = () => {
               <div className="sm:hidden flex justify-between items-center border-b pb-2">
                 <span className="font-bold text-gray-400">#{index + 1}</span>
                 <span
-                  className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${
-                    item.paymentStatus === "PAID" || item.paymentStatus === "PARTIAL"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-blue-100 text-primary"
-                  }`}
+                  className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${paymentBadgeClass}`}
                 >
                   {paymentLabel}
                 </span>
@@ -90,30 +84,13 @@ const DoctorAppointments = () => {
               {/* Payment (Desktop Only) */}
               <div className="hidden sm:block">
                 <p
-                  className={`text-xs inline border px-2 rounded-full ${
-                    item.paymentStatus === "PAID" || item.paymentStatus === "PARTIAL"
-                      ? "border-green-500 text-green-500"
-                      : "border-primary text-gray-500"
-                  }`}
+                  className={`text-xs inline-flex border px-2 rounded-full ${paymentBadgeClass}`}
                 >
                   {paymentLabel}
                 </p>
 
                 {/* TOKEN breakdown for doctor */}
-                {item.paymentType === "TOKEN" && (
-                  <div className="mt-2 space-y-0.5 text-[11px] text-gray-600">
-                    <p>
-                      <span className="font-semibold text-gray-700">Remaining Amount:</span>{" "}
-                      {currency}
-                      {Math.max(0, (item.amount || 0) - (item.paidAmount || 0))}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-gray-700">Token Received (Wallet):</span>{" "}
-                      {currency}
-                      {item.paidAmount || 500}
-                    </p>
-                  </div>
-                )}
+               
               </div>
 
               {/* Age (Desktop Only) */}
@@ -142,11 +119,8 @@ const DoctorAppointments = () => {
                 </p>
 
                 {/* Mobile TOKEN breakdown */}
-                {item.paymentType === "TOKEN" && (
+                {isTokenPayment && (
                   <div className="sm:hidden mt-2 text-[11px] text-gray-600 space-y-1">
-                    <p>
-                      <span className="font-semibold text-gray-700">Payment Type:</span> CASH
-                    </p>
                     <p>
                       <span className="font-semibold text-gray-700">Remaining Amount:</span>{" "}
                       {currency}

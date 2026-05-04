@@ -81,6 +81,7 @@ ratingCount: { type: Number, default: 0 },
     totalAppointments: { type: Number, default: 0 },
     noShowCount: { type: Number, default: 0 },
     cancellationCount: { type: Number, default: 0 },
+    successfulAppointments: { type: Number, default: 0 },
 
 
   },
@@ -91,12 +92,15 @@ ratingCount: { type: Number, default: 0 },
 // 🔥 Important index for filtering
 doctorSchema.index({ city: 1, speciality: 1 });
 
-// Compute reliability score before saving
+// Compute reliability score before saving (with 1:3 recovery ratio)
+// Formula: 100 - (noShowCount * 10) - (cancellationCount * 7) + (successfulAppointments * 2)
+// Ratio: -7 per cancellation requires +3 successful (+6) to recover, with +2 gain per success
 doctorSchema.pre("save", function computeReliability(next) {
   try {
     const noShow = Number(this.noShowCount || 0);
     const cancels = Number(this.cancellationCount || 0);
-    let score = 100 - noShow * 10 - cancels * 7;
+    const successes = Number(this.successfulAppointments || 0);
+    let score = 100 - noShow * 10 - cancels * 7 + successes * 2;
     if (score < 0) score = 0;
     if (score > 100) score = 100;
     this.reliabilityScore = Math.round(score);
