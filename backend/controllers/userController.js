@@ -462,6 +462,96 @@ const cancelAppointment = async (req, res) => {
     return res.json({ success: false, message: error.message });
   }
 };
+// API: Patient marks whether doctor attended the appointment
+ const patientResponse = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id: appointmentId } = req.params;
+    const { response } = req.body; // 'attended' | 'not_attended'
+
+    if (!appointmentId || !response) {
+      return res.json({ success: false, message: "Missing data" });
+    }
+
+    if (!["attended", "not_attended"].includes(response)) {
+      return res.json({ success: false, message: "Invalid response" });
+    }
+
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) return res.status(404).json({ success: false, message: "Appointment not found" });
+
+    if (String(appointment.userId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Prevent multiple submissions
+    if (appointment.patientMarkedCompleted !== null || appointment.patientResponse) {
+      return res.json({ success: false, message: "You have already submitted a response" });
+    }
+
+    // Determine appointment time (use appointmentTime if available, otherwise derive from slotDate/slotTime)
+    let apptTime = appointment.appointmentTime;
+    if (!apptTime && appointment.slotDate && appointment.slotTime) {
+      try {
+        const parts = String(appointment.slotDate).split("_");
+        // slotDate format: DD_MM_YYYY (used by frontend)
+        const day = parts[0];
+        const month = parts[1];
+        const year = parts[2];
+        const iso = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${appointment.slotTime}`;
+        const parsed = new Date(iso);
+        if (!isNaN(parsed.getTime())) apptTime = parsed;
+      } catch (err) {
+        // fallback
+        apptTime = appointment.appointmentTime || null;
+      }
+    }
+
+    const now = new Date();
+    if (apptTime && now <= new Date(apptTime)) {
+      return res.status(400).json({ success: false, message: "You can only respond after the appointment time has passed" });
+    }
+
+    // Apply response
+    if (response === "attended") {
+      appointment.patientMarkedCompleted = true;
+      appointment.patientResponse = "attended";
+      appointment.attendanceStatus = "completed";
+    } else {
+      // not_attended
+      appointment.patientMarkedCompleted = false;
+      appointment.patientResponse = "not_attended";
+      // If doctor already marked completed, this becomes a dispute
+      if (appointment.doctorMarkedCompleted) {
+        appointment.attendanceStatus = "disputed";
+      } else {
+        appointment.attendanceStatus = "no_show";
+      }
+    }
+
+    await appointment.save();
+
+    // Update doctor reliability counters
+    try {
+      const doctor = await doctorModel.findById(appointment.docId);
+      if (doctor) {
+        doctor.totalAppointments = Number(doctor.totalAppointments || 0) + 1;
+        if (response === "not_attended") {
+          doctor.noShowCount = Number(doctor.noShowCount || 0) + 1;
+        }
+        // pre-save hook recalculates reliabilityScore
+        await doctor.save();
+      }
+    } catch (err) {
+      console.error("Failed to update doctor reliability:", err);
+    }
+
+    return res.json({ success: true, message: "Response recorded", appointment });
+  } catch (err) {
+    console.error("patientResponse error:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
 // ⭐ Rate doctor after completed appointment
 export const rateDoctor = async (req, res) => {
   try {
@@ -661,5 +751,6 @@ export {
   bookAppointment,
   listAppointment,
   cancelAppointment,
+  patientResponse,
   sendContactEmail
 };

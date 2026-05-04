@@ -73,6 +73,29 @@ const MyAppointments = () => {
       toast.error(error.message);
     }
   };
+  const [submittingResponse, setSubmittingResponse] = useState({});
+
+  const handlePatientResponse = async (appointmentId, response) => {
+    try {
+      setSubmittingResponse((s) => ({ ...s, [appointmentId]: true }));
+      const { data } = await axiosInstance.post(
+        `/api/user/appointments/${appointmentId}/patient-response`,
+        { response },
+      );
+      if (data.success) {
+        toast.success("Response recorded");
+        getUserAppointments();
+        getDoctorsData();
+      } else {
+        toast.error(data.message || "Failed to record response");
+      }
+    } catch (err) {
+      console.log(err);
+      toast.error("Failed to submit response");
+    } finally {
+      setSubmittingResponse((s) => ({ ...s, [appointmentId]: false }));
+    }
+  };
   const openRateModal = (appt) => {
     setSelectedAppt(appt);
     setRating(0);
@@ -258,6 +281,61 @@ const MyAppointments = () => {
                     Appointment cancelled
                   </button>
                 )}
+
+                {/* PATIENT CONFIRM ATTENDANCE (only after appointment time) */}
+                {(() => {
+                  // determine appointment time (prefer explicit appointmentTime)
+                  const apptTime = item.appointmentTime
+                    ? new Date(item.appointmentTime)
+                    : (() => {
+                        try {
+                          const parts = String(item.slotDate).split("_");
+                          const day = parts[0];
+                          const month = parts[1];
+                          const year = parts[2];
+                          return new Date(
+                            `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${item.slotTime}`,
+                          );
+                        } catch (e) {
+                          return null;
+                        }
+                      })();
+
+                  const now = new Date();
+                  const canRespond = apptTime ? now > apptTime : false;
+
+                  if (!canRespond) return null;
+
+                  // Prevent showing buttons if patient already responded
+                  if (
+                    item.patientMarkedCompleted !== null ||
+                    item.patientResponse
+                  )
+                    return null;
+
+                  return (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        disabled={submittingResponse[item._id]}
+                        onClick={() =>
+                          handlePatientResponse(item._id, "attended")
+                        }
+                        className="px-3 py-2 bg-green-600 text-white rounded text-sm"
+                      >
+                        ✅ Doctor Attended
+                      </button>
+                      <button
+                        disabled={submittingResponse[item._id]}
+                        onClick={() =>
+                          handlePatientResponse(item._id, "not_attended")
+                        }
+                        className="px-3 py-2 bg-red-600 text-white rounded text-sm"
+                      >
+                        ❌ Doctor Did Not Attend
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 {/* COMPLETED BADGE */}
                 {/* COMPLETED & RATING */}

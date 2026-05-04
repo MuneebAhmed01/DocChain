@@ -39,7 +39,8 @@ const changeAvailability = async (req, res) => {
 
 const doctorList = async (req, res) => {
   try {
-    const doctors = await doctorModel.find({}).select(["-password", "-email"]);
+    // Sort by reliabilityScore descending (best first)
+    const doctors = await doctorModel.find({}).select(["-password", "-email"]).sort({ reliabilityScore: -1 });
 
     res.json({ success: true, doctors });
   } catch (error) {
@@ -292,6 +293,8 @@ const appointmentCancel = async (req, res) => {
         ].filter((t) => t !== appointment.slotTime);
       }
       doctorData.slots_booked = slotsBooked;
+      // Track cancellation count for reliability
+      doctorData.cancellationCount = Number(doctorData.cancellationCount || 0) + 1;
       await doctorData.save();
     }
 

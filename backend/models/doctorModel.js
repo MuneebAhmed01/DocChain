@@ -76,6 +76,12 @@ ratingCount: { type: Number, default: 0 },
     default: 15 // minutes
   },
 
+    // Reliability tracking
+    reliabilityScore: { type: Number, default: 100 },
+    totalAppointments: { type: Number, default: 0 },
+    noShowCount: { type: Number, default: 0 },
+    cancellationCount: { type: Number, default: 0 },
+
 
   },
   { minimize: false }
@@ -84,6 +90,21 @@ ratingCount: { type: Number, default: 0 },
 
 // 🔥 Important index for filtering
 doctorSchema.index({ city: 1, speciality: 1 });
+
+// Compute reliability score before saving
+doctorSchema.pre("save", function computeReliability(next) {
+  try {
+    const noShow = Number(this.noShowCount || 0);
+    const cancels = Number(this.cancellationCount || 0);
+    let score = 100 - noShow * 10 - cancels * 7;
+    if (score < 0) score = 0;
+    if (score > 100) score = 100;
+    this.reliabilityScore = Math.round(score);
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 const doctorModel =
   mongoose.models.doctor || mongoose.model("doctor", doctorSchema);

@@ -31,6 +31,36 @@ const DoctorCard = ({
       onClick={handleCardClick}
       className="relative border border-blue-200 rounded-xl overflow-hidden cursor-pointer hover:translate-y-[-10px] transition-all duration-500"
     >
+      {/* Reliability left-side wrapper (small text, full label visible) */}
+      {typeof doctor.reliabilityScore !== "undefined" &&
+        (() => {
+          const score = Number(doctor.reliabilityScore || 0);
+          const label =
+            score >= 50 ? `Reliable ${score}%` : `Low Reliability ${score}%`;
+          return (
+            <div
+              style={{
+                position: "absolute",
+                left: 8,
+                top: 8,
+                transform: "none",
+                zIndex: 40,
+                backgroundColor: "#0ea5e9",
+                color: "white",
+                padding: "4px 8px",
+                fontSize: 11,
+                fontWeight: 600,
+                borderTopRightRadius: 6,
+                borderBottomRightRadius: 6,
+                boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {label}
+            </div>
+          );
+        })()}
       <img className="bg-blue-50" src={doctor.image} alt={doctor.name} />
 
       <div className="p-4">

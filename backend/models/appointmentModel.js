@@ -76,6 +76,21 @@ const appointmentSchema = new mongoose.Schema({
   remainingAmountCredited: { type: Boolean, default: false },
   remainingAmountCreditedAmount: { type: Number, default: 0 },
   completionTime: { type: Date, default: null },
+  // New attendance / verification fields
+  appointmentTime: { type: Date, default: null },
+  doctorMarkedCompleted: { type: Boolean, default: false },
+  patientMarkedCompleted: { type: Boolean, default: null },
+  patientResponse: {
+    type: String,
+    enum: ["attended", "not_attended"],
+    default: null,
+  },
+  attendanceStatus: {
+    // Keeps a high-level attendance state for simple UI/queries
+    type: String,
+    enum: ["booked", "completed", "no_show", "disputed"],
+    default: "booked",
+  },
   
   // Timestamps
   date: { type: Number, required: true },
@@ -109,6 +124,19 @@ appointmentSchema.pre("save", function syncLegacyFields(next) {
 
   if (this.status && this.appointmentStatus !== this.status) {
     this.appointmentStatus = this.status;
+  }
+
+  // Keep legacy completed flag in sync with new attendanceStatus
+  if (this.attendanceStatus === "completed") {
+    this.isCompleted = true;
+    this.completionTime = this.completionTime || new Date();
+    this.appointmentStatus = this.appointmentStatus || "COMPLETED";
+    this.status = this.status || "COMPLETED";
+  }
+
+  // If marked as no_show, ensure completed flag is false
+  if (this.attendanceStatus === "no_show") {
+    this.isCompleted = false;
   }
 
   next();

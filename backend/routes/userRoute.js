@@ -48,6 +48,8 @@ import {
    sendContactEmail 
 } from "../controllers/userController.js";
 
+import { patientResponse } from "../controllers/userController.js";
+
 const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
@@ -206,6 +208,9 @@ router.get("/appointments", authUser, listAppointment);
 router.post("/cancel-appointment", authUser, cancelAppointment);
 
 router.post("/rate-doctor", authUser, rateDoctor);
+
+// Patient response after appointment time
+router.post("/appointments/:id/patient-response", authUser, patientResponse);
 
 
 export default router;
