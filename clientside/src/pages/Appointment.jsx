@@ -8,7 +8,8 @@ import axiosInstance from "../axiosInstance";
 import { formatPkrAmount } from "../constants/payment";
 const Appointment = () => {
   const { docId } = useParams();
-  const { doctors, currencySymbol, token, getDoctorsData } = useContext(AppContext);
+  const { doctors, currencySymbol, token, getDoctorsData } =
+    useContext(AppContext);
   const daysOfWeek = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
   const navigate = useNavigate();
@@ -156,7 +157,11 @@ const Appointment = () => {
     }
   };
 
-  const bookAppointment = async (selectedSlotIndex, selectedSlotTime, selectedDate) => {
+  const bookAppointment = async (
+    selectedSlotIndex,
+    selectedSlotTime,
+    selectedDate,
+  ) => {
     if (!token) {
       toast.warn("Login to book appointment");
       return navigate("/login");
@@ -171,10 +176,11 @@ const Appointment = () => {
       setIsSubmitting(true);
       const slotDate = selectedDate;
 
-      const { data } = await axiosInstance.post(
-        "/api/user/book-appointment",
-        { docId, slotDate, slotTime: selectedSlotTime },
-      );
+      const { data } = await axiosInstance.post("/api/user/book-appointment", {
+        docId,
+        slotDate,
+        slotTime: selectedSlotTime,
+      });
       if (data.success) {
         setBookingOptions({
           ...data,
@@ -249,7 +255,9 @@ const Appointment = () => {
       return;
     }
 
-    const savedSelectionRaw = localStorage.getItem(`appointmentSelection:${docId}`);
+    const savedSelectionRaw = localStorage.getItem(
+      `appointmentSelection:${docId}`,
+    );
     if (!savedSelectionRaw) {
       restoreAttemptedRef.current = true;
       return;
@@ -267,11 +275,17 @@ const Appointment = () => {
 
       if (restoredDayIndex >= 0) {
         const restoredDay = docSlots[restoredDayIndex];
-        const restoredSlot = restoredDay.find((item) => item.time === savedSelection.slotTime);
+        const restoredSlot = restoredDay.find(
+          (item) => item.time === savedSelection.slotTime,
+        );
         if (restoredSlot) {
           setSlotIndex(restoredDayIndex);
           setSlotTime(savedSelection.slotTime);
-          bookAppointment(restoredDayIndex, savedSelection.slotTime, savedSelection.slotDate);
+          bookAppointment(
+            restoredDayIndex,
+            savedSelection.slotTime,
+            savedSelection.slotDate,
+          );
         }
       }
     } catch (error) {
@@ -433,7 +447,9 @@ const Appointment = () => {
               ))}
           </div>
           {isSubmitting && (
-            <p className="text-sm text-gray-500 mt-4">Preparing payment options...</p>
+            <p className="text-sm text-gray-500 mt-4">
+              Preparing payment options...
+            </p>
           )}
         </div>
 
@@ -454,7 +470,10 @@ const Appointment = () => {
                   <p className="text-xs uppercase tracking-[0.2em] text-primary font-semibold">
                     Select payment method
                   </p>
-                  <h3 id="payment-options-title" className="text-xl font-semibold text-gray-900 mt-1">
+                  <h3
+                    id="payment-options-title"
+                    className="text-xl font-semibold text-gray-900 mt-1"
+                  >
                     Selected slot: {bookingOptions.slotTime}
                   </h3>
                 </div>
@@ -469,17 +488,28 @@ const Appointment = () => {
 
               <div className="px-5 sm:px-6 py-5">
                 <p className="text-sm text-gray-500">
-                  Pick how you want to confirm this booking. The selected slot will remain held while you complete payment.
+                  Pick how you want to confirm this booking. The selected slot
+                  will remain held while you complete payment.
                 </p>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:p-5">
-                    <p className="font-semibold text-gray-900 text-lg">Pay Full Amount</p>
+                    <p className="font-semibold text-gray-900 text-lg">
+                      Pay Full Amount
+                    </p>
                     <p className="text-sm text-gray-600 mt-2">
-                      Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option1_full.youPay)}
+                      Pay now:{" "}
+                      {formatPkrAmount(
+                        bookingOptions.paymentOptions.option1_full.youPay,
+                      )}
                     </p>
                     <button
-                      onClick={() => startPayment("/api/stripe/create-checkout-session", bookingOptions.appointmentId)}
+                      onClick={() =>
+                        startPayment(
+                          "/api/stripe/create-checkout-session",
+                          bookingOptions.appointmentId,
+                        )
+                      }
                       disabled={isSubmitting}
                       className="mt-4 inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:opacity-95 disabled:opacity-60"
                     >
@@ -488,15 +518,29 @@ const Appointment = () => {
                   </div>
 
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5">
-                    <p className="font-semibold text-gray-900 text-lg">Pay Token</p>
+                    <p className="font-semibold text-gray-900 text-lg">
+                      Pay Token
+                    </p>
                     <p className="text-sm text-gray-600 mt-2">
-                      Pay now: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.youPay)}
+                      Pay now:{" "}
+                      {formatPkrAmount(
+                        bookingOptions.paymentOptions.option2_token.youPay,
+                      )}
                     </p>
                     <p className="text-sm text-gray-600 mt-1">
-                      Pay at clinic later: {formatPkrAmount(bookingOptions.paymentOptions.option2_token.remainingAtClinic)}
+                      Pay at clinic later:{" "}
+                      {formatPkrAmount(
+                        bookingOptions.paymentOptions.option2_token
+                          .remainingAtClinic,
+                      )}
                     </p>
                     <button
-                      onClick={() => startPayment("/api/stripe/create-token-payment-session", bookingOptions.appointmentId)}
+                      onClick={() =>
+                        startPayment(
+                          "/api/stripe/create-token-payment-session",
+                          bookingOptions.appointmentId,
+                        )
+                      }
                       disabled={isSubmitting}
                       className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
                     >
