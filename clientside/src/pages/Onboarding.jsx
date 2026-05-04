@@ -5,8 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 
 const Onboarding = () => {
-  const { token, setToken, userData, loadUserProfileData } =
-    useContext(AppContext);
+  const { token, setToken, userData, loadUserProfileData } = useContext(AppContext);
   const navigate = useNavigate();
 
   // Form state
@@ -193,11 +192,14 @@ const Onboarding = () => {
         return;
       }
 
-      const { data } = await axiosInstance.post("/api/onboarding/complete", {
-        phone_number: formData.phone_number,
-        age: formData.age,
-        gender: formData.gender,
-      });
+      const { data } = await axiosInstance.post(
+        "/api/onboarding/complete",
+        {
+          phone_number: formData.phone_number,
+          age: formData.age,
+          gender: formData.gender,
+        }
+      );
 
       if (data.success) {
         toast.success("Onboarding completed successfully!");
@@ -245,9 +247,7 @@ const Onboarding = () => {
                 } focus:outline-none focus:ring-2 focus:ring-primary`}
               />
               {errors.phone_number && (
-                <p className="text-xs text-red-500 mt-1">
-                  {errors.phone_number}
-                </p>
+                <p className="text-xs text-red-500 mt-1">{errors.phone_number}</p>
               )}
               <p className="text-xs text-zinc-400 mt-1">
                 E.164 format: +1-10 digits
@@ -278,9 +278,7 @@ const Onboarding = () => {
         {step === "otp" && (
           <div className="space-y-4">
             <div>
-              <label className="block font-medium mb-2">
-                Verification Code
-              </label>
+              <label className="block font-medium mb-2">Verification Code</label>
               <input
                 type="text"
                 placeholder="000000"
@@ -315,8 +313,8 @@ const Onboarding = () => {
               {loading
                 ? "Verifying..."
                 : otpVerified
-                  ? "OTP Verified ✓"
-                  : "Verify OTP"}
+                ? "OTP Verified ✓"
+                : "Verify OTP"}
             </button>
 
             {otpVerified && (

@@ -45,16 +45,18 @@ const frontendOrigins = [
   "http://127.0.0.1:5175",
 ].filter(Boolean);
 
-// ✅ CORS - MUST come before routes
-app.use(cors({
+const corsOptions = {
   origin: [...frontendOrigins, "https://res.cloudinary.com"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   credentials: true,
-  allowedHeaders: ["Content-Type", "authorization","token", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
-}));
+  allowedHeaders: ["Content-Type", "authorization", "token", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
+};
+
+// ✅ CORS - MUST come before routes
+app.use(cors(corsOptions));
 
 // Handle preflight requests
-app.options("*", cors());
+app.options("*", cors(corsOptions));
 
 // Parse JSON
 app.use(express.json());

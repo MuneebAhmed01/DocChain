@@ -121,10 +121,26 @@ const MyAppointments = () => {
       <div>
         {appointments.map((item, index) => {
           const appointmentStatus = item.appointmentStatus || item.status;
-          const refundDue = Boolean(item.refund_status || item.refundStatus === "PENDING" || (item.refundAmount || 0) > 0);
-          const cancellationMessage = refundDue
-            ? "Your appointment has been cancelled By Doctor Due to Emergency. You will be refunded."
-            : item.cancellationReason || "Appointment cancelled.";
+          const refundDue = Boolean(
+            item.refund_status ||
+            item.refundStatus === "PENDING" ||
+            (item.refundAmount || 0) > 0,
+          );
+
+          // Determine cancellation message based on who cancelled
+          let cancellationMessage;
+          if (
+            appointmentStatus === "CANCELLED_BY_DOCTOR" ||
+            appointmentStatus === "CANCELLED_BY_ADMIN"
+          ) {
+            cancellationMessage =
+              "Your appointment has been cancelled By Doctor Due to Emergency. You will be refunded.";
+          } else if (appointmentStatus === "CANCELLED_BY_USER") {
+            cancellationMessage = "Your appointment has been cancelled";
+          } else {
+            cancellationMessage =
+              item.cancellationReason || "Appointment cancelled.";
+          }
 
           return (
             <div
@@ -162,21 +178,27 @@ const MyAppointments = () => {
                 </p>
 
                 <p className="text-sm mt-1">
-                  <span className="font-medium">Payment:</span> {item.paymentType}
+                  <span className="font-medium">Payment:</span>{" "}
+                  {item.paymentType}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Status:</span> {item.paymentStatus}
+                  <span className="font-medium">Status:</span>{" "}
+                  {item.paymentStatus}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Paid:</span> {formatPkrAmount(item.paidAmount || 0)}
+                  <span className="font-medium">Paid:</span>{" "}
+                  {formatPkrAmount(item.paidAmount || 0)}
                 </p>
                 {item.paymentType === "TOKEN" && (
                   <p className="text-sm text-amber-600">
-                    Remaining at clinic: {formatPkrAmount(item.amount - (item.paidAmount || 0))}
+                    Remaining at clinic:{" "}
+                    {formatPkrAmount(item.amount - (item.paidAmount || 0))}
                   </p>
                 )}
 
-                {(appointmentStatus === "CANCELLED_BY_DOCTOR" || appointmentStatus === "CANCELLED_BY_ADMIN" || appointmentStatus === "PAYMENT_FAILED") && (
+                {(appointmentStatus === "CANCELLED_BY_DOCTOR" ||
+                  appointmentStatus === "CANCELLED_BY_ADMIN" ||
+                  appointmentStatus === "PAYMENT_FAILED") && (
                   <p
                     id="msg1"
                     className="mt-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded"
@@ -218,14 +240,17 @@ const MyAppointments = () => {
                 )}
 
                 {/* CANCEL BUTTON */}
-                {!item.cancelled && appointmentStatus !== "CANCELLED_BY_DOCTOR" && appointmentStatus !== "CANCELLED_BY_ADMIN" && !item.isCompleted && (
-                  <button
-                    onClick={() => cancelAppointment(item._id)}
-                    className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"
-                  >
-                    Cancel appointment
-                  </button>
-                )}
+                {!item.cancelled &&
+                  appointmentStatus !== "CANCELLED_BY_DOCTOR" &&
+                  appointmentStatus !== "CANCELLED_BY_ADMIN" &&
+                  !item.isCompleted && (
+                    <button
+                      onClick={() => cancelAppointment(item._id)}
+                      className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"
+                    >
+                      Cancel appointment
+                    </button>
+                  )}
 
                 {/* CANCELLED BADGE */}
                 {item.cancelled && !item.isCompleted && (

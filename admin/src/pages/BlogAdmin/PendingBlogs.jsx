@@ -1,44 +1,56 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { toast } from "react-toastify";
 
 export default function PendingBlogs({ token }) {
   const [blogs, setBlogs] = useState([]);
   const [busyId, setBusyId] = useState("");
+  const backendUrl =
+    import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
   const fetchPendingBlogs = async () => {
     try {
-      const res = await axios.get(
-        "http://localhost:4000/api/blogs/admin/pending",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      if (!token) {
+        setBlogs([]);
+        return;
+      }
+
+      const res = await axios.get(`${backendUrl}/api/blogs/admin/pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const data = Array.isArray(res.data) ? res.data : [];
       setBlogs(data);
     } catch (err) {
       console.error("Fetch pending blogs error", err);
+      toast.error(
+        err.response?.data?.message || "Failed to fetch pending blogs",
+      );
       setBlogs([]);
     }
   };
 
   useEffect(() => {
     fetchPendingBlogs();
-  }, []);
+  }, [token]);
 
   const updateStatus = async (id, status) => {
     try {
       setBusyId(id);
       await axios.patch(
-        `http://localhost:4000/api/blogs/admin/${id}/status`,
+        `${backendUrl}/api/blogs/admin/${id}/status`,
         { status },
         { headers: { Authorization: `Bearer ${token}` } },
       );
 
-      setBlogs((prev) => prev.filter((item) => item._id !== id));
+      toast.success(`Blog ${status === "approved" ? "approved" : "rejected"}`);
+      await fetchPendingBlogs();
     } catch (err) {
       console.error("Update blog status error", err);
+      toast.error(
+        err.response?.data?.message || "Failed to update blog status",
+      );
     } finally {
       setBusyId("");
     }

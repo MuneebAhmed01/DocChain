@@ -392,6 +392,17 @@ const Appointment = () => {
                         {rev.comment}
                       </p>
                     )}
+                    {/* Doctor's reply (if any) */}
+                    {rev.reply && rev.reply.text && (
+                      <div className="mt-3 bg-gray-50 border-l-4 border-primary/40 p-3 rounded">
+                        <p className="text-xs font-medium text-gray-700">
+                          Doctor reply
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {rev.reply.text}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

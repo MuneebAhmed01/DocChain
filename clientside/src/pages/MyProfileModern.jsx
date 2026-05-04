@@ -1,4 +1,4 @@
-import React, { useContext, useState, useRef } from "react";
+import React, { useContext, useState, useRef, useEffect } from "react";
 import { AppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import axiosInstance from "../axiosInstance";
@@ -15,7 +15,9 @@ import {
   Save,
   X,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
+import healthTips from "../data/healthTips";
 
 const MyProfile = () => {
   const { userData, setUserData, token, backendUrl, loadUserProfileData } =
@@ -25,6 +27,9 @@ const MyProfile = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
+  const [errors, setErrors] = useState({});
+  const [localAge, setLocalAge] = useState(18);
+  const [tipIndex, setTipIndex] = useState(0);
 
   // Handle profile picture upload
   const handleProfilePicUpload = async (file) => {
@@ -97,14 +102,57 @@ const MyProfile = () => {
 
   // Update user profile data
   const updateUserProfileData = async () => {
+    // Client-side validation
+    const newErrors = {};
+    if (!userData.name || userData.name.trim().length === 0) {
+      newErrors.name = "Name is required";
+    }
+    if (!userData.phone || userData.phone.trim().length < 6) {
+      newErrors.phone = "Valid phone number is required";
+    }
+    // Address is optional — do not require address.line1 on profile update
+    if (!userData.gender || userData.gender === "Not Selected") {
+      newErrors.gender = "Please select a gender option";
+    }
+    // Ensure age >= 18
+    const age =
+      localAge ||
+      (userData.dob !== "Not Selected"
+        ? new Date().getFullYear() - new Date(userData.dob).getFullYear()
+        : 0);
+    if (!age || age < 18) {
+      newErrors.dob = "User must be 18 years or older";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toast.error("Please fix the highlighted fields");
+      return;
+    }
+
     try {
       const formData = new FormData();
 
+      // Ensure we send a dob derived from the selected age (use Jan 1 of birth year)
+      const birthYear = new Date().getFullYear() - age;
+      const computedDob = `${birthYear}-01-01`;
+
+      // Normalize phone to Pakistani format with country code 92
+      let phoneDigits = (userData.phone || "").toString().replace(/\D/g, "");
+      if (phoneDigits.startsWith("0"))
+        phoneDigits = phoneDigits.replace(/^0+/, "");
+      if (phoneDigits.startsWith("92"))
+        phoneDigits = phoneDigits.slice(
+          phoneDigits.indexOf("92") === 0 ? 2 : 0,
+        );
+      // finalPhone will be prefixed with 92
+      const finalPhone = phoneDigits ? `92${phoneDigits}` : "";
+
       formData.append("name", userData.name);
-      formData.append("phone", userData.phone);
+      formData.append("phone", finalPhone);
       formData.append("address", JSON.stringify(userData.address));
       formData.append("gender", userData.gender);
-      formData.append("dob", userData.dob);
+      formData.append("dob", computedDob);
 
       const { data } = await axiosInstance.post(
         backendUrl + "/api/user/update-profile",
@@ -123,6 +171,35 @@ const MyProfile = () => {
       console.log(error);
       toast.error(error.message);
     }
+  };
+
+  useEffect(() => {
+    // Initialize localAge from existing dob when userData loads
+    if (userData && userData.dob && userData.dob !== "Not Selected") {
+      try {
+        const a =
+          new Date().getFullYear() - new Date(userData.dob).getFullYear();
+        setLocalAge(a >= 18 ? a : 18);
+      } catch (e) {
+        setLocalAge(18);
+      }
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    // pick an initial random tip
+    setTipIndex(Math.floor(Math.random() * healthTips.length));
+  }, []);
+
+  const pickNewTip = () => {
+    if (!healthTips || healthTips.length === 0) return;
+    let idx = Math.floor(Math.random() * healthTips.length);
+    // ensure different tip
+    if (healthTips.length > 1) {
+      while (idx === tipIndex)
+        idx = Math.floor(Math.random() * healthTips.length);
+    }
+    setTipIndex(idx);
   };
 
   // Show default avatar component
@@ -231,7 +308,10 @@ const MyProfile = () => {
                 </h3>
                 {!isEdit && (
                   <button
-                    onClick={() => setIsEdit(true)}
+                    onClick={() => {
+                      setErrors({});
+                      setIsEdit(true);
+                    }}
                     className="text-blue-600 hover:text-blue-700 transition-colors"
                   >
                     <Edit2 className="w-5 h-5" />
@@ -271,21 +351,45 @@ const MyProfile = () => {
                   <div className="flex-1">
                     <p className="text-sm text-gray-600 mb-1">Phone Number</p>
                     {isEdit ? (
-                      <input
-                        type="tel"
-                        value={userData.phone}
-                        onChange={(e) =>
-                          setUserData((prev) => ({
-                            ...prev,
-                            phone: e.target.value,
-                          }))
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Enter phone number"
-                      />
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center px-3 py-2 rounded-l-lg bg-gray-100 border border-r-0 border-gray-300">
+                          +92
+                        </span>
+                        <input
+                          type="tel"
+                          value={
+                            // display without country code for user convenience
+                            (() => {
+                              if (!userData.phone) return "";
+                              const digits = userData.phone.replace(/\D/g, "");
+                              if (digits.startsWith("92"))
+                                return digits.slice(2).replace(/^0+/, "");
+                              if (digits.startsWith("0"))
+                                return digits.replace(/^0+/, "");
+                              return digits;
+                            })()
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value || "";
+                            // keep user input as-is in the visible field; final normalization happens on save
+                            setUserData((prev) => ({ ...prev, phone: raw }));
+                            setErrors((prev) => ({
+                              ...prev,
+                              phone: undefined,
+                            }));
+                          }}
+                          className="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="3XXXXXXXXX or 0300XXXXXXX"
+                        />
+                      </div>
                     ) : (
                       <p className="text-gray-900 font-medium">
                         {userData.phone || "Not provided"}
+                      </p>
+                    )}
+                    {errors.phone && isEdit && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.phone}
                       </p>
                     )}
                   </div>
@@ -315,6 +419,11 @@ const MyProfile = () => {
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="Address line 1"
                         />
+                        {errors.address && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {errors.address}
+                          </p>
+                        )}
                         <input
                           type="text"
                           value={userData.address.line2}
@@ -367,21 +476,62 @@ const MyProfile = () => {
                   <div className="flex-1">
                     <p className="text-sm text-gray-600 mb-1">Gender</p>
                     {isEdit ? (
-                      <select
-                        value={userData.gender}
-                        onChange={(e) =>
-                          setUserData((prev) => ({
-                            ...prev,
-                            gender: e.target.value,
-                          }))
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="Not Selected">Select Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Other">Other</option>
-                      </select>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="gender"
+                            value="Male"
+                            checked={userData.gender === "Male"}
+                            onChange={() =>
+                              setUserData((prev) => ({
+                                ...prev,
+                                gender: "Male",
+                              }))
+                            }
+                            className="accent-blue-600"
+                          />
+                          <span className="font-semibold text-gray-800">
+                            Male
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="gender"
+                            value="Female"
+                            checked={userData.gender === "Female"}
+                            onChange={() =>
+                              setUserData((prev) => ({
+                                ...prev,
+                                gender: "Female",
+                              }))
+                            }
+                            className="accent-pink-600"
+                          />
+                          <span className="font-semibold text-gray-800">
+                            Female
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="gender"
+                            value="Prefer not to say"
+                            checked={userData.gender === "Prefer not to say"}
+                            onChange={() =>
+                              setUserData((prev) => ({
+                                ...prev,
+                                gender: "Prefer not to say",
+                              }))
+                            }
+                            className="accent-gray-600"
+                          />
+                          <span className="font-semibold text-gray-800">
+                            Prefer not to say
+                          </span>
+                        </label>
+                      </div>
                     ) : (
                       <p className="text-gray-900 font-medium">
                         {userData.gender !== "Not Selected"
@@ -389,41 +539,42 @@ const MyProfile = () => {
                           : "—"}
                       </p>
                     )}
+                    {errors.gender && isEdit && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {errors.gender}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Date of Birth */}
-                <div className="flex items-center gap-4">
+                {/* Health Tip */}
+                <div
+                  className="flex items-center gap-4"
+                  onClick={() => pickNewTip()}
+                >
                   <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                     <Calendar className="w-6 h-6 text-orange-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-600 mb-1">Date of Birth</p>
-                    {isEdit ? (
-                      <input
-                        type="date"
-                        value={
-                          userData.dob !== "Not Selected" ? userData.dob : ""
-                        }
-                        onChange={(e) =>
-                          setUserData((prev) => ({
-                            ...prev,
-                            dob: e.target.value,
-                          }))
-                        }
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    ) : (
+                    <div className="flex items-start justify-between">
+                      <p className="text-sm text-gray-600 mb-1">Health Tip</p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          pickNewTip();
+                        }}
+                        title="New tip"
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <RefreshCw className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="mt-1">
                       <p className="text-gray-900 font-medium">
-                        {userData.dob !== "Not Selected"
-                          ? new Date(userData.dob).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })
-                          : "—"}
+                        {healthTips[tipIndex]}
                       </p>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -443,6 +594,7 @@ const MyProfile = () => {
                   <button
                     onClick={() => {
                       setIsEdit(false);
+                      setErrors({});
                       loadUserProfileData(); // Reset to original data
                     }}
                     className="px-6 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
@@ -453,7 +605,10 @@ const MyProfile = () => {
                 </>
               ) : (
                 <button
-                  onClick={() => setIsEdit(true)}
+                  onClick={() => {
+                    setErrors({});
+                    setIsEdit(true);
+                  }}
                   className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl font-medium hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
                 >
                   <Edit2 className="w-5 h-5" />

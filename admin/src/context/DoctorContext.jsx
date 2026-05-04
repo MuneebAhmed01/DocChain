@@ -13,6 +13,9 @@ const DoctorContextProvider = (props) => {
   const [dashData, setDashData] = useState(false);
   const [profileData, setProfileData] = useState(false);
   const [reviewsData, setReviewsData] = useState(null);
+  const [allBlogs, setAllBlogs] = useState([]);
+  const [approvedBlogs, setApprovedBlogs] = useState([]);
+  const [rejectedBlogs, setRejectedBlogs] = useState([]);
 
   const getAppointments = async () => {
     try {
@@ -189,6 +192,96 @@ const DoctorContextProvider = (props) => {
     }
   };
 
+  // Blog related methods
+  const getDoctorAllBlogs = async () => {
+    try {
+      const { data } = await axios.get(backendUrl + "/api/blogs/doctor/all", {
+        headers: { dToken },
+      });
+      if (data.success) {
+        setAllBlogs(data.blogs);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const getDoctorApprovedBlogs = async () => {
+    try {
+      const { data } = await axios.get(
+        backendUrl + "/api/blogs/doctor/approved",
+        { headers: { dToken } },
+      );
+      if (data.success) {
+        setApprovedBlogs(data.blogs);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const getDoctorRejectedBlogs = async () => {
+    try {
+      const { data } = await axios.get(
+        backendUrl + "/api/blogs/doctor/rejected",
+        { headers: { dToken } },
+      );
+      if (data.success) {
+        setRejectedBlogs(data.blogs);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const updateDoctorBlog = async (blogId, blogData) => {
+    try {
+      const { data } = await axios.put(
+        backendUrl + `/api/blogs/doctor/${blogId}`,
+        blogData,
+        { headers: { dToken } },
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getDoctorAllBlogs();
+        return data;
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
+  const deleteDoctorBlog = async (blogId) => {
+    try {
+      const { data } = await axios.delete(
+        backendUrl + `/api/blogs/doctor/${blogId}`,
+        { headers: { dToken } },
+      );
+      if (data.success) {
+        toast.success(data.message);
+        getDoctorAllBlogs();
+        return data;
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
+
   const value = {
     dToken,
     setDToken,
@@ -210,6 +303,17 @@ const DoctorContextProvider = (props) => {
     addReviewReply,
     updateReviewReply,
     deleteReviewReply,
+    allBlogs,
+    setAllBlogs,
+    approvedBlogs,
+    setApprovedBlogs,
+    rejectedBlogs,
+    setRejectedBlogs,
+    getDoctorAllBlogs,
+    getDoctorApprovedBlogs,
+    getDoctorRejectedBlogs,
+    updateDoctorBlog,
+    deleteDoctorBlog,
   };
 
   return (

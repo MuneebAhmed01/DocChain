@@ -235,3 +235,95 @@ export const deleteBlog = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+// Doctor: get their own blogs (all statuses)
+export const getDoctorBlogs = async (req, res) => {
+  try {
+    const doctorId = req.userId;
+    const blogs = await Blog.find({ doctorId }).sort({ createdAt: -1 });
+    res.json({ success: true, blogs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Doctor: get approved blogs
+export const getDoctorApprovedBlogs = async (req, res) => {
+  try {
+    const doctorId = req.userId;
+    const blogs = await Blog.find({ 
+      doctorId, 
+      status: "approved" 
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, blogs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Doctor: get rejected blogs
+export const getDoctorRejectedBlogs = async (req, res) => {
+  try {
+    const doctorId = req.userId;
+    const blogs = await Blog.find({ 
+      doctorId, 
+      status: "rejected" 
+    }).sort({ createdAt: -1 });
+    res.json({ success: true, blogs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Doctor: edit their own blog (sets status to pending for re-approval)
+export const updateDoctorBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doctorId = req.userId;
+
+    // Check if blog belongs to doctor
+    const blog = await Blog.findOne({ _id: id, doctorId });
+    if (!blog) {
+      return res.status(404).json({ success: false, message: "Blog not found" });
+    }
+
+    const update = buildBlogPayload(req.body);
+
+    // Reset to pending for re-approval when edited
+    update.status = "pending";
+    update.published = false;
+
+    if (req.body.title) {
+      update.slug = await generateUniqueSlug(req.body.title, id);
+    }
+
+    const updatedBlog = await Blog.findByIdAndUpdate(id, update, { new: true });
+    res.json({ success: true, message: "Blog updated. Awaiting admin approval.", blog: updatedBlog });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// Doctor: delete their own blog
+export const deleteDoctorBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doctorId = req.userId;
+
+    // Check if blog belongs to doctor
+    const blog = await Blog.findOne({ _id: id, doctorId });
+    if (!blog) {
+      return res.status(404).json({ success: false, message: "Blog not found" });
+    }
+
+    await Blog.findByIdAndDelete(id);
+    res.json({ success: true, message: "Blog deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};

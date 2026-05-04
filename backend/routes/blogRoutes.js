@@ -18,6 +18,15 @@ router.delete('/admin/:id', authAdmin, blogController.deleteBlog);
 // doctor submission route
 router.post('/doctor', authDoctor, blogController.createDoctorBlog);
 
+// doctor get their blogs
+router.get('/doctor/all', authDoctor, blogController.getDoctorBlogs);
+router.get('/doctor/approved', authDoctor, blogController.getDoctorApprovedBlogs);
+router.get('/doctor/rejected', authDoctor, blogController.getDoctorRejectedBlogs);
+
+// doctor edit and delete their blogs
+router.put('/doctor/:id', authDoctor, blogController.updateDoctorBlog);
+router.delete('/doctor/:id', authDoctor, blogController.deleteDoctorBlog);
+
 // public routes
 router.get('/', blogController.getBlogs);
 router.get('/:idOrSlug', blogController.getBlogById);

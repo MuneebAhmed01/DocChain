@@ -1,38 +1,20 @@
 import express from "express";
 import authUser from "../middlewares/authUser.js";
-import {
-  sendOTP,
-  verifyOTP,
-  completeOnboarding,
-  getOnboardingStatus,
-} from "../controllers/onboardingController.js";
+import { getOnboardingStatus } from "../controllers/onboardingController.js";
 
 const router = express.Router();
 
-/**
- * POST /api/onboarding/send-otp
- * Send OTP to phone number
- * Auth: Required
- * Body: { phone_number: string }
- */
-router.post("/send-otp", authUser, sendOTP);
+const onboardingRemoved = (_req, res) => {
+  return res.status(410).json({
+    success: false,
+    message:
+      "OTP onboarding has been removed. Please use the new signup form with phone, age, gender, and image.",
+  });
+};
 
-/**
- * POST /api/onboarding/verify-otp
- * Verify OTP code
- * Auth: Required
- * Body: { phone_number: string, otp_code: string }
- */
-router.post("/verify-otp", authUser, verifyOTP);
-
-/**
- * POST /api/onboarding/complete
- * Complete onboarding with phone, age, gender
- * Auth: Required
- * Body: { phone_number: string, age: number, gender: string }
- * Note: Must have verified OTP first
- */
-router.post("/complete", authUser, completeOnboarding);
+router.post("/send-otp", authUser, onboardingRemoved);
+router.post("/verify-otp", authUser, onboardingRemoved);
+router.post("/complete", authUser, onboardingRemoved);
 
 /**
  * GET /api/onboarding/status

@@ -16,6 +16,7 @@ import DoctorAppointments from "./pages/Doctor/DoctorAppointments";
 import DoctorProfile from "./pages/Doctor/DoctorProfile";
 import PatientChats from "./pages/Doctor/PatientChats";
 import DoctorBlogSubmit from "./pages/Doctor/DoctorBlogSubmit";
+import DoctorBlogs from "./pages/Doctor/DoctorBlogs";
 import BlogAdminIndex from "./pages/BlogAdmin/index";
 import PendingApprovals from "./pages/Admin/PendingApprovals";
 
@@ -65,6 +66,7 @@ const App = () => {
             <Route path="/patient-chats" element={<PatientChats />} />
             <Route path="/doctor-profile" element={<DoctorProfile />} />
             <Route path="/doctor/blogs/new" element={<DoctorBlogSubmit />} />
+            <Route path="/doctor/blogs" element={<DoctorBlogs />} />
             <Route path="/pending-approvals" element={<PendingApprovals />} />
           </Routes>
         </div>

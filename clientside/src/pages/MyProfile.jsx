@@ -1,4 +1,6 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
+import { RefreshCw } from "lucide-react";
+import healthTips from "../data/healthTips";
 import { AppContext } from "../context/AppContext";
 import { assets } from "../assets/assets";
 
@@ -11,13 +13,24 @@ const MyProfile = () => {
 
   const [isEdit, setIsEdit] = useState(false);
   const [image, setImage] = useState(false);
+  const [localAge, setLocalAge] = useState(18);
+  const [tipIndex, setTipIndex] = useState(0);
 
   const updateUserProfileData = async () => {
     try {
       const formData = new FormData();
 
       formData.append("name", userData.name);
-      formData.append("phone", userData.phone);
+      // normalize phone to Pakistani format
+      let phoneDigits = (userData.phone || "").toString().replace(/\D/g, "");
+      if (phoneDigits.startsWith("0"))
+        phoneDigits = phoneDigits.replace(/^0+/, "");
+      if (phoneDigits.startsWith("92"))
+        phoneDigits = phoneDigits.slice(
+          phoneDigits.indexOf("92") === 0 ? 2 : 0,
+        );
+      const finalPhone = phoneDigits ? `92${phoneDigits}` : "";
+      formData.append("phone", finalPhone);
       formData.append("address", JSON.stringify(userData.address));
       formData.append("gender", userData.gender);
       formData.append("dob", userData.dob);
@@ -27,7 +40,7 @@ const MyProfile = () => {
       const { data } = await axiosInstance.post(
         backendUrl + "/api/user/update-profile",
         formData,
-        { headers: { token } }
+        { headers: { token } },
       );
 
       if (data.success) {
@@ -44,11 +57,36 @@ const MyProfile = () => {
     }
   };
 
+  useEffect(() => {
+    if (userData && userData.dob && userData.dob !== "Not Selected") {
+      try {
+        const a =
+          new Date().getFullYear() - new Date(userData.dob).getFullYear();
+        setLocalAge(a >= 18 ? a : 18);
+      } catch (e) {
+        setLocalAge(18);
+      }
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    setTipIndex(Math.floor(Math.random() * healthTips.length));
+  }, []);
+
+  const pickNewTip = () => {
+    if (!healthTips || healthTips.length === 0) return;
+    let idx = Math.floor(Math.random() * healthTips.length);
+    if (healthTips.length > 1) {
+      while (idx === tipIndex)
+        idx = Math.floor(Math.random() * healthTips.length);
+    }
+    setTipIndex(idx);
+  };
+
   return (
     userData && (
       <div className="w-full px-4 sm:px-6 md:px-8 py-6">
         <div className="max-w-3xl mx-auto bg-white shadow-md rounded-2xl p-6 sm:p-8 flex flex-col gap-6 text-sm">
-
           {/* Profile Image */}
           <div className="flex flex-col items-center sm:items-start">
             {isEdit ? (
@@ -110,7 +148,6 @@ const MyProfile = () => {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-4 text-neutral-700">
-
               <p className="font-medium sm:col-span-1">Email:</p>
               <p className="text-blue-500 sm:col-span-2 break-all">
                 {userData.email}
@@ -119,17 +156,30 @@ const MyProfile = () => {
               <p className="font-medium sm:col-span-1">Phone:</p>
               <div className="sm:col-span-2">
                 {isEdit ? (
-                  <input
-                    className="w-full sm:max-w-xs bg-gray-100 p-2 rounded"
-                    type="text"
-                    value={userData.phone}
-                    onChange={(e) =>
-                      setUserData((prev) => ({
-                        ...prev,
-                        phone: e.target.value,
-                      }))
-                    }
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-3 py-2 rounded-l-lg bg-gray-100 border border-r-0 border-gray-300">
+                      +92
+                    </span>
+                    <input
+                      className="w-full sm:max-w-xs bg-gray-100 p-2 rounded-r"
+                      type="text"
+                      value={(() => {
+                        if (!userData.phone) return "";
+                        const digits = userData.phone.replace(/\D/g, "");
+                        if (digits.startsWith("92"))
+                          return digits.slice(2).replace(/^0+/, "");
+                        if (digits.startsWith("0"))
+                          return digits.replace(/^0+/, "");
+                        return digits;
+                      })()}
+                      onChange={(e) =>
+                        setUserData((prev) => ({
+                          ...prev,
+                          phone: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
                 ) : (
                   <p className="text-blue-400">{userData.phone}</p>
                 )}
@@ -181,12 +231,9 @@ const MyProfile = () => {
 
           {/* BASIC INFORMATION */}
           <div>
-            <p className="text-neutral-500 underline mb-4">
-              BASIC INFORMATION
-            </p>
+            <p className="text-neutral-500 underline mb-4">BASIC INFORMATION</p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-4 text-neutral-700">
-
               <p className="font-medium sm:col-span-1">Gender:</p>
               <div className="sm:col-span-2">
                 {isEdit ? (
@@ -208,23 +255,32 @@ const MyProfile = () => {
                 )}
               </div>
 
-              <p className="font-medium sm:col-span-1">Birthday:</p>
+              <p className="font-medium sm:col-span-1">Health Tip:</p>
               <div className="sm:col-span-2">
-                {isEdit ? (
-                  <input
-                    className="w-full sm:max-w-xs bg-gray-100 p-2 rounded"
-                    type="date"
-                    onChange={(e) =>
-                      setUserData((prev) => ({
-                        ...prev,
-                        dob: e.target.value,
-                      }))
-                    }
-                    value={userData.dob}
-                  />
-                ) : (
-                  <p className="text-gray-400">{userData.dob}</p>
-                )}
+                <div
+                  className="bg-gray-50 p-3 rounded cursor-pointer"
+                  onClick={() => pickNewTip()}
+                  role="button"
+                >
+                  <div className="flex items-start justify-between">
+                    <p className="text-sm text-gray-600 mb-1">Tip</p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        pickNewTip();
+                      }}
+                      title="New tip"
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <RefreshCw className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <p className="text-gray-700 mt-2">{healthTips[tipIndex]}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Click the tip or the refresh icon for another tip.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
