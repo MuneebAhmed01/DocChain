@@ -43,9 +43,9 @@ const testAdminReviewsAPI = async () => {
     
     // Test the API endpoint
     try {
-      const response = await axios.get('http://localhost:4001/api/doctor/reviews', {
+      const response = await axios.get('http://localhost:4000/api/doctor/reviews', {
         headers: { 
-          'dtoken': token,
+          'dToken': token,
           'Content-Type': 'application/json'
         }
       });
@@ -53,11 +53,10 @@ const testAdminReviewsAPI = async () => {
       console.log('\n=== API RESPONSE ===');
       console.log('Status:', response.status);
       console.log('Success:', response.data.success);
+      console.log('Full Response:', JSON.stringify(response.data, null, 2));
       
       if (response.data.success) {
         console.log('Reviews found:', response.data.reviews?.length || 0);
-        console.log('Average Rating:', response.data.averageRating);
-        console.log('Rating Counts:', response.data.ratingCounts);
         
         console.log('\n=== REVIEWS ===');
         response.data.reviews?.forEach((review, index) => {

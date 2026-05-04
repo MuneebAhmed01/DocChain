@@ -5,7 +5,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { AdminContext } from "./context/AdminContext";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Admin/Dashboard";
 import AllAppointments from "./pages/Admin/AllAppointments";
 import AddDoctor from "./pages/Admin/AddDoctor";
@@ -18,6 +18,19 @@ import PatientChats from "./pages/Doctor/PatientChats";
 import DoctorBlogSubmit from "./pages/Doctor/DoctorBlogSubmit";
 import BlogAdminIndex from "./pages/BlogAdmin/index";
 import PendingApprovals from "./pages/Admin/PendingApprovals";
+
+const DefaultRoute = () => {
+  const { aToken } = useContext(AdminContext);
+  const { dToken } = useContext(DoctorContext);
+
+  if (aToken) {
+    return <Navigate to="/admin-dashboard" replace />;
+  } else if (dToken) {
+    return <Navigate to="/doctor-dashboard" replace />;
+  }
+  return <Navigate to="/login" replace />;
+};
+
 const App = () => {
   const { aToken } = useContext(AdminContext);
   const { dToken } = useContext(DoctorContext);
@@ -31,7 +44,7 @@ const App = () => {
         <div className="flex-1 min-w-0 overflow-x-hidden">
           <Routes>
             {/* Admin Route */}
-            <Route path="/" element={<></>} />
+            <Route path="/" element={<DefaultRoute />} />
             <Route path="/admin-dashboard" element={<Dashboard />} />
             <Route path="/all-appointments" element={<AllAppointments />} />
             <Route path="/add-doctor" element={<AddDoctor />} />

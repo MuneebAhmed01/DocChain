@@ -113,14 +113,14 @@ const DoctorContextProvider = (props) => {
       console.log("Token available:", !!dToken);
 
       const { data } = await axios.get(backendUrl + "/api/doctor/reviews", {
-        headers: { dtoken: dToken },
+        headers: { dToken: dToken },
       });
 
       console.log("API Response:", data);
 
       if (data.success) {
-        setReviewsData(data.data);
-        console.log("Reviews data set:", data.data);
+        setReviewsData(data);
+        console.log("Reviews data set:", data);
       } else {
         console.log("API Error:", data.message);
         toast.error(data.message);
@@ -136,7 +136,7 @@ const DoctorContextProvider = (props) => {
       const { data } = await axios.post(
         backendUrl + "/api/review/reply",
         { reviewId, replyText },
-        { headers: { dtoken: dToken } },
+        { headers: { dToken: dToken } },
       );
       if (data.success) {
         toast.success(data.message);
@@ -156,7 +156,7 @@ const DoctorContextProvider = (props) => {
       const { data } = await axios.put(
         backendUrl + "/api/review/reply",
         { reviewId, replyText },
-        { headers: { dtoken: dToken } },
+        { headers: { dToken: dToken } },
       );
       if (data.success) {
         toast.success(data.message);
@@ -175,7 +175,7 @@ const DoctorContextProvider = (props) => {
     try {
       const { data } = await axios.delete(
         backendUrl + `/api/review/reply/${reviewId}`,
-        { headers: { dtoken: dToken } },
+        { headers: { dToken: dToken } },
       );
       if (data.success) {
         toast.success(data.message);

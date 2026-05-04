@@ -123,9 +123,9 @@ const loginUser = async (req, res) => {
 // };
 const getProfile = async (req, res) => {
   try {
-    console.log("req.user:", req.user); // <--- log token payload
+    console.log("req.user:", req.user);
 
-    const userId = req.user.userId; // your token uses 'userId'
+    const userId = req.user.userId;
     if (!userId) {
       console.log("No userId in token!");
       return res.status(400).json({ success: false, message: "User ID missing" });
@@ -137,7 +137,6 @@ const getProfile = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Ensure backward compatibility - if profilePic exists, use it, otherwise fall back to image field
     const userResponse = userData.toObject();
     if (!userResponse.profilePic || !userResponse.profilePic.url) {
       userResponse.profilePic = {
@@ -158,7 +157,8 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
-const { name, phone, address, dob, gender } = req.body;
+
+    const { name, phone, address, dob, gender } = req.body;
 
     const imageFile = req.file;
 
@@ -337,6 +337,7 @@ const bookAppointment = async (req, res) => {
 const listAppointment = async (req, res) => {
   try {
     const userId = req.user.userId;
+
     const appointments = await appointmentModel.find({ userId }).sort({ date: -1 });
 
     res.json({ success: true, appointments });

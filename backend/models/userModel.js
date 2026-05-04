@@ -16,6 +16,14 @@ const userSchema = new mongoose.Schema({
     url: { type: String, default: "" },
     public_id: { type: String, default: "" }
   },
+  // Onboarding & Phone Verification
+  phone_number: { type: String, default: null },
+  is_phone_verified: { type: Boolean, default: false },
+  age: { type: Number, default: null },
+  whatsapp_opt_in: { type: Boolean, default: false },
+  onboarding_completed: { type: Boolean, default: false },
+  created_at: { type: Date, default: Date.now },
+  updated_at: { type: Date, default: Date.now },
 });
 
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);

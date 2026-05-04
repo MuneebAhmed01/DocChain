@@ -21,6 +21,7 @@ import OnlineConsultSuccess from "./pages/OnlineConsultSuccess";
 import ConsultRoom from "./pages/ConsultRoom";
 import ConsultWaiting from "./pages/ConsultWaiting";
 import ScrollToTop from "./components/ScrollToTop";
+import Onboarding from "./pages/Onboarding";
 
 const LegacyBlogRedirect = () => {
   const { idOrSlug } = useParams();
@@ -38,6 +39,7 @@ const App = () => {
         <Route path="/doctors" element={<Doctors />} />
         <Route path="/doctors/:speciality" element={<Doctors />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/about" element={<About />} />
         <Route path="/join-doctor" element={<JoinDoctor />} />
 

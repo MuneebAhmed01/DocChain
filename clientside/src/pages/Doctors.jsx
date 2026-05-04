@@ -208,6 +208,15 @@ const Doctors = () => {
                 <p className="mt-2 text-sm sm:text-base text-gray-500">
                   Please check back later or try another speciality.
                 </p>
+                <button
+                  onClick={() => {
+                    navigate("/doctors");
+                    setCity("All");
+                  }}
+                  className="mt-4 px-6 py-2 border border-gray-300 rounded transition-all cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium"
+                >
+                  Clear Filter
+                </button>
               </div>
             </div>
           )}

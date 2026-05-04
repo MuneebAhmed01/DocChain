@@ -100,6 +100,30 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Validate inputs
+    if (!name || !email || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Name, email, and password are required" 
+      });
+    }
+
+    // Validate email format
+    if (!String(email).includes("@")) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid email format" 
+      });
+    }
+
+    // Validate password length
+    if (String(password).length < 8) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Password must be at least 8 characters long" 
+      });
+    }
+
     const existingUser = await userModel.findOne({ email });
     if (existingUser)
       return res.json({ success: false, message: "User already exists" });
@@ -107,12 +131,18 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await userModel.create({
-      
       name,
       email,
       password: hashedPassword,
     });
-    await welcomeEmail(user);
+    
+    try {
+      await welcomeEmail(user);
+    } catch (emailErr) {
+      console.log("Email send error (non-blocking):", emailErr.message);
+      // Don't fail registration if email fails
+    }
+    
     const token = jwt.sign(
       { userId: user._id, email: user.email },
       getJwtSecret(),
@@ -121,6 +151,7 @@ router.post("/register", async (req, res) => {
 
     res.json({ success: true, token });
   } catch (err) {
+    console.log("Register error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -153,21 +184,7 @@ router.post("/login", async (req, res) => {
 
 
 // ------------------ GET PROFILE ------------------
-router.get("/get-profile", authUser, getProfile, async (req, res) => {
-  try {
-    const user = await userModel
-      .findById(req.user.userId)
-      .select("-password");
-
-    if (!user)
-      return res.json({ success: false, message: "User not found" });
-
-    res.json({ success: true, user });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-// router.get("/get-profile", authUser, getProfile);
+router.get("/get-profile", authUser, getProfile);
 
 // ⭐ Get doctor reviews (user)
 router.get("/doctor-reviews/:docId", getDoctorReviewsUser);

@@ -9,14 +9,11 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token"); // get the latest token
-    console.log("Token in localStorage:", token);
 
     if (token) {
       // Always use "Authorization" with "Bearer <token>"
       config.headers["Authorization"] = `Bearer ${token}`;
     }
-
-    console.log("Config headers before request:", config.headers);
     return config;
   },
   (error) => {

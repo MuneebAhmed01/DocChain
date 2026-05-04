@@ -21,6 +21,7 @@ import chatModel from "./models/chatModel.js";
 import messageModel from "./models/messageModel.js";
 import onlineConsultRoute from "./routes/onlineConsultRoute.js";
 import reviewRouter from "./routes/reviewRoute.js";
+import onboardingRouter from "./routes/onboardingRoute.js";
 import { getJwtSecret } from "./utils/jwtSecret.js";
 import { startBackgroundTasks, stopBackgroundTasks } from "./utils/backgroundTasks.js";
 
@@ -34,18 +35,23 @@ const port = process.env.PORT || 4000;
 connectCloudinary();
 connectDB();
 
+const frontendOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
+].filter(Boolean);
+
 // ✅ CORS - MUST come before routes
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://res.cloudinary.com"
-  ],
+  origin: [...frontendOrigins, "https://res.cloudinary.com"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   credentials: true,
   allowedHeaders: ["Content-Type", "authorization","token", "Authorization", "aToken", "atoken", "dToken", "dtoken"],
 }));
-
 
 // Handle preflight requests
 app.options("*", cors());
@@ -102,6 +108,7 @@ app.use("/api/pending-doctor", pendingDoctorRouter);
 app.use("/api/chat", chatRoutes);
 app.use("/api/online-consult", onlineConsultRoute);
 app.use("/api", reviewRouter);
+app.use("/api/onboarding", onboardingRouter);
 
 // blog routes
 app.use('/api/blogs', blogRoutes);
@@ -124,7 +131,7 @@ app.get("/", (req, res) => res.send("API WORKING"));
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: frontendOrigins,
     methods: ["GET", "POST"],
     credentials: true
   }

@@ -22,6 +22,29 @@ const ReviewOverlay = ({
     }
   }, [isOpen]);
 
+  // Calculate summary from reviews
+  const calculateSummary = (reviews) => {
+    if (!reviews || reviews.length === 0) return null;
+
+    const totalReviews = reviews.length;
+    const averageRating = (
+      reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+    ).toFixed(1);
+
+    const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach((review) => {
+      ratingCounts[review.rating]++;
+    });
+
+    return {
+      totalReviews,
+      averageRating: parseFloat(averageRating),
+      ratingCounts,
+    };
+  };
+
+  const summary = calculateSummary(reviewsData?.reviews);
+
   // Debug reviewsData
   useEffect(() => {
     console.log("ReviewOverlay received reviewsData:", reviewsData);
@@ -92,18 +115,18 @@ const ReviewOverlay = ({
             <h2 className="text-2xl font-bold text-gray-900">
               Patient Reviews
             </h2>
-            {reviewsData?.summary && (
+            {summary && (
               <div className="flex items-center gap-4 mt-2">
                 <div className="flex items-center gap-1">
                   <span className="text-3xl font-bold text-gray-900">
-                    {reviewsData.summary.averageRating}
+                    {summary.averageRating}
                   </span>
                   <div className="flex">
-                    {renderStars(Math.round(reviewsData.summary.averageRating))}
+                    {renderStars(Math.round(summary.averageRating))}
                   </div>
                 </div>
                 <span className="text-gray-500">
-                  ({reviewsData.summary.totalReviews} reviews)
+                  ({summary.totalReviews} reviews)
                 </span>
               </div>
             )}

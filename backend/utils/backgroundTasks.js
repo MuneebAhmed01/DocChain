@@ -4,8 +4,10 @@
  */
 
 import { cleanupExpiredHolds } from "../services/appointmentService.js";
+import { processAppointmentRemindersSimple } from "../services/appointmentReminderService.js";
 
 let cleanupInterval = null;
+let reminderInterval = null;
 
 /**
  * Start background tasks
@@ -26,6 +28,17 @@ export const startBackgroundTasks = () => {
     }
   }, 5 * 60 * 1000); // 5 minutes
 
+  // Run appointment reminders every 5 minutes
+  reminderInterval = setInterval(async () => {
+    try {
+      console.log(`📧 Running appointment reminders at ${new Date().toISOString()}`);
+      await processAppointmentRemindersSimple();
+    } catch (error) {
+      console.error("❌ Error in reminder task:", error);
+      // Don't rethrow - let other tasks continue
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+
   console.log("✅ Background tasks started");
 };
 
@@ -36,8 +49,13 @@ export const startBackgroundTasks = () => {
 export const stopBackgroundTasks = () => {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
-    console.log("🛑 Background tasks stopped");
+    console.log("🛑 Cleanup task stopped");
   }
+  if (reminderInterval) {
+    clearInterval(reminderInterval);
+    console.log("🛑 Reminder task stopped");
+  }
+  console.log("🛑 All background tasks stopped");
 };
 
 /**
@@ -46,4 +64,12 @@ export const stopBackgroundTasks = () => {
 export const triggerCleanup = async () => {
   console.log("🔄 Manually triggering HOLD expiry cleanup...");
   return await cleanupExpiredHolds();
+};
+
+/**
+ * Manually trigger reminder processing (useful for testing)
+ */
+export const triggerReminderProcessing = async () => {
+  console.log("🔄 Manually triggering appointment reminders...");
+  return await processAppointmentRemindersSimple();
 };

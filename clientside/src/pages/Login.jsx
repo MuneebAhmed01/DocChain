@@ -41,6 +41,8 @@ const Login = () => {
         if (data.success) {
           localStorage.setItem("token", data.token);
           setToken(data.token);
+          // Redirect to onboarding after signup
+          setTimeout(() => navigate("/onboarding"), 100);
         } else {
           toast.error(data.message);
         }
@@ -62,10 +64,11 @@ const Login = () => {
   };
 
   useEffect(() => {
-    if (token) {
+    if (token && state === "Login") {
+      // Only redirect to home for login, not signup (signup redirects to onboarding)
       navigate("/");
     }
-  }, [token]);
+  }, [token, state, navigate]);
 
   return (
     <form onSubmit={onSubmitHandler} className="min-h-[80vh] flex items-center justify-center px-4">
@@ -122,21 +125,26 @@ const Login = () => {
         >
           {state === "Sign Up" ? "Create Account" : "Login"}
         </button>
-         <GoogleLogin
-  onSuccess={async (credentialResponse) => {
-    const { data } = await axiosInstance.post("/api/user/google-login", {
-      token: credentialResponse.credential,
-    });
+        <GoogleLogin
+          onSuccess={async (credentialResponse) => {
+            const { data } = await axiosInstance.post("/api/user/google-login", {
+              token: credentialResponse.credential,
+            });
 
-    if (data.success) {
-      localStorage.setItem("token", data.token);
-      setToken(data.token);
-    } else {
-      toast.error("Google login failed");
-    }
-  }}
-  onError={() => toast.error("Google Login Failed")}
-/>
+            if (data.success) {
+              localStorage.setItem("token", data.token);
+              setToken(data.token);
+              // Check if new user needs onboarding, then redirect
+              // For now, assume all google logins go through login flow
+              if (state === "Sign Up") {
+                setTimeout(() => navigate("/onboarding"), 100);
+              }
+            } else {
+              toast.error("Google login failed");
+            }
+          }}
+          onError={() => toast.error("Google Login Failed")}
+        />
 
         {state === "Sign Up" ? (
           <p>
