@@ -174,6 +174,13 @@ const MyProfile = () => {
   };
 
   useEffect(() => {
+    // Load fresh user data when component mounts
+    if (token) {
+      loadUserProfileData();
+    }
+  }, [token]);
+
+  useEffect(() => {
     // Initialize localAge from existing dob when userData loads
     if (userData && userData.dob && userData.dob !== "Not Selected") {
       try {

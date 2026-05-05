@@ -3,12 +3,14 @@ import express from "express";
 import { joinDoctorRequest, getPendingDoctors ,  approvePendingDoctor,
   rejectPendingDoctor} from "../controllers/pendingDoctorController.js";
 import { upload, uploadDoctorDocuments } from "../middlewares/multer.js";
+import authUser from "../middlewares/authUser.js";
 
 const pendingDoctorRouter = express.Router();
 
-// Submit doctor join form
+// Submit doctor join form - REQUIRES AUTHENTICATION
 pendingDoctorRouter.post(
   "/join",
+  authUser,
   upload.fields([
     { name: "profilePic", maxCount: 1 },
     { name: "degreeProof", maxCount: 1 },

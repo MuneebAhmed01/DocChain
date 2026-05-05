@@ -1,15 +1,12 @@
 import express from "express";
 import Stripe from "stripe";
 import appointmentModel from "../models/appointmentModel.js";
-import doctorModel from "../models/doctorModel.js";
 import {
-  fromStripeMinorUnits,
   PAYMENT_CURRENCY,
   APPOINTMENT_STATUS,
-  PAYMENT_STATUS,
-  PAYMENT_METHOD,
   PAYMENT_TYPE,
 } from "../config/payment.js";
+import { finalizeStripeAppointmentPayment } from "../services/paymentFinalizeService.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -57,59 +54,16 @@ const runAppointmentUpdate = async (operation) => {
 };
 
 const finalizeWebhookPayment = async (appointmentId, sessionObject) => {
-  return runAppointmentUpdate(async (session) => {
-    const appointmentQuery = appointmentModel.findById(appointmentId);
-    const appointment = session ? await appointmentQuery.session(session) : await appointmentQuery;
+  // Use appointment.paymentType as a hint (token vs full) because webhook
+  // runs without knowing which endpoint started the checkout session.
+  const appointment = await appointmentModel.findById(appointmentId).select("paymentType");
+  const paymentType =
+    appointment?.paymentType === PAYMENT_TYPE.TOKEN ? PAYMENT_TYPE.TOKEN : PAYMENT_TYPE.FULL;
 
-    if (!appointment) {
-      throw new Error("Appointment not found");
-    }
-
-    if (appointment.walletCredited && appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED) {
-      return appointment;
-    }
-
-    if (appointment.appointmentStatus !== APPOINTMENT_STATUS.HOLD) {
-      throw new Error("Appointment is no longer pending confirmation");
-    }
-
-    const paidAmount = fromStripeMinorUnits(sessionObject.amount_total, PAYMENT_CURRENCY);
-    const paymentType = appointment.paymentType === PAYMENT_TYPE.TOKEN ? PAYMENT_TYPE.TOKEN : PAYMENT_TYPE.FULL;
-
-    appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
-    appointment.status = APPOINTMENT_STATUS.CONFIRMED;
-    appointment.paymentType = paymentType;
-    appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
-    appointment.paymentStatus = paymentType === PAYMENT_TYPE.TOKEN ? PAYMENT_STATUS.PARTIAL : PAYMENT_STATUS.PAID;
-    appointment.isPaid = paymentType === PAYMENT_TYPE.FULL;
-    appointment.tokenPaid = paymentType === PAYMENT_TYPE.TOKEN;
-    appointment.paymentIntentId = sessionObject.payment_intent;
-    appointment.paidAmount = paidAmount;
-    appointment.walletCredited = true;
-    appointment.walletCreditedAmount = paidAmount;
-    appointment.currency = PAYMENT_CURRENCY;
-    appointment.confirmationTime = new Date();
-
-    await appointment.save(session ? { session } : undefined);
-
-    const slotsBooked = { ...(appointment.docData?.slots_booked || {}) };
-    if (!slotsBooked[appointment.slotDate]) {
-      slotsBooked[appointment.slotDate] = [];
-    }
-    if (!slotsBooked[appointment.slotDate].includes(appointment.slotTime)) {
-      slotsBooked[appointment.slotDate].push(appointment.slotTime);
-    }
-
-    await doctorModel.findByIdAndUpdate(
-      appointment.docId,
-      {
-        slots_booked: slotsBooked,
-        $inc: { walletBalance: paidAmount, earnings: paidAmount },
-      },
-      session ? { session } : undefined
-    );
-
-    return appointment;
+  return finalizeStripeAppointmentPayment({
+    appointmentId,
+    stripeSession: sessionObject,
+    paymentType,
   });
 };
 

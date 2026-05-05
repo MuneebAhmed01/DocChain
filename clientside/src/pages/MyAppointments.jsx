@@ -165,6 +165,10 @@ const MyAppointments = () => {
                   <span className="font-medium">Payment:</span> {item.paymentType}
                 </p>
                 <p className="text-sm">
+                  <span className="font-medium">Type:</span>{" "}
+                  {item.appointmentType === "online" ? "Online" : "Physical"}
+                </p>
+                <p className="text-sm">
                   <span className="font-medium">Status:</span> {item.paymentStatus}
                 </p>
                 <p className="text-sm">

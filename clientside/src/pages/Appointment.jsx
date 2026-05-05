@@ -20,6 +20,7 @@ const Appointment = () => {
   const [slotTime, setSlotTime] = useState("");
   const [reviews, setReviews] = useState([]);
   const [bookingOptions, setBookingOptions] = useState(null);
+  const [appointmentType, setAppointmentType] = useState("physical");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const restoreAttemptedRef = useRef(false);
 
@@ -180,6 +181,7 @@ const Appointment = () => {
         docId,
         slotDate,
         slotTime: selectedSlotTime,
+        appointmentType,
       });
       if (data.success) {
         setBookingOptions({
@@ -236,6 +238,10 @@ const Appointment = () => {
   useEffect(() => {
     setBookingOptions(null);
   }, [slotIndex, slotTime]);
+
+  useEffect(() => {
+    setBookingOptions(null);
+  }, [appointmentType]);
 
   useEffect(() => {
     const syncDoctors = () => {
@@ -412,6 +418,33 @@ const Appointment = () => {
 
         {/* -------------------- Booking Slots -------------------- */}
         <div className="sm:ml-72 sm:pl-4 mt-4 font-medium text-gray-700">
+          <div className="flex items-center gap-3 mb-3">
+            <p className="text-sm text-gray-600">Appointment type:</p>
+            <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1">
+              <button
+                type="button"
+                onClick={() => setAppointmentType("physical")}
+                className={`px-3 py-1.5 text-sm rounded-lg transition ${
+                  appointmentType === "physical"
+                    ? "bg-primary text-white"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Physical Visit
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppointmentType("online")}
+                className={`px-3 py-1.5 text-sm rounded-lg transition ${
+                  appointmentType === "online"
+                    ? "bg-primary text-white"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Online Consultation
+              </button>
+            </div>
+          </div>
           <p>Booking slots</p>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {docSlots.length &&
@@ -528,36 +561,38 @@ const Appointment = () => {
                     </button>
                   </div>
 
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5">
-                    <p className="font-semibold text-gray-900 text-lg">
-                      Pay Token
-                    </p>
-                    <p className="text-sm text-gray-600 mt-2">
-                      Pay now:{" "}
-                      {formatPkrAmount(
-                        bookingOptions.paymentOptions.option2_token.youPay,
-                      )}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Pay at clinic later:{" "}
-                      {formatPkrAmount(
-                        bookingOptions.paymentOptions.option2_token
-                          .remainingAtClinic,
-                      )}
-                    </p>
-                    <button
-                      onClick={() =>
-                        startPayment(
-                          "/api/stripe/create-token-payment-session",
-                          bookingOptions.appointmentId,
-                        )
-                      }
-                      disabled={isSubmitting}
-                      className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-                    >
-                      Pay Token
-                    </button>
-                  </div>
+                  {bookingOptions.paymentOptions.option2_token && (
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 sm:p-5">
+                      <p className="font-semibold text-gray-900 text-lg">
+                        Pay Token
+                      </p>
+                      <p className="text-sm text-gray-600 mt-2">
+                        Pay now:{" "}
+                        {formatPkrAmount(
+                          bookingOptions.paymentOptions.option2_token.youPay,
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Pay at clinic later:{" "}
+                        {formatPkrAmount(
+                          bookingOptions.paymentOptions.option2_token
+                            .remainingAtClinic,
+                        )}
+                      </p>
+                      <button
+                        onClick={() =>
+                          startPayment(
+                            "/api/stripe/create-token-payment-session",
+                            bookingOptions.appointmentId,
+                          )
+                        }
+                        disabled={isSubmitting}
+                        className="mt-4 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                      >
+                        Pay Token
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

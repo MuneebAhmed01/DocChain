@@ -11,6 +11,22 @@ import { v4 as uuidv4 } from "uuid";
 
 class WalletService {
   /**
+   * Credit wallet for full online payment
+   * Called when appointment is confirmed with FULL payment
+   */
+  static async creditFullPayment(appointmentId, docId, amount, session = null) {
+    return this._performWalletOperation({
+      docId,
+      appointmentId,
+      transactionType: "FULL_CREDIT",
+      amount,
+      reason: "Full payment received for appointment",
+      metadata: { paymentType: "FULL" },
+      session,
+    });
+  }
+
+  /**
    * Credit wallet for token payment
    * Called when appointment is confirmed with TOKEN payment
    */
@@ -118,12 +134,8 @@ class WalletService {
       const previousBalance = doctor.walletBalance || 0;
       const newBalance = previousBalance + amount;
 
-      // Prevent negative wallet balance for reversals/refunds
-      if (newBalance < 0) {
-        throw new Error(
-          `Insufficient wallet balance. Current: ${previousBalance}, Required: ${Math.abs(amount)}`
-        );
-      }
+      // Allow negative balances for refunds/reversals to ensure user refunds
+      // can be processed even if the doctor has already withdrawn funds.
 
       // Create transaction record
       const transaction = new walletTransactionModel({

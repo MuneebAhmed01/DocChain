@@ -16,10 +16,6 @@ import BlogList from "./pages/Blogs/BlogList";
 import BlogDetail from "./pages/Blogs/BlogDetail";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import JoinDoctor from "./pages/JoinDoctor";
-import OnlineConsulting from "./pages/OnlineConsulting";
-import OnlineConsultSuccess from "./pages/OnlineConsultSuccess";
-import ConsultRoom from "./pages/ConsultRoom";
-import ConsultWaiting from "./pages/ConsultWaiting";
 import ScrollToTop from "./components/ScrollToTop";
 
 const LegacyBlogRedirect = () => {
@@ -54,14 +50,6 @@ const App = () => {
         <Route path="/my-profile" element={<MyProfile />} />
         <Route path="/my-appointments" element={<MyAppointments />} />
         <Route path="/appointment/:docId" element={<Appointment />} />
-
-        <Route path="/online-consulting" element={<OnlineConsulting />} />
-        <Route
-          path="/online-consult-success"
-          element={<OnlineConsultSuccess />}
-        />
-        <Route path="/consult-room/:roomId" element={<ConsultRoom />} />
-        <Route path="/consult-waiting/:roomId" element={<ConsultWaiting />} />
       </Routes>
       <ScrollToTop />
       <Footer />

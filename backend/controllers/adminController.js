@@ -12,6 +12,7 @@ import appointmentCancelledPatient from "../emailTemplates/appointmentCancelledP
 import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDoctor.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
 import WalletService from "../services/walletService.js";
+import { refundPaymentIntent } from "../services/refundService.js";
 import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
@@ -191,6 +192,10 @@ const appointmentCancel = async (req, res) => {
 
     const wasConfirmed = appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED;
     const refundAmount = Number(appointment.paidAmount || 0);
+    const paymentIntentForRefund =
+      appointment.paymentType === "TOKEN"
+        ? appointment.tokenPaymentIntentId || appointment.paymentIntentId
+        : appointment.paymentIntentId;
 
     // Can only cancel HOLD or CONFIRMED appointments
     if (![APPOINTMENT_STATUS.HOLD, APPOINTMENT_STATUS.CONFIRMED].includes(appointment.appointmentStatus)) {
@@ -200,15 +205,45 @@ const appointmentCancel = async (req, res) => {
       });
     }
 
+    // ✅ Issue refund (Stripe) with idempotency guard
+    if (refundAmount > 0 && !appointment.refundInitiated) {
+      try {
+        const refund = await refundPaymentIntent({
+          paymentIntentId: paymentIntentForRefund,
+          amount: refundAmount,
+        });
+        appointment.refundInitiated = true;
+        appointment.refundId = refund?.id || null;
+        appointment.refundStatus = "COMPLETED";
+        appointment.refundAmount = refundAmount;
+      } catch (refundError) {
+        appointment.refundInitiated = true;
+        appointment.refundStatus = "FAILED";
+        appointment.refundAmount = refundAmount;
+        await appointment.save();
+        return res.status(400).json({
+          success: false,
+          message: `Refund failed: ${refundError.message}`,
+        });
+      }
+    }
+
     // ✅ Use wallet service for atomic refund operation
     let walletResult = null;
     if (refundAmount > 0) {
-      walletResult = await WalletService.debitFullRefund(
-        appointmentId,
-        String(appointment.docId),
-        refundAmount,
-        "ADMIN"
-      );
+      walletResult =
+        appointment.paymentType === "TOKEN"
+          ? await WalletService.reverseTokenOnDoctorCancel(
+              appointmentId,
+              String(appointment.docId),
+              refundAmount
+            )
+          : await WalletService.debitFullRefund(
+              appointmentId,
+              String(appointment.docId),
+              refundAmount,
+              "ADMIN"
+            );
 
       if (!walletResult.success) {
         console.error("Failed to process admin refund:", walletResult.message);
@@ -228,10 +263,7 @@ const appointmentCancel = async (req, res) => {
 
     // 🟢 Handle refunds for CONFIRMED appointments with payments
     if (refundAmount > 0) {
-      appointment.refundStatus = "PENDING";
-      appointment.refundAmount = refundAmount;
       appointment.paymentStatus = PAYMENT_STATUS.REFUNDED;
-      appointment.refundInitiated = true;
         // ✅ Mark wallet as reversed if refund was processed
         if (walletResult?.success) {
           appointment.walletReversed = true;

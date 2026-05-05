@@ -98,9 +98,9 @@ router.post("/google-login", async (req, res) => {
 });
 
 // ------------------ REGISTER ------------------
-router.post("/register", async (req, res) => {
+router.post("/register", upload.single("image"), async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, phone_number, age, gender } = req.body;
 
     // Validate inputs
     if (!name || !email || !password) {
@@ -132,10 +132,46 @@ router.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Handle profile image upload
+    let profilePicData = { url: "", public_id: "" };
+    if (req.file) {
+      try {
+        const cloudinary = require('cloudinary').v2;
+        const imageUpload = await cloudinary.uploader.upload(req.file.path, {
+          resource_type: "image",
+          folder: "docchain/profile-pics",
+          transformation: [
+            { width: 500, height: 500, crop: "fill" },
+            { quality: "auto" }
+          ]
+        });
+        profilePicData = {
+          url: imageUpload.secure_url,
+          public_id: imageUpload.public_id
+        };
+      } catch (uploadError) {
+        console.log("Image upload error:", uploadError);
+        // Continue with registration even if image upload fails
+      }
+    }
+
+    // Calculate DOB from age (use January 1st of birth year)
+    let dob = "Not Selected";
+    if (age && !isNaN(age)) {
+      const birthYear = new Date().getFullYear() - parseInt(age);
+      dob = `${birthYear}-01-01`;
+    }
+
     const user = await userModel.create({
       name,
       email,
       password: hashedPassword,
+      phone: phone_number || "000000000",
+      phone_number: phone_number || null,
+      age: age ? parseInt(age) : null,
+      gender: gender || "Not Selected",
+      dob: dob,
+      profilePic: profilePicData,
     });
     
     try {

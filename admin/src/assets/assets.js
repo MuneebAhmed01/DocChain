@@ -13,6 +13,7 @@ import earning_icon from './earning_icon.svg'
 import patients_icon from './patients_icon.svg'
 import admin from './admin.jpg'
 import pending_icon from './pending-icon.svg'
+import default_avatar from './default-avatar.png'
 export const assets = {
     add_icon,
    pending_icon,
@@ -28,4 +29,5 @@ export const assets = {
     appointments_icon,
     earning_icon,
     admin,
+    default_avatar,
 }

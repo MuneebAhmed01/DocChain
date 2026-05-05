@@ -26,9 +26,10 @@ const DoctorAppointments = () => {
 
       <div className="bg-white border rounded-xl text-sm overflow-hidden shadow-sm">
         {/* Desktop Header: Hidden on mobile */}
-        <div className="hidden sm:grid grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] gap-1 py-3 px-6 border-b bg-gray-50 font-semibold text-gray-600">
+        <div className="hidden sm:grid grid-cols-[0.5fr_2fr_1fr_1fr_1fr_3fr_1fr_1fr] gap-1 py-3 px-6 border-b bg-gray-50 font-semibold text-gray-600">
           <p>#</p>
           <p>Patient</p>
+          <p>Type</p>
           <p>Payment</p>
           <p>Age</p>
           <p>Date & Time</p>
@@ -49,7 +50,7 @@ const DoctorAppointments = () => {
             return (
               <div
                 key={index}
-                className="flex flex-col gap-3 sm:grid sm:grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] sm:gap-1 sm:items-center text-gray-500 py-4 px-6 border-b hover:bg-gray-50 transition-colors"
+                className="flex flex-col gap-3 sm:grid sm:grid-cols-[0.5fr_2fr_1fr_1fr_1fr_3fr_1fr_1fr] sm:gap-1 sm:items-center text-gray-500 py-4 px-6 border-b hover:bg-gray-50 transition-colors"
               >
                 {/* Index */}
                 <p className="hidden sm:block text-gray-500">{index + 1}</p>
@@ -68,17 +69,27 @@ const DoctorAppointments = () => {
                 <div className="flex items-center gap-3">
                   <img
                     className="w-10 h-10 sm:w-8 sm:h-8 rounded-full object-cover border"
-                    src={item.userData.image}
+                    src={item.userData?.image || assets.default_avatar}
                     alt="Patient"
                   />
                   <div>
                     <p className="text-gray-900 font-semibold sm:font-medium">
-                      {item.userData.name}
+                      {item.userData?.name || "Unknown Patient"}
                     </p>
                     <p className="sm:hidden text-xs text-gray-400">
-                      Age: {calculateAge(item.userData.dob)}
+                      Age:{" "}
+                      {item.userData?.dob
+                        ? calculateAge(item.userData.dob)
+                        : "N/A"}
                     </p>
                   </div>
+                </div>
+
+                {/* Type (Desktop Only) */}
+                <div className="hidden sm:block">
+                  <p className="text-xs inline-flex border px-2 rounded-full border-gray-300 text-gray-700 bg-white">
+                    {item.appointmentType === "online" ? "Online" : "Physical"}
+                  </p>
                 </div>
 
                 {/* Payment (Desktop Only) */}
@@ -94,7 +105,7 @@ const DoctorAppointments = () => {
 
                 {/* Age (Desktop Only) */}
                 <p className="hidden sm:block">
-                  {calculateAge(item.userData.dob)}
+                  {item.userData?.dob ? calculateAge(item.userData.dob) : "N/A"}
                 </p>
 
                 {/* Date & Time */}

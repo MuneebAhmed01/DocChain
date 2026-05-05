@@ -14,6 +14,7 @@ const walletTransactionSchema = new mongoose.Schema(
     transactionType: {
       type: String,
       enum: [
+        "FULL_CREDIT",         // Full payment received
         "TOKEN_CREDIT",        // Token payment received
         "REMAINING_CREDIT",    // Remaining amount after completion
         "TOKEN_REVERSAL",      // Token reversed due to doctor cancellation
@@ -62,7 +63,6 @@ const walletTransactionSchema = new mongoose.Schema(
 // Indexes for efficient queries
 walletTransactionSchema.index({ docId: 1, createdAt: -1 });
 walletTransactionSchema.index({ appointmentId: 1 });
-walletTransactionSchema.index({ idempotencyKey: 1 }, { sparse: true });
 walletTransactionSchema.index({ docId: 1, transactionType: 1 });
 
 const walletTransactionModel =

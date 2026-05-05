@@ -7,6 +7,7 @@ import doctorRegistered from "../emailTemplates/doctorRegistered.js";
 import reviewModel from "../models/reviewModel.js";
 import { getJwtSecret } from "../utils/jwtSecret.js";
 import WalletService from "../services/walletService.js";
+import { refundPaymentIntent } from "../services/refundService.js";
 import {
   canCompleteAppointment,
   shouldCreditRemainingAmount,
@@ -256,16 +257,52 @@ const appointmentCancel = async (req, res) => {
     }
 
     const paidAmount = Number(appointment.paidAmount || 0);
+    const paymentIntentForRefund =
+      appointment.paymentType === "TOKEN"
+        ? appointment.tokenPaymentIntentId || appointment.paymentIntentId
+        : appointment.paymentIntentId;
 
-    // ✅ Reverse payment using wallet service (atomic with idempotency)
+    // ✅ Issue refund (Stripe) with idempotency guard
+    // - Token: refund token only
+    // - Full: refund full
+    if (paidAmount > 0 && !appointment.refundInitiated) {
+      try {
+        const refund = await refundPaymentIntent({
+          paymentIntentId: paymentIntentForRefund,
+          amount: paidAmount,
+        });
+        appointment.refundInitiated = true;
+        appointment.refundId = refund?.id || null;
+        appointment.refundStatus = REFUND_STATUS.COMPLETED;
+        appointment.refundAmount = paidAmount;
+      } catch (refundError) {
+        appointment.refundInitiated = true;
+        appointment.refundStatus = REFUND_STATUS.FAILED;
+        appointment.refundAmount = paidAmount;
+        await appointment.save();
+        return res.status(400).json({
+          success: false,
+          message: `Refund failed: ${refundError.message}`,
+        });
+      }
+    }
+
+    // ✅ Reverse wallet using wallet service (atomic with idempotency)
     let walletResult = null;
     if (paidAmount > 0) {
-      walletResult = await WalletService.debitFullRefund(
-        appointmentId,
-        String(docId),
-        paidAmount,
-        "DOCTOR"
-      );
+      walletResult =
+        appointment.paymentType === "TOKEN"
+          ? await WalletService.reverseTokenOnDoctorCancel(
+              appointmentId,
+              String(docId),
+              paidAmount
+            )
+          : await WalletService.debitFullRefund(
+              appointmentId,
+              String(docId),
+              paidAmount,
+              "DOCTOR"
+            );
 
       if (!walletResult.success) {
         console.error("Failed to reverse payment:", walletResult.message);
@@ -286,9 +323,6 @@ const appointmentCancel = async (req, res) => {
       "Cancelled by doctor due to an emergency. Your amount will be refunded soon.";
 
     if (paidAmount > 0) {
-      appointment.refundInitiated = true;
-      appointment.refundStatus = REFUND_STATUS.PENDING;
-      appointment.refundAmount = paidAmount;
       appointment.paymentStatus = PAYMENT_STATUS.REFUNDED;
       appointment.walletReversed = true;
       appointment.walletReversedAmount = paidAmount;

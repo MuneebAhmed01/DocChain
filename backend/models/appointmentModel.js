@@ -4,12 +4,19 @@ const appointmentSchema = new mongoose.Schema({
   // User and Doctor Info
   userId: { type: String, required: true },
   docId: { type: String, required: true },
-  userData: { type: Object, required: true },
-  docData: { type: Object, required: true },
+  userData: { type: Object, default: {} },
+  docData: { type: Object, default: {} },
 
   // Slot Information
   slotDate: { type: String, required: true },
   slotTime: { type: String, required: [true, "Please select a slot"] },
+
+  // Appointment Type
+  appointmentType: {
+    type: String,
+    enum: ["online", "physical"],
+    default: "physical",
+  },
 
   // Payment Information
   amount: { type: Number, required: true },

@@ -6,6 +6,7 @@ import onlineConsultSessionModel from "../models/onlineConsultSessionModel.js";
 import authUser from "../middlewares/authUser.js";
 import { v4 as uuidv4 } from 'uuid';
 import userModel from "../models/userModel.js";
+import { finalizeStripeAppointmentPayment } from "../services/paymentFinalizeService.js";
 import {
   assertPkrAmount,
   fromStripeMinorUnits,
@@ -21,121 +22,8 @@ const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 import paymentAccepted from "../emailTemplates/paymentAccepted.js"
 
-const isTransactionUnsupportedError = (error) =>
-  error?.code === 20 ||
-  /Transaction numbers are only allowed on a replica set member or mongos/i.test(
-    error?.message || ""
-  );
-
-const runAppointmentUpdate = async (operation) => {
-  const session = await appointmentModel.startSession();
-  let sessionEnded = false;
-
-  const endSessionSafely = async () => {
-    if (sessionEnded) {
-      return;
-    }
-
-    sessionEnded = true;
-    await session.endSession();
-  };
-
-  try {
-    session.startTransaction();
-    const result = await operation(session);
-    await session.commitTransaction();
-    return result;
-  } catch (error) {
-    if (isTransactionUnsupportedError(error)) {
-      try {
-        await endSessionSafely();
-      } catch (endSessionError) {
-        console.warn("Failed to end Mongo session after transaction fallback:", endSessionError);
-      }
-
-      return operation(null);
-    }
-
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    await endSessionSafely();
-  }
-};
-
-const finalizeAppointmentPayment = async ({ appointmentId, stripeSession, paymentType }) => {
-  return runAppointmentUpdate(async (session) => {
-    const appointmentQuery = appointmentModel.findById(appointmentId);
-    const appointment = session ? await appointmentQuery.session(session) : await appointmentQuery;
-
-    if (!appointment) {
-      throw new Error("Appointment not found");
-    }
-
-    if (appointment.walletCredited && appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED) {
-      return appointment;
-    }
-
-    if (appointment.appointmentStatus !== APPOINTMENT_STATUS.HOLD) {
-      throw new Error("Appointment already confirmed or cancelled");
-    }
-
-    const conflictingQuery = appointmentModel.findOne({
-      docId: appointment.docId,
-      slotDate: appointment.slotDate,
-      slotTime: appointment.slotTime,
-      appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
-      _id: { $ne: appointmentId },
-    });
-    const conflictingConfirmed = session
-      ? await conflictingQuery.session(session)
-      : await conflictingQuery;
-
-    if (conflictingConfirmed) {
-      throw new Error("Slot no longer available - another user booked it");
-    }
-
-    const paidAmount = fromStripeMinorUnits(stripeSession.amount_total, PAYMENT_CURRENCY);
-
-    appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
-    appointment.status = APPOINTMENT_STATUS.CONFIRMED;
-    appointment.confirmationTime = new Date();
-    appointment.paymentType = paymentType;
-    appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
-    appointment.paymentIntentId = stripeSession.payment_intent;
-    appointment.paidAmount = paidAmount;
-    appointment.paymentStatus = paymentType === PAYMENT_TYPE.TOKEN ? PAYMENT_STATUS.PARTIAL : PAYMENT_STATUS.PAID;
-    appointment.isPaid = paymentType === PAYMENT_TYPE.FULL;
-    appointment.tokenPaid = paymentType === PAYMENT_TYPE.TOKEN;
-    appointment.currency = PAYMENT_CURRENCY;
-    appointment.walletCredited = true;
-    appointment.walletCreditedAmount = paidAmount;
-
-    await appointment.save(session ? { session } : undefined);
-
-    const slots_booked = { ...(appointment.docData?.slots_booked || {}) };
-    if (!slots_booked[appointment.slotDate]) {
-      slots_booked[appointment.slotDate] = [];
-    }
-    if (!slots_booked[appointment.slotDate].includes(appointment.slotTime)) {
-      slots_booked[appointment.slotDate].push(appointment.slotTime);
-    }
-
-    await doctorModel.findByIdAndUpdate(
-      appointment.docId,
-      {
-        slots_booked,
-        $inc: { walletBalance: paidAmount, earnings: paidAmount },
-      },
-      session ? { session } : undefined
-    );
-
-    return appointment;
-  });
-};
-
 // CREATE STRIPE CHECKOUT SESSION FOR FULL ONLINE PAYMENT
-router.post("/create-checkout-session", async (req, res) => {
+router.post("/create-checkout-session", authUser, async (req, res) => {
   try {
     const { appointmentId } = req.body;
 
@@ -197,7 +85,7 @@ router.post("/create-checkout-session", async (req, res) => {
 });
 
 // VERIFY ONLINE PAYMENT AND CONFIRM APPOINTMENT
-router.post("/verify-payment", async (req, res) => {
+router.post("/verify-payment", authUser, async (req, res) => {
   try {
     const { sessionId } = req.body;
 
@@ -233,7 +121,7 @@ router.post("/verify-payment", async (req, res) => {
     }
 
     try {
-      const confirmedAppointment = await finalizeAppointmentPayment({
+      const confirmedAppointment = await finalizeStripeAppointmentPayment({
         appointmentId: appointment._id,
         stripeSession,
         paymentType: PAYMENT_TYPE.FULL,
@@ -278,13 +166,20 @@ router.post("/verify-payment", async (req, res) => {
 });
 
 // 🆕 TOKEN PAYMENT ENDPOINT (for CASH option - 10% advance)
-router.post("/create-token-payment-session", async (req, res) => {
+router.post("/create-token-payment-session", authUser, async (req, res) => {
   try {
     const { appointmentId } = req.body;
 
     const appointment = await appointmentModel.findById(appointmentId);
     if (!appointment) {
       return res.json({ success: false, message: "Appointment not found" });
+    }
+
+    if (appointment.appointmentType === "online") {
+      return res.json({
+        success: false,
+        message: "Token payment is not allowed for online appointments",
+      });
     }
 
     if (appointment.appointmentStatus !== APPOINTMENT_STATUS.HOLD) {
@@ -339,7 +234,7 @@ router.post("/create-token-payment-session", async (req, res) => {
 });
 
 // 🆕 VERIFY TOKEN PAYMENT AND CONFIRM APPOINTMENT
-router.post("/verify-token-payment", async (req, res) => {
+router.post("/verify-token-payment", authUser, async (req, res) => {
   try {
     const { sessionId } = req.body;
 
@@ -370,7 +265,7 @@ router.post("/verify-token-payment", async (req, res) => {
     }
 
     try {
-      const confirmedAppointment = await finalizeAppointmentPayment({
+      const confirmedAppointment = await finalizeStripeAppointmentPayment({
         appointmentId: appointment._id,
         stripeSession,
         paymentType: PAYMENT_TYPE.TOKEN,
@@ -419,7 +314,7 @@ router.post("/verify-token-payment", async (req, res) => {
 });
 
 // CREATE ONLINE CONSULTATION CHECKOUT SESSION
-router.post("/create-online-consult-checkout", async (req, res) => {
+router.post("/create-online-consult-checkout", authUser, async (req, res) => {
   try {
     const { doctorId } = req.body;
 
@@ -437,7 +332,7 @@ router.post("/create-online-consult-checkout", async (req, res) => {
       return res.json({ success: false, message: "Doctor is not available for online consultation" });
     }
 
-    const consultFee = assertPkrAmount(doctor.onlineConsultFee, "online consultation fee");
+    const consultFee = assertPkrAmount(doctor.fees, "consultation fee");
     const stripeConsultFee = toStripeMinorUnits(consultFee, PAYMENT_CURRENCY);
 
     // Create stripe session

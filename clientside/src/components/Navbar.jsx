@@ -61,14 +61,6 @@ const Navbar = () => {
           Contact
         </NavLink>
 
-        <NavLink
-          to="/online-consulting"
-          className={({ isActive }) =>
-            `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
-          }
-        >
-          Online Consulting
-        </NavLink>
         <button
           onClick={() => navigate("/join-doctor")}
           className="border border-blue-600 text-blue-600 px-5 py-2 rounded-full text-base hover:bg-blue-600 hover:text-white transition"
@@ -153,11 +145,6 @@ const Navbar = () => {
             </NavLink>
             <NavLink onClick={() => setShowMenu(false)} to="/contact">
               <p className="px-4 py-2 rounded inline-block">CONTACT</p>
-            </NavLink>
-            <NavLink onClick={() => setShowMenu(false)} to="/online-consulting">
-              <p className="px-4 py-2 rounded inline-block">
-                ONLINE CONSULTING
-              </p>
             </NavLink>
             <NavLink onClick={() => setShowMenu(false)} to="/join-doctor">
               <p className="px-4 py-2 rounded inline-block text-blue-600">

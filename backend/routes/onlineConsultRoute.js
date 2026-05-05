@@ -261,7 +261,7 @@ router.get("/my-sessions", authUser, async (req, res) => {
     const sessions = await onlineConsultSessionModel.find({ 
       patientId: req.userId 
     })
-    .populate('doctorId', 'name speciality image onlineConsultFee')
+    .populate('doctorId', 'name speciality image fees')
     .sort({ createdAt: -1 });
 
     res.json({ success: true, sessions });
@@ -292,7 +292,7 @@ router.get("/doctor-sessions", authDoctor, async (req, res) => {
 // Update doctor online settings
 router.put("/doctor-settings", authDoctor, async (req, res) => {
   try {
-    const { onlineConsultEnabled, onlineConsultFee, isOnlineNow } = req.body;
+    const { onlineConsultEnabled, isOnlineNow } = req.body;
 
     console.log("Doctor Settings Update Request:");
     console.log("- req.userId:", req.userId);
@@ -312,10 +312,6 @@ router.put("/doctor-settings", authDoctor, async (req, res) => {
       doctor.onlineConsultEnabled = onlineConsultEnabled;
     }
 
-    if (onlineConsultFee !== undefined) {
-      doctor.onlineConsultFee = onlineConsultFee;
-    }
-
     if (isOnlineNow !== undefined) {
       doctor.isOnlineNow = isOnlineNow;
     }
@@ -327,7 +323,6 @@ router.put("/doctor-settings", authDoctor, async (req, res) => {
       message: "Settings updated successfully",
       settings: {
         onlineConsultEnabled: doctor.onlineConsultEnabled,
-        onlineConsultFee: doctor.onlineConsultFee,
         isOnlineNow: doctor.isOnlineNow
       }
     });

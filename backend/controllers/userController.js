@@ -197,7 +197,13 @@ const updateProfile = async (req, res) => {
 const bookAppointment = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { docId, slotDate, slotTime } = req.body;
+    const { docId, slotDate, slotTime, appointmentType: rawAppointmentType } =
+      req.body;
+
+    const appointmentType = rawAppointmentType || "physical";
+    if (!["online", "physical"].includes(appointmentType)) {
+      return res.json({ success: false, message: "Invalid appointment type" });
+    }
 
     if (!slotTime || !String(slotTime).trim()) {
       return res.json({ success: false, message: "Please select a slot" });
@@ -253,24 +259,42 @@ const bookAppointment = async (req, res) => {
 
     const userData = await userModel.findById(userId).select("-password");
     const fullAmount = Number(docData.fees || 0);
-    const tokenAmount = Math.min(TOKEN_AMOUNT, fullAmount);
-    const paymentOptions = {
-      option1_full: {
-        type: PAYMENT_TYPE.FULL,
-        description: "Pay Full Amount Now",
-        amount: fullAmount,
-        youPay: fullAmount,
-      },
-      option2_token: {
-        type: PAYMENT_TYPE.TOKEN,
-        description: "Pay Token Now, Rest at Clinic",
-        tokenAmount,
-        youPay: tokenAmount,
-        remainingAtClinic: Math.max(0, fullAmount - tokenAmount),
-      },
-    };
+    const tokenAmount =
+      appointmentType === "physical" ? Math.min(TOKEN_AMOUNT, fullAmount) : 0;
+
+    const paymentOptions =
+      appointmentType === "online"
+        ? {
+            option1_full: {
+              type: PAYMENT_TYPE.FULL,
+              description: "Pay Full Amount Now",
+              amount: fullAmount,
+              youPay: fullAmount,
+            },
+          }
+        : {
+            option1_full: {
+              type: PAYMENT_TYPE.FULL,
+              description: "Pay Full Amount Now",
+              amount: fullAmount,
+              youPay: fullAmount,
+            },
+            option2_token: {
+              type: PAYMENT_TYPE.TOKEN,
+              description: "Pay Token Now, Rest at Clinic",
+              tokenAmount,
+              youPay: tokenAmount,
+              remainingAtClinic: Math.max(0, fullAmount - tokenAmount),
+            },
+          };
 
     if (existingHold) {
+      if (existingHold.appointmentType !== appointmentType) {
+        existingHold.appointmentType = appointmentType;
+        existingHold.tokenAmount = tokenAmount;
+        await existingHold.save();
+      }
+
       return res.json({
         success: true,
         message: "Slot is already on hold. Choose a payment option.",
@@ -296,6 +320,7 @@ const bookAppointment = async (req, res) => {
       docData: docData.toObject(),
       slotDate,
       slotTime,
+      appointmentType,
       amount: fullAmount,
       currency: PAYMENT_CURRENCY,
       tokenAmount,
@@ -388,14 +413,6 @@ const cancelAppointment = async (req, res) => {
 
     const refundAmount = Number(appointment.paidAmount || 0);
 
-    if (refundAmount > 0 && !appointment.walletReversed) {
-      await doctorModel.findByIdAndUpdate(appointment.docId, {
-        $inc: { walletBalance: -refundAmount, earnings: -refundAmount },
-      });
-      appointment.walletReversed = true;
-      appointment.walletReversedAmount = refundAmount;
-    }
-
     // 🟢 Cancel appointment
     appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_USER;
     appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_USER;
@@ -403,10 +420,10 @@ const cancelAppointment = async (req, res) => {
     appointment.cancelledAt = new Date();
     appointment.cancellationReason = "Cancelled by patient";
     appointment.cancelledBy = "USER";
-    appointment.refundInitiated = refundAmount > 0;
-    appointment.refundAmount = refundAmount;
-    appointment.refundStatus = refundAmount > 0 ? REFUND_STATUS.PENDING : REFUND_STATUS.NONE;
-    appointment.paymentStatus = refundAmount > 0 ? PAYMENT_STATUS.REFUNDED : appointment.paymentStatus;
+    // 🔴 Business rule: patient cancellation = NO refund, NO wallet deduction
+    appointment.refundInitiated = false;
+    appointment.refundAmount = 0;
+    appointment.refundStatus = REFUND_STATUS.NONE;
 
     await appointment.save();
 
@@ -453,9 +470,9 @@ const cancelAppointment = async (req, res) => {
       success: true,
       message: "Appointment cancelled successfully",
       cancellation_reason: appointment.cancellationReason,
-      refund_status: refundAmount > 0,
-      refundAmount,
-      refundInitiated: appointment.refundInitiated,
+      refund_status: false,
+      refundAmount: 0,
+      refundInitiated: false,
     });
   } catch (error) {
     console.log("cancelAppointment error:", error);
