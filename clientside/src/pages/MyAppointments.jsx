@@ -73,29 +73,6 @@ const MyAppointments = () => {
       toast.error(error.message);
     }
   };
-  const [submittingResponse, setSubmittingResponse] = useState({});
-
-  const handlePatientResponse = async (appointmentId, response) => {
-    try {
-      setSubmittingResponse((s) => ({ ...s, [appointmentId]: true }));
-      const { data } = await axiosInstance.post(
-        `/api/user/appointments/${appointmentId}/patient-response`,
-        { response },
-      );
-      if (data.success) {
-        toast.success("Response recorded");
-        getUserAppointments();
-        getDoctorsData();
-      } else {
-        toast.error(data.message || "Failed to record response");
-      }
-    } catch (err) {
-      console.log(err);
-      toast.error("Failed to submit response");
-    } finally {
-      setSubmittingResponse((s) => ({ ...s, [appointmentId]: false }));
-    }
-  };
   const openRateModal = (appt) => {
     setSelectedAppt(appt);
     setRating(0);
@@ -144,26 +121,10 @@ const MyAppointments = () => {
       <div>
         {appointments.map((item, index) => {
           const appointmentStatus = item.appointmentStatus || item.status;
-          const refundDue = Boolean(
-            item.refund_status ||
-            item.refundStatus === "PENDING" ||
-            (item.refundAmount || 0) > 0,
-          );
-
-          // Determine cancellation message based on who cancelled
-          let cancellationMessage;
-          if (
-            appointmentStatus === "CANCELLED_BY_DOCTOR" ||
-            appointmentStatus === "CANCELLED_BY_ADMIN"
-          ) {
-            cancellationMessage =
-              "Your appointment has been cancelled By Doctor Due to Emergency. You will be refunded.";
-          } else if (appointmentStatus === "CANCELLED_BY_USER") {
-            cancellationMessage = "Your appointment has been cancelled";
-          } else {
-            cancellationMessage =
-              item.cancellationReason || "Appointment cancelled.";
-          }
+          const refundDue = Boolean(item.refund_status || item.refundStatus === "PENDING" || (item.refundAmount || 0) > 0);
+          const cancellationMessage = refundDue
+            ? "Your appointment has been cancelled. You will be refunded."
+            : item.cancellationReason || "Appointment cancelled.";
 
           return (
             <div
@@ -201,27 +162,21 @@ const MyAppointments = () => {
                 </p>
 
                 <p className="text-sm mt-1">
-                  <span className="font-medium">Payment:</span>{" "}
-                  {item.paymentType}
+                  <span className="font-medium">Payment:</span> {item.paymentType}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Status:</span>{" "}
-                  {item.paymentStatus}
+                  <span className="font-medium">Status:</span> {item.paymentStatus}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Paid:</span>{" "}
-                  {formatPkrAmount(item.paidAmount || 0)}
+                  <span className="font-medium">Paid:</span> {formatPkrAmount(item.paidAmount || 0)}
                 </p>
                 {item.paymentType === "TOKEN" && (
                   <p className="text-sm text-amber-600">
-                    Remaining at clinic:{" "}
-                    {formatPkrAmount(item.amount - (item.paidAmount || 0))}
+                    Remaining at clinic: {formatPkrAmount(item.amount - (item.paidAmount || 0))}
                   </p>
                 )}
 
-                {(appointmentStatus === "CANCELLED_BY_DOCTOR" ||
-                  appointmentStatus === "CANCELLED_BY_ADMIN" ||
-                  appointmentStatus === "PAYMENT_FAILED") && (
+                {(appointmentStatus === "CANCELLED_BY_DOCTOR" || appointmentStatus === "CANCELLED_BY_ADMIN" || appointmentStatus === "PAYMENT_FAILED") && (
                   <p
                     id="msg1"
                     className="mt-2 text-sm text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded"
@@ -263,17 +218,14 @@ const MyAppointments = () => {
                 )}
 
                 {/* CANCEL BUTTON */}
-                {!item.cancelled &&
-                  appointmentStatus !== "CANCELLED_BY_DOCTOR" &&
-                  appointmentStatus !== "CANCELLED_BY_ADMIN" &&
-                  !item.isCompleted && (
-                    <button
-                      onClick={() => cancelAppointment(item._id)}
-                      className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"
-                    >
-                      Cancel appointment
-                    </button>
-                  )}
+                {!item.cancelled && appointmentStatus !== "CANCELLED_BY_DOCTOR" && appointmentStatus !== "CANCELLED_BY_ADMIN" && !item.isCompleted && (
+                  <button
+                    onClick={() => cancelAppointment(item._id)}
+                    className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"
+                  >
+                    Cancel appointment
+                  </button>
+                )}
 
                 {/* CANCELLED BADGE */}
                 {item.cancelled && !item.isCompleted && (
@@ -281,61 +233,6 @@ const MyAppointments = () => {
                     Appointment cancelled
                   </button>
                 )}
-
-                {/* PATIENT CONFIRM ATTENDANCE (only after appointment time) */}
-                {(() => {
-                  // determine appointment time (prefer explicit appointmentTime)
-                  const apptTime = item.appointmentTime
-                    ? new Date(item.appointmentTime)
-                    : (() => {
-                        try {
-                          const parts = String(item.slotDate).split("_");
-                          const day = parts[0];
-                          const month = parts[1];
-                          const year = parts[2];
-                          return new Date(
-                            `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}T${item.slotTime}`,
-                          );
-                        } catch (e) {
-                          return null;
-                        }
-                      })();
-
-                  const now = new Date();
-                  const canRespond = apptTime ? now > apptTime : false;
-
-                  if (!canRespond) return null;
-
-                  // Prevent showing buttons if patient already responded
-                  if (
-                    item.patientMarkedCompleted !== null ||
-                    item.patientResponse
-                  )
-                    return null;
-
-                  return (
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        disabled={submittingResponse[item._id]}
-                        onClick={() =>
-                          handlePatientResponse(item._id, "attended")
-                        }
-                        className="px-3 py-2 bg-green-600 text-white rounded text-sm"
-                      >
-                        ✅ Doctor Attended
-                      </button>
-                      <button
-                        disabled={submittingResponse[item._id]}
-                        onClick={() =>
-                          handlePatientResponse(item._id, "not_attended")
-                        }
-                        className="px-3 py-2 bg-red-600 text-white rounded text-sm"
-                      >
-                        ❌ Doctor Did Not Attend
-                      </button>
-                    </div>
-                  );
-                })()}
 
                 {/* COMPLETED BADGE */}
                 {/* COMPLETED & RATING */}

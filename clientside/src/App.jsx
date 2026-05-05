@@ -30,7 +30,7 @@ const LegacyBlogRedirect = () => {
 
 const App = () => {
   return (
-    <div className="mx-4 sm:mx-[3%] w-full max-w-full overflow-x-hidden">
+    <div className="px-4 sm:px-[2%] w-full max-w-full overflow-x-hidden">
       <ToastContainer />
       <Navbar />
       <Routes>

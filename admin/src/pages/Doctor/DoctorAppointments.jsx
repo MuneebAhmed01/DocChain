@@ -47,130 +47,136 @@ const DoctorAppointments = () => {
               : "border-green-500 text-green-600 bg-green-50";
 
             return (
-            <div
-              key={index}
-              className="flex flex-col gap-3 sm:grid sm:grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] sm:gap-1 sm:items-center text-gray-500 py-4 px-6 border-b hover:bg-gray-50 transition-colors"
-            >
-              {/* Index */}
-              <p className="hidden sm:block text-gray-500">{index + 1}</p>
+              <div
+                key={index}
+                className="flex flex-col gap-3 sm:grid sm:grid-cols-[0.5fr_2fr_1fr_1fr_3fr_1fr_1fr] sm:gap-1 sm:items-center text-gray-500 py-4 px-6 border-b hover:bg-gray-50 transition-colors"
+              >
+                {/* Index */}
+                <p className="hidden sm:block text-gray-500">{index + 1}</p>
 
-              {/* Index & Patient Header (Mobile Only) */}
-              <div className="sm:hidden flex justify-between items-center border-b pb-2">
-                <span className="font-bold text-gray-400">#{index + 1}</span>
-                <span
-                  className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${paymentBadgeClass}`}
-                >
-                  {paymentLabel}
-                </span>
-              </div>
+                {/* Index & Patient Header (Mobile Only) */}
+                <div className="sm:hidden flex justify-between items-center border-b pb-2">
+                  <span className="font-bold text-gray-400">#{index + 1}</span>
+                  <span
+                    className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${paymentBadgeClass}`}
+                  >
+                    {paymentLabel}
+                  </span>
+                </div>
 
-              {/* Patient Info */}
-              <div className="flex items-center gap-3">
-                <img
-                  className="w-10 h-10 sm:w-8 sm:h-8 rounded-full object-cover border"
-                  src={item.userData.image}
-                  alt="Patient"
-                />
-                <div>
-                  <p className="text-gray-900 font-semibold sm:font-medium">
-                    {item.userData.name}
+                {/* Patient Info */}
+                <div className="flex items-center gap-3">
+                  <img
+                    className="w-10 h-10 sm:w-8 sm:h-8 rounded-full object-cover border"
+                    src={item.userData.image}
+                    alt="Patient"
+                  />
+                  <div>
+                    <p className="text-gray-900 font-semibold sm:font-medium">
+                      {item.userData.name}
+                    </p>
+                    <p className="sm:hidden text-xs text-gray-400">
+                      Age: {calculateAge(item.userData.dob)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Payment (Desktop Only) */}
+                <div className="hidden sm:block">
+                  <p
+                    className={`text-xs inline-flex border px-2 rounded-full ${paymentBadgeClass}`}
+                  >
+                    {paymentLabel}
                   </p>
-                  <p className="sm:hidden text-xs text-gray-400">
-                    Age: {calculateAge(item.userData.dob)}
+
+                  {/* TOKEN breakdown for doctor */}
+                </div>
+
+                {/* Age (Desktop Only) */}
+                <p className="hidden sm:block">
+                  {calculateAge(item.userData.dob)}
+                </p>
+
+                {/* Date & Time */}
+                <div className="flex justify-between sm:block text-xs sm:text-sm">
+                  <span className="sm:hidden font-medium text-gray-400">
+                    Schedule:
+                  </span>
+                  <p className="text-gray-700 sm:text-gray-500">
+                    {slotDateFormat(item.slotDate)}, {item.slotTime}
                   </p>
                 </div>
-              </div>
 
-              {/* Payment (Desktop Only) */}
-              <div className="hidden sm:block">
-                <p
-                  className={`text-xs inline-flex border px-2 rounded-full ${paymentBadgeClass}`}
-                >
-                  {paymentLabel}
-                </p>
-
-                {/* TOKEN breakdown for doctor */}
-               
-              </div>
-
-              {/* Age (Desktop Only) */}
-              <p className="hidden sm:block">
-                {calculateAge(item.userData.dob)}
-              </p>
-
-              {/* Date & Time */}
-              <div className="flex justify-between sm:block text-xs sm:text-sm">
-                <span className="sm:hidden font-medium text-gray-400">
-                  Schedule:
-                </span>
-                <p className="text-gray-700 sm:text-gray-500">
-                  {slotDateFormat(item.slotDate)}, {item.slotTime}
-                </p>
-              </div>
-
-              {/* Fees */}
-              <div className="flex justify-between sm:block text-xs sm:text-sm">
-                <span className="sm:hidden font-medium text-gray-400">
-                  Consultation Fee:
-                </span>
-                <p className="text-gray-900 sm:text-gray-500 font-medium">
-                  {currency}
-                  {item.amount}
-                </p>
-
-                {/* Mobile TOKEN breakdown */}
-                {isTokenPayment && (
-                  <div className="sm:hidden mt-2 text-[11px] text-gray-600 space-y-1">
-                    <p>
-                      <span className="font-semibold text-gray-700">Remaining Amount:</span>{" "}
-                      {currency}
-                      {Math.max(0, (item.amount || 0) - (item.paidAmount || 0))}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-gray-700">Token Received (Wallet):</span>{" "}
-                      {currency}
-                      {item.paidAmount || 500}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end sm:justify-center pt-2 sm:pt-0">
-                {item.cancelled ? (
-                  <p className="text-red-400 text-xs font-bold uppercase tracking-wider">
-                    {item.appointmentStatus || item.status || "Cancelled"}
+                {/* Fees */}
+                <div className="flex justify-between sm:block text-xs sm:text-sm">
+                  <span className="sm:hidden font-medium text-gray-400">
+                    Consultation Fee:
+                  </span>
+                  <p className="text-gray-900 sm:text-gray-500 font-medium">
+                    {currency}
+                    {item.amount}
                   </p>
-                ) : item.isCompleted ? (
-                  <p className="text-green-500 text-xs font-bold uppercase tracking-wider">
-                    Completed
-                  </p>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => cancelAppointment(item._id)}
-                      className="hover:scale-110 transition-transform p-1 hover:bg-red-50 rounded-full"
-                    >
-                      <img
-                        className="w-8 sm:w-10"
-                        src={assets.cancel_icon}
-                        alt="Cancel"
-                      />
-                    </button>
-                    <button
-                      onClick={() => completeAppointment(item._id)}
-                      className="hover:scale-110 transition-transform p-1 hover:bg-green-50 rounded-full"
-                    >
-                      <img
-                        className="w-8 sm:w-10"
-                        src={assets.tick_icon}
-                        alt="Complete"
-                      />
-                    </button>
-                  </div>
-                )}
+
+                  {/* Mobile TOKEN breakdown */}
+                  {isTokenPayment && (
+                    <div className="sm:hidden mt-2 text-[11px] text-gray-600 space-y-1">
+                      <p>
+                        <span className="font-semibold text-gray-700">
+                          Remaining Amount:
+                        </span>{" "}
+                        {currency}
+                        {Math.max(
+                          0,
+                          (item.amount || 0) - (item.paidAmount || 0),
+                        )}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-gray-700">
+                          Token Received (Wallet):
+                        </span>{" "}
+                        {currency}
+                        {item.paidAmount || 500}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex justify-end sm:flex sm:justify-center sm:items-center pt-2 sm:pt-0">
+                  {item.cancelled ? (
+                    <p className="text-red-400 text-xs font-bold uppercase tracking-wider">
+                      {item.appointmentStatus || item.status || "Cancelled"}
+                    </p>
+                  ) : item.isCompleted ? (
+                    <p className="text-green-500 text-xs font-bold uppercase tracking-wider">
+                      Completed
+                    </p>
+                  ) : (
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        onClick={() => cancelAppointment(item._id)}
+                        className="transition-transform p-1.5 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95"
+                      >
+                        <img
+                          className="w-8 sm:w-10 h-8 sm:h-10"
+                          src={assets.cancel_icon}
+                          alt="Cancel"
+                        />
+                      </button>
+                      <button
+                        onClick={() => completeAppointment(item._id)}
+                        className="transition-transform p-1.5 hover:bg-green-50 rounded-full hover:scale-110 active:scale-95"
+                      >
+                        <img
+                          className="w-8 sm:w-10 h-8 sm:h-10"
+                          src={assets.tick_icon}
+                          alt="Complete"
+                        />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
             );
           })}
         </div>
