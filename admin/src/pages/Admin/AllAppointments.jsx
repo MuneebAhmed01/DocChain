@@ -15,104 +15,144 @@ const AllAppointments = () => {
   }, [aToken]);
 
   return (
-    <div className="w-full m-2 sm:m-5 ">
-      <p className="mb-3 text-lg font-medium">All Appointments</p>
+    <div className="w-full m-1 sm:m-3 ">
+      <p className="mb-2 text-sm font-medium">All Appointments</p>
 
-      <div className="bg-white border rounded text-sm max-h-[80vh] min-h-[50vh] overflow-y-auto">
+      <div className="bg-white border rounded text-sm">
         {/* Header: Desktop Only */}
-        <div className="hidden sm:grid grid-cols-[0.5fr_3fr_1fr_1fr_3fr_3fr_1fr_1fr] grid-flow-col py-3 px-6 border-b bg-gray-50">
-          <p>#</p>
-          <p>Patient</p>
-          <p>Age</p>
-          <p>Type</p>
-          <p>Date & Time</p>
-          <p>Doctor</p>
-          <p>Fees</p>
-          <p>Actions</p>
+        <div className="hidden sm:grid grid-cols-[40px_180px_50px_70px_180px_160px_70px_100px] gap-2 py-2 px-3 border-b bg-gray-50 font-semibold text-gray-700 text-xs">
+          <p className="text-center">#</p>
+          <p className="text-left">Patient</p>
+          <p className="text-center">Age</p>
+          <p className="text-center">Type</p>
+          <p className="text-left">Date & Time</p>
+          <p className="text-left">Doctor</p>
+          <p className="text-right">Fees</p>
+          <p className="text-center">Actions</p>
         </div>
 
         {appointments.map((item, index) => (
           <div
-            className="flex flex-col sm:grid sm:grid-cols-[0.5fr_3fr_1fr_1fr_3fr_3fr_1fr_1fr] items-center text-gray-500 py-3 px-6 border-b hover:bg-gray-50 gap-3 sm:gap-0"
+            className="flex flex-col gap-2 sm:grid sm:grid-cols-[40px_180px_50px_70px_180px_160px_70px_100px] sm:gap-2 sm:items-center text-gray-500 py-2 px-3 border-b hover:bg-gray-50 min-h-[60px]"
             key={index}
           >
             {/* 1. Index: Hidden on very small screens, visible on Desktop */}
-            <p className="hidden sm:block">{index + 1}</p>
+            <p className="hidden sm:block text-gray-500 text-center font-medium">
+              {index + 1}
+            </p>
 
             {/* 2. Patient: Always Visible */}
-            <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-2 min-h-[36px]">
               <img
-                className="w-8 rounded-full"
+                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
                 src={item.userData?.image || assets.default_avatar}
-                alt=""
+                alt="Patient"
               />
-              <p className="text-gray-800 font-medium sm:font-normal">
-                {item.userData?.name || "Unknown Patient"}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-900 font-semibold text-xs leading-tight">
+                  {item.userData?.name || "Unknown Patient"}
+                </p>
+              </div>
             </div>
 
             {/* 3. Age: Desktop Only (or labeled for mobile) */}
-            <p className="hidden sm:block">
-              {item.userData?.dob ? calculateAge(item.userData.dob) : "N/A"}
-            </p>
+            <div className="hidden sm:flex justify-center items-center w-full">
+              <p className="text-center font-medium text-sm w-full">
+                {item.userData?.dob ? calculateAge(item.userData.dob) : "N/A"}
+              </p>
+            </div>
 
             {/* Type: Desktop Only (or labeled for mobile) */}
-            <div className="w-full">
-              <span className="sm:hidden text-xs font-bold text-gray-400 block">
+            <div className="hidden sm:flex justify-center items-center w-full">
+              <div className="flex justify-center items-center w-full">
+                <span
+                  className={`inline-flex items-center justify-center px-3 py-1 text-xs font-semibold rounded-full border w-20 h-7 text-center ${
+                    item.appointmentType === "online"
+                      ? "text-blue-600 border-blue-300 bg-blue-50"
+                      : "text-green-600 border-green-300 bg-green-50"
+                  }`}
+                >
+                  {item.appointmentType === "online" ? "Online" : "Physical"}
+                </span>
+              </div>
+            </div>
+            <div className="sm:hidden w-full">
+              <span className="text-xs font-bold text-gray-400 block mb-1">
                 Type:
               </span>
-              <p>{item.appointmentType === "online" ? "Online" : "Physical"}</p>
+              <span
+                className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full border ${
+                  item.appointmentType === "online"
+                    ? "text-blue-600 border-blue-300 bg-blue-50"
+                    : "text-green-600 border-green-300 bg-green-50"
+                }`}
+              >
+                {item.appointmentType === "online" ? "Online" : "Physical"}
+              </span>
             </div>
 
             {/* 4. Date & Time: Always Visible */}
-            <div className="w-full">
-              <span className="sm:hidden text-xs font-bold text-gray-400 block">
-                Date & Time:{" "}
+            <div className="flex justify-between sm:block text-xs">
+              <span className="sm:hidden font-medium text-gray-400 flex-shrink-0">
+                Date & Time:
               </span>
-              <p>
+              <p className="text-gray-700 sm:text-gray-600 leading-tight text-xs">
                 {slotDateFormat(item.slotDate)}, {item.slotTime}
               </p>
             </div>
 
             {/* 5. Doctor: Always Visible */}
-            <div className="flex items-center gap-2 w-full">
-              <span className="sm:hidden text-xs font-bold text-gray-400 block">
-                Doctor:{" "}
+            <div className="flex items-center gap-2 min-h-[36px]">
+              <span className="sm:hidden font-medium text-gray-400 flex-shrink-0">
+                Doctor:
               </span>
               <img
-                className="w-8 rounded-full bg-gray-200"
+                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
                 src={item.docData?.image || assets.default_avatar}
-                alt=""
+                alt="Doctor"
               />
-              <p>{item.docData?.name || "Unknown Doctor"}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-gray-900 font-medium text-xs leading-tight">
+                  {item.docData?.name || "Unknown Doctor"}
+                </p>
+              </div>
             </div>
 
             {/* 6. Fees: Always Visible */}
-            <div className="w-full">
-              <span className="sm:hidden text-xs font-bold text-gray-400">
-                Fees:{" "}
+            <div className="flex justify-between sm:justify-end sm:items-center text-xs">
+              <span className="sm:hidden font-medium text-gray-400 flex-shrink-0">
+                Fees:
               </span>
-              <span>
+              <span className="text-gray-900 sm:text-gray-600 font-semibold text-right text-xs">
                 {currency}
                 {item.amount}
               </span>
             </div>
 
             {/* 7. Actions: Always Visible */}
-            <div className="w-full flex justify-end sm:justify-start">
+            <div className="flex justify-end sm:justify-center sm:items-center min-h-[36px] w-full">
               {item.cancelled ? (
-                <p className="text-red-400 text-xs font-medium">
-                  {item.appointmentStatus || item.status || "Cancelled"}
+                <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider text-center min-h-[16px] flex items-center justify-center w-full px-1">
+                  {item.appointmentStatus === "CANCELLED_BY_DOCTOR" ||
+                  item.status === "CANCELLED_BY_DOCTOR"
+                    ? "DOC_CANCELLED"
+                    : item.appointmentStatus || item.status || "Cancelled"}
                 </p>
               ) : item.isCompleted ? (
-                <p className="text-green-500 text-xs font-medium">Completed</p>
+                <p className="text-green-500 text-[10px] font-bold uppercase tracking-wider text-center min-h-[16px] flex items-center justify-center w-full px-1">
+                  Completed
+                </p>
               ) : (
-                <img
+                <button
                   onClick={() => cancelAppointment(item._id)}
-                  className="w-10 cursor-pointer"
-                  src={assets.cancel_icon}
-                  alt=""
-                />
+                  className="transition-transform p-1 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95"
+                >
+                  <img
+                    className="w-5 h-5"
+                    src={assets.cancel_icon}
+                    alt="Cancel"
+                  />
+                </button>
               )}
             </div>
           </div>

@@ -53,7 +53,7 @@ const DoctorDashboard = () => {
                     Wallet Balance
                   </p>
                   <p className="text-white text-2xl font-bold">
-                    {currency} {dashData.earnings.toLocaleString()}
+                    RS {dashData.earnings.toLocaleString()}
                   </p>
                   <p className="text-blue-100 text-xs mt-2">
                     +12% from last month

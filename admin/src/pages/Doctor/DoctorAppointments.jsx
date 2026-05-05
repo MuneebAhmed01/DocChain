@@ -26,14 +26,14 @@ const DoctorAppointments = () => {
 
       <div className="bg-white border rounded-xl text-sm overflow-hidden shadow-sm">
         {/* Desktop Header: Hidden on mobile */}
-        <div className="hidden sm:grid grid-cols-[0.5fr_2fr_1fr_1fr_1fr_3fr_1fr_1fr] gap-1 py-3 px-6 border-b bg-gray-50 font-semibold text-gray-600">
-          <p>#</p>
-          <p>Patient</p>
-          <p>Type</p>
-          <p>Payment</p>
-          <p>Age</p>
-          <p>Date & Time</p>
-          <p>Fees</p>
+        <div className="hidden sm:grid grid-cols-[50px_250px_70px_70px_50px_200px_70px_100px] gap-3 py-3 px-4 border-b bg-gray-50 font-semibold text-gray-700 text-xs">
+          <p className="text-center">#</p>
+          <p className="text-left">Patient</p>
+          <p className="text-center">Type</p>
+          <p className="text-center">Payment</p>
+          <p className="text-center">Age</p>
+          <p className="text-left">Date & Time</p>
+          <p className="text-right">Fees</p>
           <p className="text-center">Action</p>
         </div>
 
@@ -50,10 +50,12 @@ const DoctorAppointments = () => {
             return (
               <div
                 key={index}
-                className="flex flex-col gap-3 sm:grid sm:grid-cols-[0.5fr_2fr_1fr_1fr_1fr_3fr_1fr_1fr] sm:gap-1 sm:items-center text-gray-500 py-4 px-6 border-b hover:bg-gray-50 transition-colors"
+                className="flex flex-col gap-2 sm:grid sm:grid-cols-[50px_250px_70px_70px_50px_200px_70px_100px] sm:gap-3 sm:items-center text-gray-500 py-3 px-4 border-b hover:bg-gray-50 transition-colors min-h-[60px]"
               >
                 {/* Index */}
-                <p className="hidden sm:block text-gray-500">{index + 1}</p>
+                <p className="hidden sm:block text-gray-500 text-center font-medium">
+                  {index + 1}
+                </p>
 
                 {/* Index & Patient Header (Mobile Only) */}
                 <div className="sm:hidden flex justify-between items-center border-b pb-2">
@@ -66,17 +68,17 @@ const DoctorAppointments = () => {
                 </div>
 
                 {/* Patient Info */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 min-h-[40px]">
                   <img
-                    className="w-10 h-10 sm:w-8 sm:h-8 rounded-full object-cover border"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
                     src={item.userData?.image || assets.default_avatar}
                     alt="Patient"
                   />
-                  <div>
-                    <p className="text-gray-900 font-semibold sm:font-medium">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-gray-900 font-semibold text-xs leading-tight line-clamp-2 break-words">
                       {item.userData?.name || "Unknown Patient"}
                     </p>
-                    <p className="sm:hidden text-xs text-gray-400">
+                    <p className="sm:hidden text-xs text-gray-400 mt-1">
                       Age:{" "}
                       {item.userData?.dob
                         ? calculateAge(item.userData.dob)
@@ -86,44 +88,58 @@ const DoctorAppointments = () => {
                 </div>
 
                 {/* Type (Desktop Only) */}
-                <div className="hidden sm:block">
-                  <p className="text-xs inline-flex border px-2 rounded-full border-gray-300 text-gray-700 bg-white">
-                    {item.appointmentType === "online" ? "Online" : "Physical"}
-                  </p>
+                <div className="hidden sm:flex justify-center items-center w-full">
+                  <div className="flex justify-center items-center w-full">
+                    <span
+                      className={`inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-semibold rounded-full border w-16 h-5 text-center ${
+                        item.appointmentType === "online"
+                          ? "text-blue-600 border-blue-300 bg-blue-50"
+                          : "text-green-600 border-green-300 bg-green-50"
+                      }`}
+                    >
+                      {item.appointmentType === "online"
+                        ? "Online"
+                        : "Physical"}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Payment (Desktop Only) */}
-                <div className="hidden sm:block">
-                  <p
-                    className={`text-xs inline-flex border px-2 rounded-full ${paymentBadgeClass}`}
-                  >
-                    {paymentLabel}
-                  </p>
-
-                  {/* TOKEN breakdown for doctor */}
+                <div className="hidden sm:flex justify-center items-center w-full">
+                  <div className="flex justify-center items-center w-full">
+                    <span
+                      className={`inline-flex items-center justify-center px-2 py-0.5 text-[10px] font-semibold rounded-full border w-14 h-5 text-center ${paymentBadgeClass}`}
+                    >
+                      {paymentLabel}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Age (Desktop Only) */}
-                <p className="hidden sm:block">
-                  {item.userData?.dob ? calculateAge(item.userData.dob) : "N/A"}
-                </p>
+                <div className="hidden sm:flex justify-center items-center w-full">
+                  <p className="text-center font-medium text-xs w-full">
+                    {item.userData?.dob
+                      ? calculateAge(item.userData.dob)
+                      : "N/A"}
+                  </p>
+                </div>
 
                 {/* Date & Time */}
-                <div className="flex justify-between sm:block text-xs sm:text-sm">
-                  <span className="sm:hidden font-medium text-gray-400">
+                <div className="flex justify-between sm:block text-xs">
+                  <span className="sm:hidden font-medium text-gray-400 flex-shrink-0">
                     Schedule:
                   </span>
-                  <p className="text-gray-700 sm:text-gray-500">
+                  <p className="text-gray-700 sm:text-gray-600 leading-tight text-xs">
                     {slotDateFormat(item.slotDate)}, {item.slotTime}
                   </p>
                 </div>
 
                 {/* Fees */}
-                <div className="flex justify-between sm:block text-xs sm:text-sm">
-                  <span className="sm:hidden font-medium text-gray-400">
+                <div className="flex justify-between sm:justify-end sm:items-center text-xs">
+                  <span className="sm:hidden font-medium text-gray-400 flex-shrink-0">
                     Consultation Fee:
                   </span>
-                  <p className="text-gray-900 sm:text-gray-500 font-medium">
+                  <p className="text-gray-900 sm:text-gray-600 font-semibold text-right text-xs">
                     {currency}
                     {item.amount}
                   </p>
@@ -153,33 +169,33 @@ const DoctorAppointments = () => {
                 </div>
 
                 {/* Actions */}
-                <div className="flex justify-end sm:flex sm:justify-center sm:items-center pt-2 sm:pt-0">
+                <div className="flex justify-end sm:justify-center sm:items-center pt-1 sm:pt-0 min-h-[36px] w-full">
                   {item.cancelled ? (
-                    <p className="text-red-400 text-xs font-bold uppercase tracking-wider">
+                    <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider text-center min-h-[16px] flex items-center justify-center w-full px-1">
                       {item.appointmentStatus || item.status || "Cancelled"}
                     </p>
                   ) : item.isCompleted ? (
-                    <p className="text-green-500 text-xs font-bold uppercase tracking-wider">
+                    <p className="text-green-500 text-[10px] font-bold uppercase tracking-wider text-center min-h-[16px] flex items-center justify-center w-full px-1">
                       Completed
                     </p>
                   ) : (
-                    <div className="flex items-center justify-center gap-4">
+                    <div className="flex items-center justify-center gap-1 w-full">
                       <button
                         onClick={() => cancelAppointment(item._id)}
-                        className="transition-transform p-1.5 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95"
+                        className="transition-transform p-1 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95"
                       >
                         <img
-                          className="w-8 sm:w-10 h-8 sm:h-10"
+                          className="w-5 h-5"
                           src={assets.cancel_icon}
                           alt="Cancel"
                         />
                       </button>
                       <button
                         onClick={() => completeAppointment(item._id)}
-                        className="transition-transform p-1.5 hover:bg-green-50 rounded-full hover:scale-110 active:scale-95"
+                        className="transition-transform p-1 hover:bg-green-50 rounded-full hover:scale-110 active:scale-95"
                       >
                         <img
-                          className="w-8 sm:w-10 h-8 sm:h-10"
+                          className="w-5 h-5"
                           src={assets.tick_icon}
                           alt="Complete"
                         />

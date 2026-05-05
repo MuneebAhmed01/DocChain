@@ -157,7 +157,7 @@ const DoctorProfile = () => {
                     Appointment Fee
                   </p>
                   <div className="text-xl font-bold text-gray-800 mt-1">
-                    {currency}
+                    RS
                     {isEdit ? (
                       <input
                         type="number"
