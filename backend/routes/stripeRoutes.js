@@ -16,6 +16,7 @@ import {
   PAYMENT_STATUS,
   PAYMENT_METHOD,
   PAYMENT_TYPE,
+  PLATFORM_FEE,
 } from "../config/payment.js";
 
 const router = express.Router();
@@ -45,14 +46,15 @@ router.post("/create-checkout-session", authUser, async (req, res) => {
       return res.json({ success: false, message: "Doctor not found" });
     }
 
-    const appointmentAmount = assertPkrAmount(appointment.amount, "appointment amount");
-    const stripeAppointmentAmount = toStripeMinorUnits(appointmentAmount, PAYMENT_CURRENCY);
+    // Use totalAmount which includes platform fee
+    const totalAmount = assertPkrAmount(appointment.totalAmount, "total amount");
+    const stripeTotalAmount = toStripeMinorUnits(totalAmount, PAYMENT_CURRENCY);
 
     appointment.paymentType = PAYMENT_TYPE.FULL;
     appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
     await appointment.save();
 
-    // Create stripe session
+    // Create stripe session with breakdown
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -61,10 +63,21 @@ router.post("/create-checkout-session", authUser, async (req, res) => {
           price_data: {
             currency: PAYMENT_CURRENCY,
             product_data: {
-              name: `Appointment with Dr. ${doctor.name}`,
-              description: `Pay full appointment amount`,
+              name: `Consultation Fee - Dr. ${doctor.name}`,
+              description: `Doctor consultation fee`,
             },
-            unit_amount: stripeAppointmentAmount,
+            unit_amount: toStripeMinorUnits(appointment.doctorFee, PAYMENT_CURRENCY),
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: PAYMENT_CURRENCY,
+            product_data: {
+              name: `Platform Fee`,
+              description: `Platform fee (non-refundable)`,
+            },
+            unit_amount: toStripeMinorUnits(PLATFORM_FEE, PAYMENT_CURRENCY),
           },
           quantity: 1,
         },
@@ -195,13 +208,15 @@ router.post("/create-token-payment-session", authUser, async (req, res) => {
     }
 
     const tokenAmount = assertPkrAmount(appointment.tokenAmount, "token amount");
-    const stripeTokenAmount = toStripeMinorUnits(tokenAmount, PAYMENT_CURRENCY);
+    const platformFee = PLATFORM_FEE;
+    const totalTokenPayment = tokenAmount + platformFee;
+    const stripeTotalTokenAmount = toStripeMinorUnits(totalTokenPayment, PAYMENT_CURRENCY);
 
     appointment.paymentType = PAYMENT_TYPE.TOKEN;
     appointment.paymentMethod = PAYMENT_METHOD.STRIPE;
     await appointment.save();
 
-    // Create stripe session for token payment
+    // Create stripe session for token payment with breakdown
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
@@ -210,10 +225,21 @@ router.post("/create-token-payment-session", authUser, async (req, res) => {
           price_data: {
             currency: PAYMENT_CURRENCY,
             product_data: {
-              name: `Token Payment for Dr. ${doctor.name}`,
-              description: `10% advance payment. Remaining to be paid at clinic.`,
+              name: `Token Payment - Dr. ${doctor.name}`,
+              description: `Token advance payment`,
             },
-            unit_amount: stripeTokenAmount,
+            unit_amount: toStripeMinorUnits(tokenAmount, PAYMENT_CURRENCY),
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: PAYMENT_CURRENCY,
+            product_data: {
+              name: `Platform Fee`,
+              description: `Platform fee (non-refundable)`,
+            },
+            unit_amount: toStripeMinorUnits(platformFee, PAYMENT_CURRENCY),
           },
           quantity: 1,
         },

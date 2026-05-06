@@ -19,7 +19,10 @@ import {
   PAYMENT_STATUS,
   PAYMENT_TYPE,
   TOKEN_AMOUNT,
+  PLATFORM_FEE,
   REFUND_STATUS,
+  calculateTotalAmount,
+  calculateTokenPaymentTotal,
 } from "../config/payment.js";
 import {
   isJoinAllowedNow,
@@ -270,9 +273,14 @@ const bookAppointment = async (req, res) => {
     });
 
     const userData = await userModel.findById(userId).select("-password");
-    const fullAmount = Number(docData.fees || 0);
+    const doctorFee = Number(docData.fees || 0);
+    const platformFee = PLATFORM_FEE;
     const tokenAmount =
-      appointmentType === "physical" ? Math.min(TOKEN_AMOUNT, fullAmount) : 0;
+      appointmentType === "physical" ? Math.min(TOKEN_AMOUNT, doctorFee) : 0;
+
+    // Calculate totals with platform fee
+    const fullPaymentTotal = calculateTotalAmount(doctorFee);
+    const tokenPaymentTotal = calculateTokenPaymentTotal(tokenAmount);
 
     const paymentOptions =
       appointmentType === "online"
@@ -280,23 +288,29 @@ const bookAppointment = async (req, res) => {
             option1_full: {
               type: PAYMENT_TYPE.FULL,
               description: "Pay Full Amount Now",
-              amount: fullAmount,
-              youPay: fullAmount,
+              doctorFee,
+              platformFee,
+              amount: fullPaymentTotal,
+              youPay: fullPaymentTotal,
             },
           }
         : {
             option1_full: {
               type: PAYMENT_TYPE.FULL,
               description: "Pay Full Amount Now",
-              amount: fullAmount,
-              youPay: fullAmount,
+              doctorFee,
+              platformFee,
+              amount: fullPaymentTotal,
+              youPay: fullPaymentTotal,
             },
             option2_token: {
               type: PAYMENT_TYPE.TOKEN,
               description: "Pay Token Now, Rest at Clinic",
+              doctorFee,
+              platformFee,
               tokenAmount,
-              youPay: tokenAmount,
-              remainingAtClinic: Math.max(0, fullAmount - tokenAmount),
+              youPay: tokenPaymentTotal,
+              remainingAtClinic: Math.max(0, doctorFee - tokenAmount),
             },
           };
 
@@ -318,7 +332,9 @@ const bookAppointment = async (req, res) => {
           speciality: docData.speciality,
           slotDate,
           slotTime,
-          fullAmount,
+          doctorFee,
+          platformFee,
+          fullAmount: fullPaymentTotal,
         },
         paymentOptions,
         holdExpiry: existingHold.holdExpiry,
@@ -335,10 +351,13 @@ const bookAppointment = async (req, res) => {
       slotTime,
       appointmentType,
       type: appointmentType === "online" ? "online" : "office",
-      amount: fullAmount,
+      amount: doctorFee,
       currency: PAYMENT_CURRENCY,
       tokenAmount,
       paidAmount: 0,
+      platformFee,
+      doctorFee,
+      totalAmount: fullPaymentTotal,
       paymentType: "PENDING",
       paymentStatus: PAYMENT_STATUS.PENDING,
       appointmentStatus: APPOINTMENT_STATUS.HOLD,
@@ -361,7 +380,9 @@ const bookAppointment = async (req, res) => {
         speciality: docData.speciality,
         slotDate,
         slotTime,
-        fullAmount,
+        doctorFee,
+        platformFee,
+        fullAmount: fullPaymentTotal,
       },
       paymentOptions,
       holdExpiry,
@@ -377,7 +398,10 @@ const listAppointment = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const appointments = await appointmentModel.find({ userId }).sort({ date: -1 });
+    // ✅ Sort by creation date descending (newest first), then by appointment date/time
+    const appointments = await appointmentModel
+      .find({ userId })
+      .sort({ createdAt: -1, slotDate: -1, slotTime: -1 });
 
     res.json({ success: true, appointments });
   } catch (error) {

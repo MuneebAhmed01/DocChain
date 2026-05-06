@@ -568,12 +568,36 @@ const Appointment = () => {
                     <p className="font-semibold text-gray-900 text-lg">
                       Pay Full Amount
                     </p>
-                    <p className="text-sm text-gray-600 mt-2">
-                      Pay now:{" "}
-                      {formatPkrAmount(
-                        bookingOptions.paymentOptions.option1_full.youPay,
-                      )}
-                    </p>
+                    <div className="mt-3 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Consultation Fee:</span>
+                        <span className="text-gray-900">
+                          {formatPkrAmount(
+                            bookingOptions.paymentOptions.option1_full
+                              .doctorFee,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">
+                          Platform Fee (Non-Refundable):
+                        </span>
+                        <span className="text-gray-900">
+                          {formatPkrAmount(
+                            bookingOptions.paymentOptions.option1_full
+                              .platformFee,
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                        <span className="text-gray-900">Total:</span>
+                        <span className="text-gray-900">
+                          {formatPkrAmount(
+                            bookingOptions.paymentOptions.option1_full.youPay,
+                          )}
+                        </span>
+                      </div>
+                    </div>
                     <button
                       onClick={() =>
                         startPayment(
@@ -593,19 +617,48 @@ const Appointment = () => {
                       <p className="font-semibold text-gray-900 text-lg">
                         Pay Token
                       </p>
-                      <p className="text-sm text-gray-600 mt-2">
-                        Pay now:{" "}
-                        {formatPkrAmount(
-                          bookingOptions.paymentOptions.option2_token.youPay,
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Pay at clinic later:{" "}
-                        {formatPkrAmount(
-                          bookingOptions.paymentOptions.option2_token
-                            .remainingAtClinic,
-                        )}
-                      </p>
+                      <div className="mt-3 space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">Token Amount:</span>
+                          <span className="text-gray-900">
+                            {formatPkrAmount(
+                              bookingOptions.paymentOptions.option2_token
+                                .tokenAmount,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">
+                            Platform Fee (Non-Refundable):
+                          </span>
+                          <span className="text-gray-900">
+                            {formatPkrAmount(
+                              bookingOptions.paymentOptions.option2_token
+                                .platformFee,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                          <span className="text-gray-900">Pay Now:</span>
+                          <span className="text-gray-900">
+                            {formatPkrAmount(
+                              bookingOptions.paymentOptions.option2_token
+                                .youPay,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm mt-2">
+                          <span className="text-gray-600">
+                            Pay at Clinic Later:
+                          </span>
+                          <span className="text-gray-900">
+                            {formatPkrAmount(
+                              bookingOptions.paymentOptions.option2_token
+                                .remainingAtClinic,
+                            )}
+                          </span>
+                        </div>
+                      </div>
                       <button
                         onClick={() =>
                           startPayment(

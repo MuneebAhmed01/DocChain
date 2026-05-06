@@ -1,6 +1,7 @@
 import appointmentModel from "../models/appointmentModel.js";
 import doctorModel from "../models/doctorModel.js";
 import WalletService from "./walletService.js";
+import PlatformRevenueService from "./platformRevenueService.js";
 import {
   fromStripeMinorUnits,
   PAYMENT_CURRENCY,
@@ -8,6 +9,7 @@ import {
   PAYMENT_STATUS,
   PAYMENT_METHOD,
   PAYMENT_TYPE,
+  PLATFORM_FEE,
 } from "../config/payment.js";
 import { buildAppointmentMeetingLink } from "../utils/meetingLink.js";
 
@@ -102,6 +104,10 @@ export const finalizeStripeAppointmentPayment = async ({
     const normalizedPaymentType =
       paymentType === PAYMENT_TYPE.TOKEN ? PAYMENT_TYPE.TOKEN : PAYMENT_TYPE.FULL;
 
+    // Calculate doctor's earnings (total paid minus platform fee)
+    const platformFee = PLATFORM_FEE;
+    const doctorEarnings = paidAmount - platformFee;
+
     // Write appointment state first (without directly mutating wallet).
     appointment.appointmentStatus = APPOINTMENT_STATUS.CONFIRMED;
     appointment.status = APPOINTMENT_STATUS.CONFIRMED;
@@ -127,19 +133,30 @@ export const finalizeStripeAppointmentPayment = async ({
       });
     }
 
-    // Credit doctor wallet via WalletService (ledgered + idempotent).
+    // Record platform fee earnings
+    const platformRevenueResult = await PlatformRevenueService.recordPlatformFeeEarned(
+      appointmentId,
+      session
+    );
+
+    if (!platformRevenueResult.success && !platformRevenueResult.isDuplicate) {
+      console.error("Failed to record platform fee:", platformRevenueResult.message);
+      // Don't fail the transaction for platform fee recording errors
+    }
+
+    // Credit doctor wallet only with their earnings (excluding platform fee)
     const walletResult =
       normalizedPaymentType === PAYMENT_TYPE.TOKEN
         ? await WalletService.creditTokenPayment(
             appointmentId,
             String(appointment.docId),
-            paidAmount,
+            doctorEarnings,
             session,
           )
         : await WalletService.creditFullPayment(
             appointmentId,
             String(appointment.docId),
-            paidAmount,
+            doctorEarnings,
             session,
           );
 
@@ -148,7 +165,7 @@ export const finalizeStripeAppointmentPayment = async ({
     }
 
     appointment.walletCredited = true;
-    appointment.walletCreditedAmount = paidAmount;
+    appointment.walletCreditedAmount = doctorEarnings;
 
     await appointment.save(session ? { session } : undefined);
 

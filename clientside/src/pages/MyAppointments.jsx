@@ -251,12 +251,28 @@ const MyAppointments = () => {
                     {slotDateFormat(item.slotDate)} | {item.slotTime}
                   </p>
 
-                  <p className="mt-2">
-                    <span className="font-medium">Fee:</span>{" "}
-                    {formatPkrAmount(item.amount)}
-                  </p>
+                  <div className="mt-2 space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-600">
+                        Consultation Fee:
+                      </span>
+                      <span>
+                        {formatPkrAmount(item.doctorFee || item.amount)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-gray-600">
+                        Platform Fee (Non-Refundable):
+                      </span>
+                      <span>{formatPkrAmount(item.platformFee || 100)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                      <span>Total Paid:</span>
+                      <span>{formatPkrAmount(item.paidAmount || 0)}</span>
+                    </div>
+                  </div>
 
-                  <p className="text-sm mt-1">
+                  <p className="text-sm mt-2">
                     <span className="font-medium">Payment:</span>{" "}
                     {item.paymentType}
                   </p>
@@ -273,14 +289,13 @@ const MyAppointments = () => {
                     <span className="font-medium">Status:</span>{" "}
                     {item.paymentStatus}
                   </p>
-                  <p className="text-sm">
-                    <span className="font-medium">Paid:</span>{" "}
-                    {formatPkrAmount(item.paidAmount || 0)}
-                  </p>
                   {item.paymentType === "TOKEN" && (
                     <p className="text-sm text-amber-600">
                       Remaining at clinic:{" "}
-                      {formatPkrAmount(item.amount - (item.paidAmount || 0))}
+                      {formatPkrAmount(
+                        (item.doctorFee || item.amount) -
+                          (item.paidAmount - (item.platformFee || 100)),
+                      )}
                     </p>
                   )}
 

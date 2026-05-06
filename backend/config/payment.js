@@ -7,6 +7,9 @@ export const CURRENCY_MINOR_UNIT_MULTIPLIER = {
 // Token payment is a fixed advance amount in PKR.
 export const TOKEN_AMOUNT = 500;
 
+// Platform fee is a fixed non-refundable amount in PKR.
+export const PLATFORM_FEE = 100;
+
 // Payment Type Constants
 export const PAYMENT_TYPE = {
   FULL: "FULL",
@@ -88,4 +91,18 @@ export const formatPkrAmount = (amount) => `${PAYMENT_SYMBOL} ${amount}`;
 export const calculateTokenAmount = (fullAmount) => {
   const validatedAmount = assertPkrAmount(fullAmount, "fullAmount");
   return Math.min(TOKEN_AMOUNT, validatedAmount);
+};
+
+export const calculatePlatformFee = () => {
+  return PLATFORM_FEE;
+};
+
+export const calculateTotalAmount = (doctorFee, includePlatformFee = true) => {
+  const validatedFee = assertPkrAmount(doctorFee, "doctorFee");
+  return includePlatformFee ? validatedFee + PLATFORM_FEE : validatedFee;
+};
+
+export const calculateTokenPaymentTotal = (tokenAmount) => {
+  const validatedToken = assertPkrAmount(tokenAmount, "tokenAmount");
+  return validatedToken + PLATFORM_FEE;
 };

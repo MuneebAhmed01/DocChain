@@ -13,9 +13,11 @@ import appointmentCancelledDoctor from "../emailTemplates/appointmentCancelledDo
 import { getJwtSecret } from "../utils/jwtSecret.js";
 import WalletService from "../services/walletService.js";
 import { refundPaymentIntent } from "../services/refundService.js";
+import PlatformRevenueService from "../services/platformRevenueService.js";
 import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
+  PLATFORM_FEE,
 } from "../config/payment.js";
 import { triggerCleanup } from "../utils/backgroundTasks.js";
 
@@ -160,7 +162,10 @@ const allDoctors = async (req, res) => {
 // API to get all appointments list
 const appointmentsAdmin = async (req, res) => {
   try {
-    const appointments = await appointmentModel.find({});
+    // ✅ Sort by creation date descending (newest first), then by appointment date/time
+    const appointments = await appointmentModel
+      .find({})
+      .sort({ createdAt: -1, slotDate: -1, slotTime: -1 });
     res.json({ success: true, appointments });
   } catch (error) {
     console.log(error);
@@ -191,7 +196,9 @@ const appointmentCancel = async (req, res) => {
     }
 
     const wasConfirmed = appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED;
-    const refundAmount = Number(appointment.paidAmount || 0);
+    const totalPaidAmount = Number(appointment.paidAmount || 0);
+    // Refund only doctor's portion, keep platform fee
+    const refundAmount = Math.max(0, totalPaidAmount - PLATFORM_FEE);
     const paymentIntentForRefund =
       appointment.paymentType === "TOKEN"
         ? appointment.tokenPaymentIntentId || appointment.paymentIntentId
@@ -334,13 +341,17 @@ const adminDashboard = async (req, res) => {
   try {
     const doctors = await doctorModel.find({});
     const users = await userModel.find({});
-    const appointments = await appointmentModel.find({});
+    // ✅ Sort appointments by creation date descending (newest first)
+    const appointments = await appointmentModel
+      .find({})
+      .sort({ createdAt: -1, slotDate: -1, slotTime: -1 });
 
     const dashData = {
       doctors: doctors.length,
       appointments: appointments.length,
       patients: users.length,
-      latestAppointments: appointments.reverse().slice(0, 5),
+      // ✅ Latest appointments already sorted (newest first)
+      latestAppointments: appointments.slice(0, 5),
     };
 
     res.json({ success: true, dashData });
@@ -451,6 +462,56 @@ const getDoctorTransactionHistory = async (req, res) => {
   }
 };
 
+// 💰 Platform Revenue Analytics
+const getPlatformRevenueAnalytics = async (req, res) => {
+  try {
+    const { startDate, endDate, groupBy = "day" } = req.body;
+
+    const result = await PlatformRevenueService.getRevenueAnalytics({
+      startDate,
+      endDate,
+      groupBy,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch platform revenue analytics:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+const getPlatformRevenueTransactions = async (req, res) => {
+  try {
+    const { limit = 50, skip = 0, startDate, endDate, doctorId } = req.body;
+
+    const result = await PlatformRevenueService.getRevenueTransactions({
+      limit: Math.min(Number(limit), 100),
+      skip: Number(skip),
+      startDate,
+      endDate,
+      doctorId,
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch platform revenue transactions:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+const getPlatformRevenueSummary = async (req, res) => {
+  try {
+    const { period = "month" } = req.body;
+
+    const result = await PlatformRevenueService.getRevenueSummary(period);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch platform revenue summary:", error);
+    res.json({ success: false, message: error.message });
+  }
+};
+
 export {
   addDoctor,
   loginAdmin,
@@ -462,4 +523,7 @@ export {
   triggerHoldCleanup,
   getDoctorWalletSummary,
   getDoctorTransactionHistory,
+  getPlatformRevenueAnalytics,
+  getPlatformRevenueTransactions,
+  getPlatformRevenueSummary,
 };

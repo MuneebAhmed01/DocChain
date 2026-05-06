@@ -68,7 +68,7 @@ const DoctorAppointments = () => {
 
         {/* Appointment Rows/Cards */}
         <div className="max-h-[80vh] overflow-y-auto">
-          {[...appointments].reverse().map((item, index) => {
+          {appointments.map((item, index) => {
             const isTokenPayment = item.paymentType === "TOKEN";
             const isFullPayment = item.paymentType === "FULL";
             const paymentLabel = isTokenPayment ? "Token" : "Full";

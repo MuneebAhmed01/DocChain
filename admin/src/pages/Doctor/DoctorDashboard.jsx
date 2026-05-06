@@ -164,8 +164,14 @@ const DoctorDashboard = () => {
     const parts = String(slotDate).split("_");
     if (parts.length !== 3) return null;
     const [day, month, year] = parts;
-    const parsed = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${slotTime}`);
-    const start = Number.isNaN(parsed.getTime()) ? new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`) : parsed;
+    const parsed = new Date(
+      `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${slotTime}`,
+    );
+    const start = Number.isNaN(parsed.getTime())
+      ? new Date(
+          `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`,
+        )
+      : parsed;
     if (Number.isNaN(parsed.getTime())) {
       const [timeValue, meridian = ""] = String(slotTime).split(" ");
       const [hRaw, mRaw] = timeValue.split(":");
@@ -206,7 +212,7 @@ const DoctorDashboard = () => {
                     RS {dashData.earnings.toLocaleString()}
                   </p>
                   <p className="text-blue-100 text-xs mt-2">
-                    +12% from last month
+                    {dashData.earningsChangeText || "+0% from last month"}
                   </p>
                 </div>
                 <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
@@ -355,7 +361,6 @@ const DoctorDashboard = () => {
 
             <div className="divide-y divide-gray-100">
               {dashData.latestAppointments.map((item, index) => (
-                
                 <div
                   className="flex items-center gap-4 px-6 py-5 hover:bg-gray-50 transition-colors"
                   key={index}
@@ -401,7 +406,13 @@ const DoctorDashboard = () => {
                       </span>
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Type: {(item.type || (item.appointmentType === "online" ? "online" : "office")) === "online" ? "Online" : "Office"}
+                      Type:{" "}
+                      {(item.type ||
+                        (item.appointmentType === "online"
+                          ? "online"
+                          : "office")) === "online"
+                        ? "Online"
+                        : "Office"}
                     </p>
                   </div>
 
@@ -417,53 +428,78 @@ const DoctorDashboard = () => {
                       </span>
                     ) : (
                       <div className="flex gap-2">
-                        {(item.type || (item.appointmentType === "online" ? "online" : "office")) === "online" && (
+                        {(item.type ||
+                          (item.appointmentType === "online"
+                            ? "online"
+                            : "office")) === "online" && (
                           <button
                             onClick={async () => {
-                              const meetingLink = await joinOnlineAppointment(item._id);
+                              const meetingLink = await joinOnlineAppointment(
+                                item._id,
+                              );
                               if (meetingLink) {
-                                window.open(meetingLink, "_blank", "noopener,noreferrer");
+                                window.open(
+                                  meetingLink,
+                                  "_blank",
+                                  "noopener,noreferrer",
+                                );
                               }
                             }}
-                            disabled={!(() => {
-                              const windowInfo = getAppointmentWindow(item.slotDate, item.slotTime);
-                              const now = new Date();
-                              return Boolean(
-                                windowInfo &&
+                            disabled={
+                              !(() => {
+                                const windowInfo = getAppointmentWindow(
+                                  item.slotDate,
+                                  item.slotTime,
+                                );
+                                const now = new Date();
+                                return Boolean(
+                                  windowInfo &&
                                   now >= windowInfo.joinStart &&
                                   now <= windowInfo.end &&
-                                  (item.appointmentStatus || item.status) === "CONFIRMED"
-                              );
-                            })()}
-                            className={`text-xs px-2 py-1 rounded border ${
-                              (() => {
-                                const windowInfo = getAppointmentWindow(item.slotDate, item.slotTime);
-                                const now = new Date();
-                                const canJoin = Boolean(
-                                  windowInfo &&
-                                    now >= windowInfo.joinStart &&
-                                    now <= windowInfo.end &&
-                                    (item.appointmentStatus || item.status) === "CONFIRMED"
+                                  (item.appointmentStatus || item.status) ===
+                                    "CONFIRMED",
                                 );
-                                return canJoin
-                                  ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                                  : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
                               })()
-                            }`}
+                            }
+                            className={`text-xs px-2 py-1 rounded border ${(() => {
+                              const windowInfo = getAppointmentWindow(
+                                item.slotDate,
+                                item.slotTime,
+                              );
+                              const now = new Date();
+                              const canJoin = Boolean(
+                                windowInfo &&
+                                now >= windowInfo.joinStart &&
+                                now <= windowInfo.end &&
+                                (item.appointmentStatus || item.status) ===
+                                  "CONFIRMED",
+                              );
+                              return canJoin
+                                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
+                            })()}`}
                           >
                             {(() => {
-                              const windowInfo = getAppointmentWindow(item.slotDate, item.slotTime);
+                              const windowInfo = getAppointmentWindow(
+                                item.slotDate,
+                                item.slotTime,
+                              );
                               const now = new Date();
                               if (windowInfo && now > windowInfo.end) {
-                                return item.sessionStatus === "completed" ? "Completed" : "Missed";
+                                return item.sessionStatus === "completed"
+                                  ? "Completed"
+                                  : "Missed";
                               }
                               if (
                                 windowInfo &&
                                 now >= windowInfo.joinStart &&
                                 now <= windowInfo.end &&
-                                (item.appointmentStatus || item.status) === "CONFIRMED"
+                                (item.appointmentStatus || item.status) ===
+                                  "CONFIRMED"
                               ) {
-                                return item.doctorJoined ? "Join Call" : "Start Call";
+                                return item.doctorJoined
+                                  ? "Join Call"
+                                  : "Start Call";
                               }
                               return "Not started";
                             })()}

@@ -432,6 +432,43 @@ const doctorDashboard = async (req, res) => {
       }
     });
 
+    // Calculate month-over-month earnings comparison
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    // Function to parse slotDate and check if it's in a specific month/year
+    const isAppointmentInMonth = (slotDate, targetMonth, targetYear) => {
+      const parts = String(slotDate).split("_");
+      if (parts.length !== 3) return false;
+      const [day, month, year] = parts.map(Number);
+      return month === targetMonth + 1 && year === targetYear; // +1 because months are 1-indexed in slotDate
+    };
+
+    // Calculate earnings for current month (from completed appointments)
+    const currentMonthEarnings = appointments
+      .filter(apt => apt.isCompleted && isAppointmentInMonth(apt.slotDate, currentMonth, currentYear))
+      .reduce((sum, apt) => sum + Number(apt.paidAmount || 0), 0);
+
+    // Calculate earnings for last month (from completed appointments)
+    const lastMonthEarnings = appointments
+      .filter(apt => apt.isCompleted && isAppointmentInMonth(apt.slotDate, lastMonth, lastMonthYear))
+      .reduce((sum, apt) => sum + Number(apt.paidAmount || 0), 0);
+
+    // Calculate percentage change
+    let earningsChange = 0;
+    let earningsChangeText = "0% from last month";
+    
+    if (lastMonthEarnings > 0) {
+      earningsChange = Math.round(((currentMonthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100);
+      earningsChangeText = `${earningsChange > 0 ? '+' : ''}${earningsChange}% from last month`;
+    } else if (currentMonthEarnings > 0) {
+      // If there were no earnings last month but there are earnings this month
+      earningsChangeText = '+100% from last month';
+    }
+
     const dashData = {
       earnings: Number(doctor?.walletBalance || 0),
       appointments: appointments.length,
@@ -440,6 +477,11 @@ const doctorDashboard = async (req, res) => {
       averageRating: parseFloat(averageRating),
       // ✅ Latest appointments already sorted (newest first)
       latestAppointments: appointments.slice(0, 5),
+      // Month-over-month earnings comparison
+      earningsChange,
+      earningsChangeText,
+      currentMonthEarnings,
+      lastMonthEarnings,
     };
 
     res.json({ success: true, dashData });

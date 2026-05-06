@@ -37,6 +37,11 @@ const appointmentSchema = new mongoose.Schema({
   tokenAmount: { type: Number, default: 500 },
   paidAmount: { type: Number, default: 0 },
   
+  // Platform Fee (fixed Rs. 100, non-refundable)
+  platformFee: { type: Number, default: 100 },
+  doctorFee: { type: Number, required: true }, // Original doctor fee
+  totalAmount: { type: Number, required: true }, // Total including platform fee
+  
   // Payment Type is assigned when the user chooses a payment option.
   paymentType: {
     type: String,

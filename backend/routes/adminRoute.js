@@ -10,6 +10,9 @@ import {
   getDoctorWalletSummary,
   getDoctorTransactionHistory,
   changeDoctorStatus,
+  getPlatformRevenueAnalytics,
+  getPlatformRevenueTransactions,
+  getPlatformRevenueSummary,
 } from "../controllers/adminController.js";
 
 import { upload } from "../middlewares/multer.js";
@@ -37,5 +40,10 @@ adminRouter.post("/trigger-hold-cleanup", authAdmin, triggerHoldCleanup);
 // 💰 Wallet Management Routes
 adminRouter.post("/doctor-wallet-summary", authAdmin, getDoctorWalletSummary);
 adminRouter.post("/doctor-transaction-history", authAdmin, getDoctorTransactionHistory);
+
+// 💰 Platform Revenue Analytics Routes
+adminRouter.post("/platform-revenue-analytics", authAdmin, getPlatformRevenueAnalytics);
+adminRouter.post("/platform-revenue-transactions", authAdmin, getPlatformRevenueTransactions);
+adminRouter.post("/platform-revenue-summary", authAdmin, getPlatformRevenueSummary);
 
 export default adminRouter;
