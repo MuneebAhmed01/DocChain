@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import healthTips from "../data/healthTips";
 import { AppContext } from "../context/AppContext";
@@ -16,7 +16,7 @@ const MyProfile = () => {
   const [localAge, setLocalAge] = useState(18);
   const [tipIndex, setTipIndex] = useState(0);
 
-  const updateUserProfileData = async () => {
+  const updateUserProfileData = useCallback(async () => {
     try {
       const formData = new FormData();
 
@@ -55,33 +55,39 @@ const MyProfile = () => {
       console.log(error);
       toast.error(error.message);
     }
-  };
+  }, [userData, image, token, backendUrl, loadUserProfileData]);
 
   useEffect(() => {
-    if (userData && userData.dob && userData.dob !== "Not Selected") {
-      try {
-        const a =
-          new Date().getFullYear() - new Date(userData.dob).getFullYear();
-        setLocalAge(a >= 18 ? a : 18);
-      } catch (e) {
-        setLocalAge(18);
-      }
+    if (!userData?.dob || userData.dob === "Not Selected") {
+      setLocalAge(18);
+      return;
     }
-  }, [userData]);
+    try {
+      const a =
+        new Date().getFullYear() - new Date(userData.dob).getFullYear();
+      setLocalAge(a >= 18 ? a : 18);
+    } catch (e) {
+      setLocalAge(18);
+    }
+  }, [userData?.dob]);
 
   useEffect(() => {
-    setTipIndex(Math.floor(Math.random() * healthTips.length));
+    const randomTip = Math.floor(Math.random() * healthTips.length);
+    setTipIndex(randomTip);
   }, []);
 
-  const pickNewTip = () => {
+  const pickNewTip = useCallback(() => {
     if (!healthTips || healthTips.length === 0) return;
     let idx = Math.floor(Math.random() * healthTips.length);
     if (healthTips.length > 1) {
-      while (idx === tipIndex)
-        idx = Math.floor(Math.random() * healthTips.length);
+      while (idx === tipIndex) idx = Math.floor(Math.random() * healthTips.length);
     }
     setTipIndex(idx);
-  };
+  }, [tipIndex]);
+
+  const handleImageChange = useCallback((e) => {
+    setImage(e.target.files[0]);
+  }, []);
 
   return (
     userData && (
@@ -95,18 +101,20 @@ const MyProfile = () => {
                   <img
                     className="w-28 sm:w-36 rounded opacity-75 object-cover"
                     src={image ? URL.createObjectURL(image) : userData.image}
-                    alt=""
+                    alt="Profile preview"
+                    loading="lazy"
                   />
                   {!image && (
                     <img
                       className="w-8 sm:w-10 absolute bottom-8 right-8"
                       src={assets.upload_icon}
-                      alt=""
+                      alt="Upload icon"
+                      loading="lazy"
                     />
                   )}
                 </div>
                 <input
-                  onChange={(e) => setImage(e.target.files[0])}
+                  onChange={handleImageChange}
                   type="file"
                   id="image"
                   hidden
@@ -116,7 +124,8 @@ const MyProfile = () => {
               <img
                 className="w-28 sm:w-36 rounded object-cover"
                 src={userData.image}
-                alt=""
+                alt="Profile picture"
+                loading="lazy"
               />
             )}
           </div>

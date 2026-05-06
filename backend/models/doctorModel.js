@@ -61,7 +61,7 @@ ratingCount: { type: Number, default: 0 },
   // Online Consultation Settings
   onlineConsultEnabled: {
     type: Boolean,
-    default: false
+    default: true
   },
   onlineConsultFee: {
     type: Number,

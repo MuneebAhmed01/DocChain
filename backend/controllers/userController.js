@@ -21,6 +21,10 @@ import {
   TOKEN_AMOUNT,
   REFUND_STATUS,
 } from "../config/payment.js";
+import {
+  isJoinAllowedNow,
+  computeSessionStatusFromJoinFlags,
+} from "../utils/appointmentSession.js";
 
 
 
@@ -234,6 +238,14 @@ const bookAppointment = async (req, res) => {
       });
     }
 
+    // Check if doctor offers online consultations for online appointments
+    if (appointmentType === "online" && !docData.onlineConsultEnabled) {
+      return res.json({
+        success: false,
+        message: "This doctor does not offer online consultations",
+      });
+    }
+
     // 🔴 CHECK: Is this slot already CONFIRMED by another user?
     const existingConfirmedAppointment = await appointmentModel.findOne({
       docId,
@@ -291,6 +303,7 @@ const bookAppointment = async (req, res) => {
     if (existingHold) {
       if (existingHold.appointmentType !== appointmentType) {
         existingHold.appointmentType = appointmentType;
+        existingHold.type = appointmentType === "online" ? "online" : "office";
         existingHold.tokenAmount = tokenAmount;
         await existingHold.save();
       }
@@ -321,6 +334,7 @@ const bookAppointment = async (req, res) => {
       slotDate,
       slotTime,
       appointmentType,
+      type: appointmentType === "online" ? "online" : "office",
       amount: fullAmount,
       currency: PAYMENT_CURRENCY,
       tokenAmount,
@@ -369,6 +383,49 @@ const listAppointment = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
+  }
+};
+
+const joinOnlineAppointment = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { appointmentId } = req.body;
+
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    if (String(appointment.userId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (appointment.appointmentType !== "online") {
+      return res.status(400).json({ success: false, message: "This is not an online appointment" });
+    }
+
+    if (!appointment.meetingLink) {
+      return res.status(400).json({ success: false, message: "Meeting link not available yet" });
+    }
+
+    if (!isJoinAllowedNow(appointment)) {
+      return res.status(400).json({ success: false, message: "Call is not available at this time" });
+    }
+
+    appointment.patientJoined = true;
+    appointment.sessionStatus = computeSessionStatusFromJoinFlags(appointment);
+    await appointment.save();
+
+    return res.json({
+      success: true,
+      meetingLink: appointment.meetingLink,
+      sessionStatus: appointment.sessionStatus,
+      doctorJoined: appointment.doctorJoined,
+      patientJoined: appointment.patientJoined,
+    });
+  } catch (error) {
+    console.error("joinOnlineAppointment error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -767,6 +824,7 @@ export {
   uploadProfilePic,
   bookAppointment,
   listAppointment,
+  joinOnlineAppointment,
   cancelAppointment,
   patientResponse,
   sendContactEmail

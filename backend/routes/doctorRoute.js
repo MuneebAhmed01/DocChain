@@ -4,6 +4,7 @@ import {
   doctorList,
   loginDoctor,
   appointmentsDoctor,
+  joinOnlineAppointment,
   appointmentComplete,
   appointmentCancel,
   doctorDashboard,
@@ -17,6 +18,7 @@ const doctorRouter = express.Router();
 doctorRouter.get("/list", doctorList);
 doctorRouter.post("/login", loginDoctor);
 doctorRouter.get("/appointments", authDoctor, appointmentsDoctor);
+doctorRouter.post("/appointments/join-online", authDoctor, joinOnlineAppointment);
 doctorRouter.get("/reviews", authDoctor, getDoctorReviews);
 doctorRouter.post("/complete-appointment", authDoctor, appointmentComplete);
 doctorRouter.post("/cancel-appointment", authDoctor, appointmentCancel);

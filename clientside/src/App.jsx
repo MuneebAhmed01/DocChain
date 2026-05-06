@@ -8,8 +8,10 @@ import Contact from "./pages/Contact";
 import MyProfile from "./pages/MyProfileModern";
 import MyAppointments from "./pages/MyAppointments";
 import Appointment from "./pages/Appointment";
+import CompleteProfile from "./pages/CompleteProfile";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import BlogList from "./pages/Blogs/BlogList";
@@ -34,6 +36,7 @@ const App = () => {
         <Route path="/doctors" element={<Doctors />} />
         <Route path="/doctors/:speciality" element={<Doctors />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/onboarding" element={<Navigate replace to="/login" />} />
         <Route path="/about" element={<About />} />
         <Route path="/join-doctor" element={<JoinDoctor />} />
@@ -41,15 +44,37 @@ const App = () => {
         <Route path="/payment-success" element={<PaymentSuccess />} />
 
         {/* Blog route */}
-
         <Route path="/blogs" element={<BlogList />} />
         <Route path="/blogs/:id" element={<BlogDetail />} />
         <Route path="/blog/:idOrSlug" element={<LegacyBlogRedirect />} />
 
         <Route path="/contact" element={<Contact />} />
-        <Route path="/my-profile" element={<MyProfile />} />
-        <Route path="/my-appointments" element={<MyAppointments />} />
-        <Route path="/appointment/:docId" element={<Appointment />} />
+
+        {/* Protected Routes */}
+        <Route
+          path="/my-profile"
+          element={
+            <ProtectedRoute>
+              <MyProfile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-appointments"
+          element={
+            <ProtectedRoute>
+              <MyAppointments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/appointment/:docId"
+          element={
+            <ProtectedRoute>
+              <Appointment />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
       <ScrollToTop />
       <Footer />

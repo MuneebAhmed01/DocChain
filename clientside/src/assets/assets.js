@@ -63,6 +63,7 @@ export const assets = {
     stripe_logo,
     razorpay_logo,
     snowflakes,
+    doc1,
     doc11,
     doc9,
     testi1,testi2,testi3,testi4,testi4,

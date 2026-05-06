@@ -118,21 +118,6 @@ const DoctorCard = ({
           <span className="text-gray-500">({doctor.ratingCount || 0})</span>
         </div>
 
-        {/* Online Consultation Info - REMOVED */}
-        {/* {showOnlineBadge && doctor.onlineConsultEnabled && (
-          <div className="mt-2 p-2 bg-blue-50 rounded">
-            <p className="text-xs text-blue-600 font-medium">
-              Online Consultation
-            </p>
-            <p className="text-sm font-bold text-blue-800">
-              {formatPkrAmount(doctor.onlineConsultFee || 0)}
-            </p>
-            <p className="text-xs text-gray-600">
-              ~{doctor.averageConsultDuration || 15} min
-            </p>
-          </div>
-        )} */}
-
         {/* Online Consult Button */}
         {showOnlineConsultButton &&
           doctor.onlineConsultEnabled &&

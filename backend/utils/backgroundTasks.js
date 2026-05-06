@@ -3,7 +3,10 @@
  * Handles periodic cleanup and maintenance tasks
  */
 
-import { cleanupExpiredHolds } from "../services/appointmentService.js";
+import {
+  cleanupExpiredHolds,
+  finalizeExpiredOnlineSessions,
+} from "../services/appointmentService.js";
 import { processAppointmentRemindersSimple } from "../services/appointmentReminderService.js";
 
 let cleanupInterval = null;
@@ -22,6 +25,7 @@ export const startBackgroundTasks = () => {
     try {
       console.log(`🕐 Running HOLD expiry cleanup at ${new Date().toISOString()}`);
       await cleanupExpiredHolds();
+      await finalizeExpiredOnlineSessions();
     } catch (error) {
       console.error("❌ Error in cleanup task:", error);
       // Don't rethrow - let other tasks continue

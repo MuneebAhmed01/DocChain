@@ -19,9 +19,19 @@ const JoinDoctor = () => {
   const [degreeProof, setDegreeProof] = useState(null);
 
   const handleChange = (e) => {
+    const { name, value, type } = e.target;
+
+    // Prevent negative values for number inputs
+    if (type === "number" && name === "experience") {
+      if (value < 0) return;
+    }
+    if (type === "number" && name === "fee") {
+      if (value < 0) return;
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   };
 
@@ -80,9 +90,7 @@ const JoinDoctor = () => {
             </div>
 
             <div className="flex flex-col gap-1 w-full">
-              <label className="text-sm font-medium text-gray-700">
-                Email
-              </label>
+              <label className="text-sm font-medium text-gray-700">Email</label>
               <input
                 type="email"
                 name="email"
@@ -124,6 +132,7 @@ const JoinDoctor = () => {
                 value={formData.experience}
                 onChange={handleChange}
                 required
+                min="0"
                 className="w-full border border-gray-300 p-3 rounded-lg"
               />
             </div>
@@ -139,6 +148,7 @@ const JoinDoctor = () => {
                 value={formData.fee}
                 onChange={handleChange}
                 required
+                min="0"
                 className="w-full border border-gray-300 p-3 rounded-lg"
               />
             </div>
@@ -167,9 +177,7 @@ const JoinDoctor = () => {
             </div>
 
             <div className="flex flex-col gap-1 w-full">
-              <label className="text-sm font-medium text-gray-700">
-                City
-              </label>
+              <label className="text-sm font-medium text-gray-700">City</label>
               <select
                 name="city"
                 value={formData.city}
@@ -186,9 +194,7 @@ const JoinDoctor = () => {
 
           {/* About */}
           <div className="flex flex-col gap-1 w-full">
-            <label className="text-sm font-medium text-gray-700">
-              About
-            </label>
+            <label className="text-sm font-medium text-gray-700">About</label>
             <textarea
               name="about"
               placeholder="Brief description about yourself"

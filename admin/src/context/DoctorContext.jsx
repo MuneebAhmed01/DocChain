@@ -95,6 +95,29 @@ const DoctorContextProvider = (props) => {
     }
   };
 
+  const joinOnlineAppointment = async (appointmentId) => {
+    try {
+      const { data } = await axios.post(
+        backendUrl + "/api/doctor/appointments/join-online",
+        { appointmentId },
+        { headers: { dToken } },
+      );
+
+      if (!data.success) {
+        toast.error(data.message || "Unable to join call");
+        return null;
+      }
+
+      getAppointments();
+      getDashData();
+      return data.meetingLink || null;
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || error.message);
+      return null;
+    }
+  };
+
   const getProfileData = async () => {
     try {
       const { data } = await axios.get(backendUrl + "/api/doctor/profile", {
@@ -291,6 +314,7 @@ const DoctorContextProvider = (props) => {
     getAppointments,
     completeAppointment,
     cancelAppointment,
+    joinOnlineAppointment,
     dashData,
     setDashData,
     getDashData,

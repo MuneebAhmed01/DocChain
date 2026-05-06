@@ -60,13 +60,20 @@ export const sendOTP = async (req, res) => {
     // Send OTP
     const result = await sendOTPViaSMS(formattedPhone);
 
+    // Log OTP to terminal for development
+    console.log("\n╔════════════════════════════════════════╗");
+    console.log("║         OTP SENT TO TERMINAL          ║");
+    console.log("╚════════════════════════════════════════╝");
+    console.log(`🔐 OTP Code: ${result.otp_code}`);
+    console.log(`📱 Phone: ${formattedPhone}`);
+    console.log(`⏰ Valid for: 10 minutes`);
+    console.log("════════════════════════════════════════\n");
+
     return res.status(200).json({
       success: true,
       message: result.message,
       phone_number: result.phone_number,
       otp_id: result.otp_id,
-      // DEVELOPMENT ONLY
-      otp_code: result.otp_code,
     });
   } catch (error) {
     console.error("Error sending OTP:", error);

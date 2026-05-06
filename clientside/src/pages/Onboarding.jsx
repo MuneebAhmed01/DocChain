@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useCallback } from "react";
 import { AppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,6 @@ const Onboarding = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpId, setOtpId] = useState(null);
-  const [showOtpCode, setShowOtpCode] = useState(false); // For development
 
   // Validation state
   const [errors, setErrors] = useState({});
@@ -36,53 +35,44 @@ const Onboarding = () => {
 
   // Check if already completed onboarding
   useEffect(() => {
+    if (!token) return;
+
     const checkOnboardingStatus = async () => {
       try {
         const { data } = await axiosInstance.get("/api/onboarding/status");
         if (data.success && data.onboarding_completed) {
-          toast.info("Onboarding already completed!");
           navigate("/");
         }
       } catch (error) {
-        console.log("Checking onboarding status...");
+        // Silently fail - user is on onboarding page
       }
     };
 
-    if (token) {
-      checkOnboardingStatus();
-    }
-  }, [token, navigate]);
+    checkOnboardingStatus();
+  }, [token]);
 
-  const handlePhoneChange = (e) => {
+  const handlePhoneChange = useCallback((e) => {
     const value = e.target.value;
-    setFormData({ ...formData, phone_number: value });
-    if (errors.phone_number) {
-      setErrors({ ...errors, phone_number: "" });
-    }
-  };
+    setFormData((prev) => ({ ...prev, phone_number: value }));
+    setErrors((prev) => (prev.phone_number ? { ...prev, phone_number: "" } : prev));
+  }, []);
 
-  const handleOtpChange = (e) => {
+  const handleOtpChange = useCallback((e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-    setFormData({ ...formData, otp_code: value });
-    if (errors.otp_code) {
-      setErrors({ ...errors, otp_code: "" });
-    }
-  };
+    setFormData((prev) => ({ ...prev, otp_code: value }));
+    setErrors((prev) => (prev.otp_code ? { ...prev, otp_code: "" } : prev));
+  }, []);
 
-  const handleAgeChange = (e) => {
+  const handleAgeChange = useCallback((e) => {
     const value = e.target.value.replace(/\D/g, "");
-    setFormData({ ...formData, age: value });
-    if (errors.age) {
-      setErrors({ ...errors, age: "" });
-    }
-  };
+    setFormData((prev) => ({ ...prev, age: value }));
+    setErrors((prev) => (prev.age ? { ...prev, age: "" } : prev));
+  }, []);
 
-  const handleGenderChange = (e) => {
-    setFormData({ ...formData, gender: e.target.value });
-    if (errors.gender) {
-      setErrors({ ...errors, gender: "" });
-    }
-  };
+  const handleGenderChange = useCallback((e) => {
+    setFormData((prev) => ({ ...prev, gender: e.target.value }));
+    setErrors((prev) => (prev.gender ? { ...prev, gender: "" } : prev));
+  }, []);
 
   // Validate phone number (E.164 format)
   const validatePhone = (phone) => {
@@ -116,12 +106,8 @@ const Onboarding = () => {
       if (data.success) {
         setOtpSent(true);
         setOtpId(data.otp_id);
-        // Show OTP in development
-        if (data.otp_code) {
-          setShowOtpCode(true);
-          toast.success(`OTP: ${data.otp_code} (Development only)`);
-        }
-        toast.success("OTP sent successfully!");
+        toast.success("OTP sent to your phone!");
+        console.log("ℹ️ Check terminal for OTP code");
         setStep("otp");
       } else {
         toast.error(data.message);
@@ -226,7 +212,7 @@ const Onboarding = () => {
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md p-8 border rounded-xl text-zinc-600 text-sm shadow-lg">
-        <h1 className="text-3xl font-bold mb-2">Complete Your Profile</h1>
+        <h1 className="text-2xl font-bold mb-2">Complete Your Profile</h1>
         <p className="text-zinc-500 mb-6">
           We need a few details to get you started
         </p>
@@ -293,11 +279,6 @@ const Onboarding = () => {
               />
               {errors.otp_code && (
                 <p className="text-xs text-red-500 mt-1">{errors.otp_code}</p>
-              )}
-              {showOtpCode && (
-                <p className="text-xs text-yellow-600 mt-1">
-                  Development mode: OTP shown in toast notification
-                </p>
               )}
             </div>
 

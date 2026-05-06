@@ -31,8 +31,66 @@ const DoctorProfile = () => {
     endTime: "20:00",
     slotDuration: 30,
   });
+  const [timeErrors, setTimeErrors] = useState({});
+  const [feeError, setFeeError] = useState("");
+  const [currentOnlineSettings, setCurrentOnlineSettings] = useState(null);
 
   const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+  // Helper function to convert time string to minutes since midnight
+  const timeToMinutes = (timeStr) => {
+    const [hours, minutes] = timeStr.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+
+  // Helper function to convert minutes since midnight to time string
+  const minutesToTime = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+  };
+
+  // Validate time settings
+  const validateTimeSettings = () => {
+    const errors = {};
+
+    if (timeSettings.useCustomSettings) {
+      // Check if at least one working day is selected
+      if (!timeSettings.workingDays || timeSettings.workingDays.length === 0) {
+        errors.workingDays = "At least one working day must be selected";
+      }
+
+      // Validate time logic
+      const startMinutes = timeToMinutes(timeSettings.startTime);
+      const endMinutes = timeToMinutes(timeSettings.endTime);
+
+      // Check if end time is after start time
+      if (endMinutes <= startMinutes) {
+        errors.endTime = "End time must be after start time";
+      } else {
+        // Check if time slot exceeds 8 hours (480 minutes)
+        const duration = endMinutes - startMinutes;
+        if (duration > 480) {
+          errors.endTime = "Maximum working slot is 8 hours";
+        }
+      }
+    }
+
+    setTimeErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Validate fee
+  const validateFee = (fee) => {
+    const numFee = Number(fee);
+    if (isNaN(numFee) || numFee < 0) {
+      return "Appointment fee cannot be negative";
+    }
+    if (numFee > 99999) {
+      return "Appointment fee seems too high";
+    }
+    return "";
+  };
 
   const handleViewAllReviews = async () => {
     await getReviewsData();
@@ -41,18 +99,46 @@ const DoctorProfile = () => {
 
   const updateProfile = async () => {
     try {
+      // Validate fee
+      const feeValidationError = validateFee(profileData.fees);
+      if (feeValidationError) {
+        setFeeError(feeValidationError);
+        toast.error(feeValidationError);
+        return;
+      }
+
+      // Clear fee error if validation passes
+      setFeeError("");
+
+      // Validate time settings before updating
+      if (!validateTimeSettings()) {
+        toast.error("Please fix the errors in your schedule settings");
+        return;
+      }
+
       const updateData = {
+        docId: profileData._id,
         address: profileData.address,
         fees: profileData.fees,
         available: profileData.available,
         timeSettings: timeSettings,
+        onlineConsultEnabled:
+          currentOnlineSettings?.onlineConsultEnabled ??
+          profileData.onlineConsultEnabled,
+        averageConsultDuration:
+          currentOnlineSettings?.averageConsultDuration ??
+          profileData.averageConsultDuration,
       };
+
+      console.log("Sending updateData:", updateData);
 
       const { data } = await axios.post(
         backendUrl + "/api/doctor/update-profile",
         updateData,
         { headers: { dToken } },
       );
+
+      console.log("Update response:", data);
 
       if (data.success) {
         toast.success(data.message);
@@ -159,17 +245,35 @@ const DoctorProfile = () => {
                   <div className="text-xl font-bold text-gray-800 mt-1">
                     RS
                     {isEdit ? (
-                      <input
-                        type="number"
-                        className="ml-2 border border-gray-300 rounded px-2 py-1 w-24 text-base focus:ring-2 focus:ring-primary outline-none"
-                        onChange={(e) =>
-                          setProfileData((prev) => ({
-                            ...prev,
-                            fees: e.target.value,
-                          }))
-                        }
-                        value={profileData.fees}
-                      />
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          max="99999"
+                          className={`ml-2 border rounded px-2 py-1 w-24 text-base focus:ring-2 focus:ring-primary outline-none ${
+                            feeError
+                              ? "border-red-500 ring-2 ring-red-500"
+                              : "border-gray-300"
+                          }`}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setProfileData((prev) => ({
+                              ...prev,
+                              fees: value,
+                            }));
+                            // Clear fee error when user starts typing
+                            if (feeError) {
+                              setFeeError("");
+                            }
+                          }}
+                          value={profileData.fees}
+                        />
+                        {feeError && (
+                          <p className="mt-1 text-xs text-red-500">
+                            {feeError}
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <span className="ml-1">{profileData.fees}</span>
                     )}
@@ -244,105 +348,169 @@ const DoctorProfile = () => {
 
               {/* Time Settings Section */}
               <div className="mt-10 border-t pt-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-800">
-                      Schedule Settings
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Working hours and availability
-                    </p>
-                  </div>
-                  {isEdit && (
-                    <label className="inline-flex items-center cursor-pointer bg-gray-100 p-2 rounded-lg">
-                      <span className="mr-3 text-sm font-medium text-gray-700">
-                        Custom Schedule
-                      </span>
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={timeSettings.useCustomSettings}
-                        onChange={(e) =>
-                          setTimeSettings((prev) => ({
-                            ...prev,
-                            useCustomSettings: e.target.checked,
-                          }))
-                        }
-                      />
-                      <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                  )}
+                <div className="mb-6">
+                  <h3 className="text-xl font-bold text-gray-800">
+                    Schedule Settings
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Working hours and availability
+                  </p>
                 </div>
 
-                {isEdit && timeSettings.useCustomSettings ? (
-                  <div className="space-y-6 bg-gray-50 p-4 sm:p-6 rounded-xl">
-                    {/* Day Picker: 4 columns on mobile, 7 on desktop */}
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-3 uppercase">
-                        Working Days
+                {isEdit ? (
+                  <div className="space-y-6">
+                    {/* Custom Schedule Toggle */}
+                    <div className="flex items-center gap-3 bg-gray-50 p-4 rounded-lg">
+                      <label className="inline-flex items-center cursor-pointer">
+                        <span className="mr-3 text-sm font-medium text-gray-700">
+                          Use Custom Schedule
+                        </span>
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={timeSettings.useCustomSettings}
+                          onChange={(e) =>
+                            setTimeSettings((prev) => ({
+                              ...prev,
+                              useCustomSettings: e.target.checked,
+                            }))
+                          }
+                        />
+                        <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
-                      <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-                        {daysOfWeek.map((day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => {
-                              const isSelected =
-                                timeSettings.workingDays.includes(day);
-                              setTimeSettings((prev) => ({
-                                ...prev,
-                                workingDays: isSelected
-                                  ? prev.workingDays.filter((d) => d !== day)
-                                  : [...prev.workingDays, day],
-                              }));
-                            }}
-                            className={`py-2 rounded-lg text-xs font-bold transition-all ${
-                              timeSettings.workingDays.includes(day)
-                                ? "bg-primary text-white shadow-md"
-                                : "bg-white text-gray-400 border border-gray-200"
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        ))}
-                      </div>
+                      <span className="text-xs text-gray-500">
+                        {timeSettings.useCustomSettings
+                          ? "Custom schedule enabled"
+                          : "Using default schedule"}
+                      </span>
                     </div>
 
-                    {/* Hours: Stacks on mobile */}
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">
-                          Start Time
-                        </label>
-                        <input
-                          type="time"
-                          value={timeSettings.startTime}
-                          className="w-full border-gray-200 rounded-lg p-2 focus:ring-primary"
-                          onChange={(e) =>
-                            setTimeSettings((prev) => ({
-                              ...prev,
-                              startTime: e.target.value,
-                            }))
-                          }
-                        />
+                    {timeSettings.useCustomSettings && (
+                      <div className="space-y-6 bg-gray-50 p-4 sm:p-6 rounded-xl">
+                        {/* Day Picker: 4 columns on mobile, 7 on desktop */}
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-3 uppercase">
+                            Working Days
+                          </label>
+                          <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                            {daysOfWeek.map((day) => (
+                              <button
+                                key={day}
+                                type="button"
+                                onClick={() => {
+                                  const isSelected =
+                                    timeSettings.workingDays.includes(day);
+                                  setTimeSettings((prev) => ({
+                                    ...prev,
+                                    workingDays: isSelected
+                                      ? prev.workingDays.filter(
+                                          (d) => d !== day,
+                                        )
+                                      : [...prev.workingDays, day],
+                                  }));
+                                  // Clear working days error when a day is selected
+                                  if (timeErrors.workingDays) {
+                                    setTimeErrors((prev) => ({
+                                      ...prev,
+                                      workingDays: "",
+                                    }));
+                                  }
+                                }}
+                                className={`py-2 rounded-lg text-xs font-bold transition-all ${
+                                  timeSettings.workingDays.includes(day)
+                                    ? "bg-primary text-white shadow-md"
+                                    : "bg-white text-gray-400 border border-gray-200"
+                                } ${timeErrors.workingDays ? "ring-2 ring-red-500" : ""}`}
+                              >
+                                {day}
+                              </button>
+                            ))}
+                          </div>
+                          {timeErrors.workingDays && (
+                            <p className="mt-2 text-xs text-red-500">
+                              {timeErrors.workingDays}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Hours: Stacks on mobile */}
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          <div className="flex-1">
+                            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">
+                              Start Time
+                            </label>
+                            <input
+                              type="time"
+                              value={timeSettings.startTime}
+                              className={`w-full border-gray-200 rounded-lg p-2 focus:ring-primary ${
+                                timeErrors.startTime || timeErrors.endTime
+                                  ? "ring-2 ring-red-500"
+                                  : ""
+                              }`}
+                              onChange={(e) => {
+                                setTimeSettings((prev) => ({
+                                  ...prev,
+                                  startTime: e.target.value,
+                                }));
+                                // Clear time errors when time is changed
+                                if (
+                                  timeErrors.startTime ||
+                                  timeErrors.endTime
+                                ) {
+                                  setTimeErrors((prev) => ({
+                                    ...prev,
+                                    startTime: "",
+                                    endTime: "",
+                                  }));
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">
+                              End Time
+                            </label>
+                            <input
+                              type="time"
+                              value={timeSettings.endTime}
+                              className={`w-full border-gray-200 rounded-lg p-2 focus:ring-primary ${
+                                timeErrors.endTime ? "ring-2 ring-red-500" : ""
+                              }`}
+                              onChange={(e) => {
+                                setTimeSettings((prev) => ({
+                                  ...prev,
+                                  endTime: e.target.value,
+                                }));
+                                // Clear time errors when time is changed
+                                if (timeErrors.endTime) {
+                                  setTimeErrors((prev) => ({
+                                    ...prev,
+                                    endTime: "",
+                                  }));
+                                }
+                              }}
+                            />
+                            {timeErrors.endTime && (
+                              <p className="mt-1 text-xs text-red-500">
+                                {timeErrors.endTime}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Time validation info */}
+                        <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
+                          <p className="font-semibold text-blue-800 mb-1">
+                            Schedule Rules:
+                          </p>
+                          <ul className="space-y-1">
+                            <li>• End time must be after start time</li>
+                            <li>• Maximum working slot: 8 hours</li>
+                            <li>• At least one working day required</li>
+                          </ul>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">
-                          End Time
-                        </label>
-                        <input
-                          type="time"
-                          value={timeSettings.endTime}
-                          className="w-full border-gray-200 rounded-lg p-2 focus:ring-primary"
-                          onChange={(e) =>
-                            setTimeSettings((prev) => ({
-                              ...prev,
-                              endTime: e.target.value,
-                            }))
-                          }
-                        />
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 flex items-center gap-3">
@@ -362,6 +530,8 @@ const DoctorProfile = () => {
                 profileData={profileData}
                 setProfileData={setProfileData}
                 getProfileData={getProfileData}
+                isEdit={isEdit}
+                onOnlineSettingsChange={setCurrentOnlineSettings}
               />
 
               <button

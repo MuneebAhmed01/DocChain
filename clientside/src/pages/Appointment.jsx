@@ -158,6 +158,14 @@ const Appointment = () => {
     }
   };
 
+  const handleOnlineConsultClick = () => {
+    if (!docInfo.onlineConsultEnabled) {
+      toast.error("This doctor does not offer online consultations");
+      return;
+    }
+    setAppointmentType("online");
+  };
+
   const bookAppointment = async (
     selectedSlotIndex,
     selectedSlotTime,
@@ -170,6 +178,11 @@ const Appointment = () => {
 
     if (!selectedSlotTime) {
       toast.error("Please select a time slot");
+      return;
+    }
+
+    if (appointmentType === "online" && !docInfo.onlineConsultEnabled) {
+      toast.error("This doctor does not offer online consultations");
       return;
     }
 
@@ -434,17 +447,31 @@ const Appointment = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setAppointmentType("online")}
+                onClick={handleOnlineConsultClick}
+                disabled={!docInfo?.onlineConsultEnabled}
                 className={`px-3 py-1.5 text-sm rounded-lg transition ${
                   appointmentType === "online"
                     ? "bg-primary text-white"
-                    : "text-gray-600 hover:bg-gray-50"
+                    : docInfo?.onlineConsultEnabled
+                      ? "text-gray-600 hover:bg-gray-50"
+                      : "text-gray-400 cursor-not-allowed bg-gray-100"
                 }`}
+                title={
+                  !docInfo?.onlineConsultEnabled
+                    ? "This doctor does not offer online consultations"
+                    : ""
+                }
               >
                 Online Consultation
               </button>
             </div>
+            {!docInfo?.onlineConsultEnabled && (
+              <span className="text-xs text-gray-400 ml-3">
+                (This doctor doesn't accept online consultations)
+              </span>
+            )}
           </div>
+
           <p>Booking slots</p>
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {docSlots.length &&

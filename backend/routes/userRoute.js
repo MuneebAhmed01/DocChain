@@ -34,6 +34,7 @@ import bcrypt from "bcryptjs";
 import userModel from "../models/userModel.js";
 import authUser from "../middlewares/authUser.js";
 import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 import { getJwtSecret } from "../utils/jwtSecret.js";
 
 import { 
@@ -43,6 +44,7 @@ import {
   updateProfile,
   uploadProfilePic,
   cancelAppointment,
+  joinOnlineAppointment,
   rateDoctor ,
   getDoctorReviewsUser,
    sendContactEmail 
@@ -90,7 +92,19 @@ router.post("/google-login", async (req, res) => {
       { expiresIn: "90d" }
     );
 
-    res.json({ success: true, token: appToken });
+    // Return user data to check profile completion
+    const userData = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone_number: user.phone_number,
+      age: user.age,
+      gender: user.gender,
+      image: user.image,
+      profilePic: user.profilePic,
+    };
+
+    res.json({ success: true, token: appToken, user: userData });
   } catch (error) {
     console.log(error);
     res.status(400).json({ success: false, message: "Google auth failed" });
@@ -136,7 +150,6 @@ router.post("/register", upload.single("image"), async (req, res) => {
     let profilePicData = { url: "", public_id: "" };
     if (req.file) {
       try {
-        const cloudinary = require('cloudinary').v2;
         const imageUpload = await cloudinary.uploader.upload(req.file.path, {
           resource_type: "image",
           folder: "docchain/profile-pics",
@@ -171,6 +184,7 @@ router.post("/register", upload.single("image"), async (req, res) => {
       age: age ? parseInt(age) : null,
       gender: gender || "Not Selected",
       dob: dob,
+      image: profilePicData.url || undefined,
       profilePic: profilePicData,
     });
     
@@ -239,6 +253,7 @@ router.post("/update-profile", authUser, upload.single("image"), updateProfile);
 router.post("/upload-profile-pic", authUser, upload.single("image"), uploadProfilePic);
 // Get user appointments
 router.get("/appointments", authUser, listAppointment);
+router.post("/appointments/join-online", authUser, joinOnlineAppointment);
 
 // Cancel appointment
 router.post("/cancel-appointment", authUser, cancelAppointment);
@@ -248,5 +263,45 @@ router.post("/rate-doctor", authUser, rateDoctor);
 // Patient response after appointment time
 router.post("/appointments/:id/patient-response", authUser, patientResponse);
 
+
+// ------------------ PROFILE COMPLETION ------------------
+
+// Complete profile without OTP verification
+router.post("/complete-profile", authUser, async (req, res) => {
+  try {
+    const { phone_number, age, gender } = req.body;
+    const userId = req.user.userId;
+
+    if (!phone_number || !age || !gender) {
+      return res.status(400).json({ success: false, message: "All fields are required" });
+    }
+
+    // Calculate DOB from age
+    let dob = "Not Selected";
+    if (age && !isNaN(age)) {
+      const birthYear = new Date().getFullYear() - parseInt(age);
+      dob = `${birthYear}-01-01`;
+    }
+
+    // Update user profile and mark as complete
+    await userModel.findByIdAndUpdate(userId, {
+      phone_number: phone_number,
+      phone: phone_number,
+      age: parseInt(age),
+      gender: gender,
+      dob: dob,
+      is_phone_verified: true, // Auto-verify since no OTP
+      onboarding_completed: true,
+    });
+
+    res.json({ 
+      success: true, 
+      message: "Profile completed successfully" 
+    });
+  } catch (error) {
+    console.log("Complete profile error:", error);
+    res.status(500).json({ success: false, message: "Failed to complete profile" });
+  }
+});
 
 export default router;

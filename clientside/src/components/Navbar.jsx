@@ -1,20 +1,33 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { assets } from "../assets/assets";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import { getProfilePicUrl, getDefaultAvatarUrl } from "../utils/profileHelpers";
 
 const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const { token, setToken, userData } = useContext(AppContext);
+  const { token, setToken, userData, isPendingProfile, logout } =
+    useContext(AppContext);
 
   const [showMenu, setShowMenu] = useState(false);
 
-  const logout = () => {
-    setToken(false);
-    localStorage.removeItem("token");
+  // Navigation guard for protected routes
+  const handleNavigation = (path) => {
+    if (isPendingProfile && path !== "/complete-profile") {
+      navigate("/complete-profile");
+      return;
+    }
+    navigate(path);
   };
+
+  useEffect(() => {
+    // Redirect to complete-profile if user is pending profile and not already there
+    if (isPendingProfile && location.pathname !== "/complete-profile") {
+      navigate("/complete-profile", { replace: true });
+    }
+  }, [isPendingProfile, location.pathname, navigate]);
 
   return (
     <div className="flex items-center justify-between text-sm py-4 mb-5 ">
@@ -30,6 +43,12 @@ const Navbar = () => {
           className={({ isActive }) =>
             `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
           }
+          onClick={(e) => {
+            if (isPendingProfile) {
+              e.preventDefault();
+              handleNavigation("/");
+            }
+          }}
         >
           Home
         </NavLink>
@@ -39,6 +58,12 @@ const Navbar = () => {
           className={({ isActive }) =>
             `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
           }
+          onClick={(e) => {
+            if (isPendingProfile) {
+              e.preventDefault();
+              handleNavigation("/doctors");
+            }
+          }}
         >
           Doctor Booking
         </NavLink>
@@ -48,6 +73,12 @@ const Navbar = () => {
           className={({ isActive }) =>
             `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
           }
+          onClick={(e) => {
+            if (isPendingProfile) {
+              e.preventDefault();
+              handleNavigation("/about");
+            }
+          }}
         >
           About
         </NavLink>
@@ -57,12 +88,18 @@ const Navbar = () => {
           className={({ isActive }) =>
             `py-1 text-base ${isActive ? "text-blue-500" : "text-gray-500"}`
           }
+          onClick={(e) => {
+            if (isPendingProfile) {
+              e.preventDefault();
+              handleNavigation("/contact");
+            }
+          }}
         >
           Contact
         </NavLink>
 
         <button
-          onClick={() => navigate("/join-doctor")}
+          onClick={() => handleNavigation("/join-doctor")}
           className="border border-blue-600 text-blue-600 px-5 py-2 rounded-full text-base hover:bg-blue-600 hover:text-white transition"
         >
           Join as Doctor
@@ -76,6 +113,7 @@ const Navbar = () => {
               className="w-8 rounded-full"
               src={getProfilePicUrl(userData, true) || getDefaultAvatarUrl()}
               alt="Profile"
+              loading="lazy"
               onError={(e) => {
                 e.target.src = getDefaultAvatarUrl();
               }}
@@ -84,13 +122,13 @@ const Navbar = () => {
             <div className="absolute top-0 right-0 pt-14 text-base font-medium text-gray-600 z-20 hidden group-hover:block">
               <div className="min-w-48 bg-stone-100 rounded flex flex-col gap-4 p-4">
                 <p
-                  onClick={() => navigate("/my-profile")}
+                  onClick={() => handleNavigation("/my-profile")}
                   className="hover:text-black cursor-pointer"
                 >
                   My Profile
                 </p>
                 <p
-                  onClick={() => navigate("/my-appointments")}
+                  onClick={() => handleNavigation("/my-appointments")}
                   className="hover:text-black cursor-pointer"
                 >
                   My Appointments
@@ -102,12 +140,20 @@ const Navbar = () => {
             </div>
           </div>
         ) : (
-          <button
-            onClick={() => navigate("/login")}
-            className="bg-primary text-white px-8 py-3 rounded-full font-semibold hidden md:block"
-          >
-            Create Account
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/login?mode=signup")}
+              className="border border-primary text-primary px-6 py-3 rounded-full font-semibold hidden md:block hover:bg-primary hover:text-white transition"
+            >
+              Signup
+            </button>
+            <button
+              onClick={() => navigate("/login?mode=login")}
+              className="bg-primary text-white px-8 py-3 rounded-full font-semibold hidden md:block"
+            >
+              Login
+            </button>
+          </div>
         )}
         <img
           onClick={() => setShowMenu(true)}
@@ -134,21 +180,78 @@ const Navbar = () => {
             <NavLink
               onClick={() => setShowMenu(false)}
               to={{ pathname: "/", hash: "" }}
+              onMouseDown={(e) => {
+                if (isPendingProfile) {
+                  e.preventDefault();
+                  handleNavigation("/");
+                  setShowMenu(false);
+                }
+              }}
             >
               <p className="px-4 py-2 rounded inline-block">HOME</p>
             </NavLink>
-            <NavLink onClick={() => setShowMenu(false)} to="/doctors">
+            <NavLink
+              onClick={() => setShowMenu(false)}
+              to="/doctors"
+              onMouseDown={(e) => {
+                if (isPendingProfile) {
+                  e.preventDefault();
+                  handleNavigation("/doctors");
+                  setShowMenu(false);
+                }
+              }}
+            >
               <p className="px-4 py-2 rounded inline-block">ALL DOCTORS</p>
             </NavLink>
-            <NavLink onClick={() => setShowMenu(false)} to="/about">
+            <NavLink
+              onClick={() => setShowMenu(false)}
+              to="/about"
+              onMouseDown={(e) => {
+                if (isPendingProfile) {
+                  e.preventDefault();
+                  handleNavigation("/about");
+                  setShowMenu(false);
+                }
+              }}
+            >
               <p className="px-4 py-2 rounded inline-block">ABOUT</p>
             </NavLink>
-            <NavLink onClick={() => setShowMenu(false)} to="/contact">
+            <NavLink
+              onClick={() => setShowMenu(false)}
+              to="/contact"
+              onMouseDown={(e) => {
+                if (isPendingProfile) {
+                  e.preventDefault();
+                  handleNavigation("/contact");
+                  setShowMenu(false);
+                }
+              }}
+            >
               <p className="px-4 py-2 rounded inline-block">CONTACT</p>
             </NavLink>
-            <NavLink onClick={() => setShowMenu(false)} to="/join-doctor">
+            <NavLink
+              onClick={() => setShowMenu(false)}
+              to="/join-doctor"
+              onMouseDown={(e) => {
+                if (isPendingProfile) {
+                  e.preventDefault();
+                  handleNavigation("/join-doctor");
+                  setShowMenu(false);
+                }
+              }}
+            >
               <p className="px-4 py-2 rounded inline-block text-blue-600">
                 JOIN AS DOCTOR
+              </p>
+            </NavLink>
+            <NavLink onClick={() => setShowMenu(false)} to="/login?mode=signup">
+              <p className="px-4 py-2 rounded inline-block border border-primary text-primary">
+                SIGNUP
+              </p>
+            </NavLink>
+            <NavLink onClick={() => setShowMenu(false)} to="/login?mode=login">
+              <p className="px-4 py-2 rounded inline-block bg-primary text-white">
+                LOGIN
               </p>
             </NavLink>
           </ul>

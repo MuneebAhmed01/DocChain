@@ -14,6 +14,10 @@ import {
   calculateRemainingAmount,
 } from "../services/appointmentService.js";
 import {
+  isJoinAllowedNow,
+  computeSessionStatusFromJoinFlags,
+} from "../utils/appointmentSession.js";
+import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
   REFUND_STATUS,
@@ -101,6 +105,48 @@ const appointmentsDoctor = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.json({ success: false, message: error.message });
+  }
+};
+
+const joinOnlineAppointment = async (req, res) => {
+  try {
+    const { docId, appointmentId } = req.body;
+
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    if (String(appointment.docId) !== String(docId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (appointment.appointmentType !== "online") {
+      return res.status(400).json({ success: false, message: "This is not an online appointment" });
+    }
+
+    if (!appointment.meetingLink) {
+      return res.status(400).json({ success: false, message: "Meeting link not available yet" });
+    }
+
+    if (!isJoinAllowedNow(appointment)) {
+      return res.status(400).json({ success: false, message: "Call is not available at this time" });
+    }
+
+    appointment.doctorJoined = true;
+    appointment.sessionStatus = computeSessionStatusFromJoinFlags(appointment);
+    await appointment.save();
+
+    return res.json({
+      success: true,
+      meetingLink: appointment.meetingLink,
+      sessionStatus: appointment.sessionStatus,
+      doctorJoined: appointment.doctorJoined,
+      patientJoined: appointment.patientJoined,
+    });
+  } catch (error) {
+    console.error("doctor joinOnlineAppointment error:", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -416,14 +462,85 @@ const doctorProfile = async (req, res) => {
   }
 };
 
+// Helper function to convert time string to minutes since midnight
+const timeToMinutes = (timeStr) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+// Validate time settings
+const validateTimeSettings = (timeSettings) => {
+  const errors = [];
+
+  if (timeSettings && timeSettings.useCustomSettings) {
+    // Check if at least one working day is selected
+    if (!timeSettings.workingDays || timeSettings.workingDays.length === 0) {
+      errors.push("At least one working day must be selected");
+    }
+
+    // Validate time logic if both times are provided
+    if (timeSettings.startTime && timeSettings.endTime) {
+      const startMinutes = timeToMinutes(timeSettings.startTime);
+      const endMinutes = timeToMinutes(timeSettings.endTime);
+      
+      // Check if end time is after start time
+      if (endMinutes <= startMinutes) {
+        errors.push("End time must be after start time");
+      } else {
+        // Check if time slot exceeds 8 hours (480 minutes)
+        const duration = endMinutes - startMinutes;
+        if (duration > 480) {
+          errors.push("Maximum working slot is 8 hours");
+        }
+      }
+    }
+  }
+
+  return errors;
+};
+
 // API to update doctor profile data from Doctor panel
 const updateDoctorProfile = async (req, res) => {
   try {
-    const { docId, fees, address, available, timeSettings } = req.body;
+    const { docId, fees, address, available, timeSettings, onlineConsultEnabled, averageConsultDuration } = req.body;
+
+    // Validate fee
+    const numFees = Number(fees);
+    if (isNaN(numFees) || numFees < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Appointment fee cannot be negative"
+      });
+    }
+    if (numFees > 99999) {
+      return res.status(400).json({
+        success: false,
+        message: "Appointment fee seems too high"
+      });
+    }
+
+    // Validate time settings if provided
+    if (timeSettings) {
+      const validationErrors = validateTimeSettings(timeSettings);
+      if (validationErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: validationErrors.join("; ")
+        });
+      }
+    }
 
     const updateData = { fees, address, available };
     if (timeSettings) {
       updateData.timeSettings = timeSettings;
+    }
+    
+    // Handle online consultation settings
+    if (onlineConsultEnabled !== undefined) {
+      updateData.onlineConsultEnabled = onlineConsultEnabled;
+    }
+    if (averageConsultDuration !== undefined) {
+      updateData.averageConsultDuration = averageConsultDuration;
     }
 
     await doctorModel.findByIdAndUpdate(docId, updateData);
@@ -460,6 +577,7 @@ export {
   doctorDashboard,
   doctorProfile,
   appointmentComplete,
+  joinOnlineAppointment,
   updateDoctorProfile,
   getDoctorReviews
 };

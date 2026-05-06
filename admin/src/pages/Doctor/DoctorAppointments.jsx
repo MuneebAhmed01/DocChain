@@ -3,6 +3,34 @@ import { DoctorContext } from "../../context/DoctorContext";
 import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/assets";
 
+const getAppointmentWindow = (slotDate, slotTime) => {
+  if (!slotDate || !slotTime) return null;
+  const parts = String(slotDate).split("_");
+  if (parts.length !== 3) return null;
+  const [day, month, year] = parts;
+  const parsed = new Date(
+    `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${slotTime}`,
+  );
+  const start = Number.isNaN(parsed.getTime())
+    ? new Date(
+        `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`,
+      )
+    : parsed;
+  if (Number.isNaN(parsed.getTime())) {
+    const [timeValue, meridian = ""] = String(slotTime).split(" ");
+    const [hRaw, mRaw] = timeValue.split(":");
+    let hour = Number.parseInt(hRaw, 10);
+    const minute = Number.parseInt(mRaw, 10);
+    const meridianLower = String(meridian).toLowerCase();
+    if (meridianLower === "pm" && hour < 12) hour += 12;
+    if (meridianLower === "am" && hour === 12) hour = 0;
+    start.setHours(hour, minute || 0, 0, 0);
+  }
+  const end = new Date(start.getTime() + 30 * 60 * 1000);
+  const joinStart = new Date(start.getTime() - 10 * 60 * 1000);
+  return { start, end, joinStart };
+};
+
 const DoctorAppointments = () => {
   const {
     dToken,
@@ -10,6 +38,7 @@ const DoctorAppointments = () => {
     getAppointments,
     completeAppointment,
     cancelAppointment,
+    joinOnlineAppointment,
   } = useContext(DoctorContext);
 
   const { calculateAge, slotDateFormat, currency } = useContext(AppContext);
@@ -46,6 +75,22 @@ const DoctorAppointments = () => {
             const paymentBadgeClass = isTokenPayment
               ? "border-blue-500 text-blue-600 bg-blue-50"
               : "border-green-500 text-green-600 bg-green-50";
+
+            const isOnline =
+              (item.type ||
+                (item.appointmentType === "online" ? "online" : "office")) ===
+              "online";
+            const now = new Date();
+            const window = getAppointmentWindow(item.slotDate, item.slotTime);
+            const canJoinCall =
+              isOnline &&
+              window &&
+              now >= window.joinStart &&
+              now <= window.end &&
+              !item.cancelled &&
+              !item.isCompleted &&
+              (item.appointmentStatus || item.status) === "CONFIRMED";
+            const hasWindowEnded = Boolean(window && now > window.end);
 
             return (
               <div
@@ -97,9 +142,7 @@ const DoctorAppointments = () => {
                           : "text-green-600 border-green-300 bg-green-50"
                       }`}
                     >
-                      {item.appointmentType === "online"
-                        ? "Online"
-                        : "Physical"}
+                      {item.appointmentType === "online" ? "Online" : "Office"}
                     </span>
                   </div>
                 </div>
@@ -172,7 +215,10 @@ const DoctorAppointments = () => {
                 <div className="flex justify-end sm:justify-center sm:items-center pt-1 sm:pt-0 min-h-[36px] w-full">
                   {item.cancelled ? (
                     <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider text-center min-h-[16px] flex items-center justify-center w-full px-1">
-                      {item.appointmentStatus || item.status || "Cancelled"}
+                      {item.appointmentStatus === "CANCELLED_BY_DOCTOR" ||
+                      item.status === "CANCELLED_BY_DOCTOR"
+                        ? "DR_CANCELLED"
+                        : item.appointmentStatus || item.status || "Cancelled"}
                     </p>
                   ) : item.isCompleted ? (
                     <p className="text-green-500 text-[10px] font-bold uppercase tracking-wider text-center min-h-[16px] flex items-center justify-center w-full px-1">
@@ -180,12 +226,44 @@ const DoctorAppointments = () => {
                     </p>
                   ) : (
                     <div className="flex items-center justify-center gap-1 w-full">
+                      {isOnline && (
+                        <button
+                          onClick={async () => {
+                            const meetingLink = await joinOnlineAppointment(
+                              item._id,
+                            );
+                            if (meetingLink) {
+                              window.open(
+                                meetingLink,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }
+                          }}
+                          disabled={!canJoinCall}
+                          className={`text-[10px] px-2 py-1 rounded border ${
+                            canJoinCall
+                              ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                              : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                          }`}
+                        >
+                          {canJoinCall
+                            ? item.doctorJoined
+                              ? "Join Call"
+                              : "Start Call"
+                            : hasWindowEnded
+                              ? item.sessionStatus === "completed"
+                                ? "Completed"
+                                : "Missed"
+                              : "Not started"}
+                        </button>
+                      )}
                       <button
                         onClick={() => cancelAppointment(item._id)}
                         className="transition-transform p-1 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95"
                       >
                         <img
-                          className="w-5 h-5"
+                          className="w-12 h-12"
                           src={assets.cancel_icon}
                           alt="Cancel"
                         />
@@ -195,7 +273,7 @@ const DoctorAppointments = () => {
                         className="transition-transform p-1 hover:bg-green-50 rounded-full hover:scale-110 active:scale-95"
                       >
                         <img
-                          className="w-5 h-5"
+                          className="w-12 h-12"
                           src={assets.tick_icon}
                           alt="Complete"
                         />

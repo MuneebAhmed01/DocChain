@@ -21,6 +21,9 @@ const AppContextProvider = (props) => {
       : false;
   });
   const [userData, setUserData] = useState(false);
+  const [authStatus, setAuthStatus] = useState(() => {
+    return localStorage.getItem("authStatus") || "NONE";
+  });
 
   const getDoctorsData = async () => {
     try {
@@ -76,18 +79,43 @@ const AppContextProvider = (props) => {
     await loadUserProfileData();
   };
 
+  const setTokenWithStatus = (newToken, status = "FULLY_AUTHENTICATED") => {
+    setToken(newToken);
+    setAuthStatus(status);
+    if (newToken && status) {
+      localStorage.setItem("token", newToken);
+      localStorage.setItem("authStatus", status);
+    } else {
+      localStorage.removeItem("token");
+      localStorage.removeItem("authStatus");
+    }
+  };
+
+  const logout = () => {
+    setToken(false);
+    setUserData(false);
+    setAuthStatus("NONE");
+    localStorage.removeItem("token");
+    localStorage.removeItem("authStatus");
+  };
+
   const value = {
     doctors,
     getDoctorsData,
     currencySymbol,
     currencyCode: PAYMENT_CURRENCY,
     token,
-    setToken,
+    setToken: setTokenWithStatus,
+    authStatus,
+    setAuthStatus,
+    logout,
     backendUrl,
     userData,
     setUserData,
     loadUserProfileData,
     refreshUserData,
+    isAuthenticated: token && authStatus === "FULLY_AUTHENTICATED",
+    isPendingProfile: token && authStatus === "PENDING_PROFILE",
   };
 
   useEffect(() => {
@@ -104,6 +132,7 @@ const AppContextProvider = (props) => {
       loadUserProfileData();
     } else {
       setUserData(false);
+      setAuthStatus("NONE");
       // Clear invalid token from localStorage
       if (
         token === "false" ||
@@ -112,6 +141,7 @@ const AppContextProvider = (props) => {
         !token
       ) {
         localStorage.removeItem("token");
+        localStorage.removeItem("authStatus");
         setToken(false);
       }
     }

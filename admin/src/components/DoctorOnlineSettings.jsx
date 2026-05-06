@@ -9,29 +9,50 @@ const DoctorOnlineSettings = ({
   profileData,
   setProfileData,
   getProfileData,
+  isEdit,
+  onOnlineSettingsChange,
 }) => {
   const { dToken, backendUrl } = useContext(DoctorContext);
   const { currency } = useContext(AppContext);
 
   const [onlineSettings, setOnlineSettings] = useState({
-    onlineConsultEnabled: false,
+    onlineConsultEnabled: true,
     averageConsultDuration: 15,
   });
+
+  // Sync online settings with profile data
+  useEffect(() => {
+    if (profileData) {
+      console.log("Profile data received:", profileData);
+      console.log("Current onlineSettings before sync:", onlineSettings);
+      setOnlineSettings((prev) => {
+        const newSettings = {
+          onlineConsultEnabled:
+            profileData.onlineConsultEnabled !== undefined
+              ? profileData.onlineConsultEnabled
+              : prev.onlineConsultEnabled !== undefined
+                ? prev.onlineConsultEnabled
+                : true,
+          averageConsultDuration:
+            profileData.averageConsultDuration ||
+            prev.averageConsultDuration ||
+            15,
+        };
+        console.log("OnlineSettings after sync:", newSettings);
+        // Notify parent component of the new settings
+        if (onOnlineSettingsChange) {
+          onOnlineSettingsChange(newSettings);
+        }
+        return newSettings;
+      });
+    }
+  }, [profileData]);
 
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [socket, setSocket] = useState(null);
   const [responding, setResponding] = useState(false);
-
-  useEffect(() => {
-    if (profileData) {
-      setOnlineSettings({
-        onlineConsultEnabled: profileData.onlineConsultEnabled || false,
-        averageConsultDuration: profileData.averageConsultDuration || 15,
-      });
-    }
-  }, [profileData]);
 
   useEffect(() => {
     if (dToken && !socket) {
@@ -102,24 +123,8 @@ const DoctorOnlineSettings = ({
     }
   };
 
-  const updateOnlineSettings = async () => {
-    try {
-      const { data } = await axios.put(
-        `${backendUrl}/api/online-consult/doctor-settings`,
-        onlineSettings,
-        { headers: { dToken } },
-      );
-
-      if (data.success) {
-        toast.success("Online consultation settings updated successfully");
-        getProfileData(); // Refresh profile data
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update settings");
-    }
-  };
+  // Remove updateOnlineSettings function as it's now handled by main profile update
+  // const updateOnlineSettings = async () => { ... };
 
   const handleRequestResponse = async (action) => {
     if (!selectedRequest || responding) return;
@@ -233,15 +238,45 @@ const DoctorOnlineSettings = ({
               <input
                 type="checkbox"
                 checked={onlineSettings.onlineConsultEnabled}
-                onChange={(e) =>
-                  setOnlineSettings((prev) => ({
-                    ...prev,
-                    onlineConsultEnabled: e.target.checked,
-                  }))
-                }
+                onChange={(e) => {
+                  console.log(
+                    "Toggle clicked, isEdit:",
+                    isEdit,
+                    "new value:",
+                    e.target.checked,
+                  );
+                  if (isEdit) {
+                    setOnlineSettings((prev) => {
+                      const newSettings = {
+                        ...prev,
+                        onlineConsultEnabled: e.target.checked,
+                      };
+                      console.log(
+                        "Setting onlineSettings from:",
+                        prev,
+                        "to:",
+                        newSettings,
+                      );
+                      // Notify parent component of the new settings
+                      if (onOnlineSettingsChange) {
+                        onOnlineSettingsChange(newSettings);
+                      }
+                      return newSettings;
+                    });
+                  } else {
+                    console.log("Toggle ignored because not in edit mode");
+                  }
+                }}
+                disabled={!isEdit}
                 className="sr-only peer"
               />
-              <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-green-600 shadow-inner"></div>
+              <div
+                className={`w-14 h-7 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all shadow-inner ${
+                  isEdit
+                    ? "bg-gray-200 peer-focus:outline-none peer-checked:bg-green-600"
+                    : "bg-gray-100 peer-checked:bg-green-400 cursor-not-allowed"
+                }`}
+              ></div>
             </label>
           </div>
         </div>
@@ -267,13 +302,20 @@ const DoctorOnlineSettings = ({
           </label>
           <select
             value={onlineSettings.averageConsultDuration}
-            onChange={(e) =>
-              setOnlineSettings((prev) => ({
-                ...prev,
-                averageConsultDuration: parseInt(e.target.value),
-              }))
-            }
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50 font-medium"
+            onChange={(e) => {
+              if (isEdit) {
+                setOnlineSettings((prev) => ({
+                  ...prev,
+                  averageConsultDuration: parseInt(e.target.value),
+                }));
+              }
+            }}
+            disabled={!isEdit}
+            className={`w-full px-4 py-3 rounded-xl font-medium ${
+              isEdit
+                ? "border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
+                : "border border-gray-100 bg-gray-100 cursor-not-allowed"
+            }`}
           >
             <option value={10}>10 minutes</option>
             <option value={15}>15 minutes</option>
@@ -283,13 +325,6 @@ const DoctorOnlineSettings = ({
             <option value={60}>60 minutes</option>
           </select>
         </div>
-
-        <button
-          onClick={updateOnlineSettings}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition font-semibold text-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:scale-95"
-        >
-          Save Settings
-        </button>
       </div>
 
       {/* Incoming Requests Section */}

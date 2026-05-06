@@ -1,5 +1,9 @@
 import appointmentModel from "../models/appointmentModel.js";
 import { APPOINTMENT_STATUS, PAYMENT_STATUS } from "../config/payment.js";
+import {
+  getAppointmentWindow,
+  computeSessionStatusFromJoinFlags,
+} from "../utils/appointmentSession.js";
 
 /**
  * 🔴 Clean up expired HOLD appointments
@@ -189,4 +193,39 @@ export const calculateRemainingAmount = (appointment) => {
   const totalAmount = Number(appointment.amount || 0);
   const paidAmount = Number(appointment.paidAmount || 0);
   return Math.max(0, totalAmount - paidAmount);
+};
+
+export const finalizeExpiredOnlineSessions = async () => {
+  try {
+    const onlineAppointments = await appointmentModel.find({
+      appointmentType: "online",
+      appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
+      sessionStatus: { $in: ["booked", "ongoing"] },
+    });
+
+    if (!onlineAppointments.length) {
+      return { updated: 0 };
+    }
+
+    let updated = 0;
+    const now = new Date();
+    for (const appointment of onlineAppointments) {
+      const window = getAppointmentWindow(appointment);
+      if (!window || now <= window.end) {
+        continue;
+      }
+
+      const nextStatus = computeSessionStatusFromJoinFlags(appointment, now);
+      if (nextStatus !== appointment.sessionStatus) {
+        appointment.sessionStatus = nextStatus;
+        await appointment.save();
+        updated += 1;
+      }
+    }
+
+    return { updated };
+  } catch (error) {
+    console.error("❌ Error finalizing online sessions:", error);
+    throw error;
+  }
 };

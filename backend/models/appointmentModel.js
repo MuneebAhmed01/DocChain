@@ -17,6 +17,19 @@ const appointmentSchema = new mongoose.Schema({
     enum: ["online", "physical"],
     default: "physical",
   },
+  type: {
+    type: String,
+    enum: ["online", "office"],
+    default: "office",
+  },
+  meetingLink: { type: String, default: null },
+  doctorJoined: { type: Boolean, default: false },
+  patientJoined: { type: Boolean, default: false },
+  sessionStatus: {
+    type: String,
+    enum: ["booked", "ongoing", "completed", "missed"],
+    default: "booked",
+  },
 
   // Payment Information
   amount: { type: Number, required: true },
@@ -131,6 +144,19 @@ appointmentSchema.pre("save", function syncLegacyFields(next) {
 
   if (this.status && this.appointmentStatus !== this.status) {
     this.appointmentStatus = this.status;
+  }
+
+  if (this.type === "office" && this.appointmentType !== "physical") {
+    this.appointmentType = "physical";
+  }
+  if (this.type === "online" && this.appointmentType !== "online") {
+    this.appointmentType = "online";
+  }
+  if (this.appointmentType === "physical" && this.type !== "office") {
+    this.type = "office";
+  }
+  if (this.appointmentType === "online" && this.type !== "online") {
+    this.type = "online";
   }
 
   // Keep legacy completed flag in sync with new attendanceStatus

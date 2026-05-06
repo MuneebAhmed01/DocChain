@@ -1,12 +1,11 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AppContext } from "../context/AppContext";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "../axiosInstance";
 import { GoogleLogin } from "@react-oauth/google";
+import { assets } from "../assets/assets";
 import { z } from "zod";
-
-const GENDER_OPTIONS = ["Male", "Female", "Prefer not to say"];
 
 const loginSchema = z.object({
   email: z
@@ -32,24 +31,6 @@ const signupSchema = z.object({
       /^(?=.*[A-Z]).{8,}$/,
       "Password must be at least 8 characters long and contain at least one uppercase letter",
     ),
-  phone_number: z
-    .string()
-    .trim()
-    .min(1, "Phone number is required")
-    .refine((value) => {
-      const digits = value.replace(/\D/g, "");
-      if (digits.startsWith("0")) {
-        return /^03\d{9}$/.test(digits); // 11 digits with leading zero
-      }
-      return /^3\d{9}$/.test(digits); // 10 digits without leading zero
-    }, "Use 03XXXXXXXXX or 3XXXXXXXXX"),
-  age: z
-    .string()
-    .refine((value) => !Number.isNaN(parseInt(value, 10)), "Age is required")
-    .refine((value) => parseInt(value, 10) >= 18, "User cannot be below 18"),
-  gender: z.enum(["Male", "Female", "Prefer not to say"], {
-    errorMap: () => ({ message: "Gender selection is required" }),
-  }),
 });
 
 const getZodFieldErrors = (error) => {
@@ -63,84 +44,80 @@ const getZodFieldErrors = (error) => {
   return fieldErrors;
 };
 
-const normalizePakistanPhone = (input) => {
-  const digits = String(input || "").replace(/\D/g, "");
-  if (!digits) return "";
-
-  // Allow these user inputs:
-  // 3XXXXXXXXX, 03XXXXXXXXX, 92XXXXXXXXXX
-  if (digits.startsWith("92")) {
-    return `92${digits.slice(2).replace(/^0+/, "")}`;
-  }
-  if (digits.startsWith("0")) {
-    return `92${digits.replace(/^0+/, "")}`;
-  }
-  return `92${digits}`;
-};
-
-const getLocalPakistanPhone = (input) => {
-  const digits = String(input || "").replace(/\D/g, "");
-  if (!digits) return "";
-  if (digits.startsWith("92")) return digits.slice(2);
-  if (digits.startsWith("0")) return digits.replace(/^0+/, "");
-  return digits;
-};
-
 const Login = () => {
   const { token, setToken } = useContext(AppContext);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [state, setState] = useState("Sign Up");
+  const getInitialAuthMode = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const urlMode = searchParams.get("mode");
+    if (urlMode === "login") return "Login";
+    if (urlMode === "signup") return "Sign Up";
+    return location.state === "Login" ? "Login" : "Sign Up";
+  };
+
+  const [state, setState] = useState(getInitialAuthMode());
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
-    phone_number: "",
-    age: "",
-    gender: "",
   });
   const [profileImage, setProfileImage] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState("");
   const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isSignup = state === "Sign Up";
 
   const switchAuthMode = () => {
-    setState((current) => (current === "Sign Up" ? "Login" : "Sign Up"));
+    setState((c) => (c === "Sign Up" ? "Login" : "Sign Up"));
     setFormErrors({});
   };
 
   const updateField = (field, value) => {
-    setFormData((current) => ({ ...current, [field]: value }));
-    setFormErrors((current) => ({ ...current, [field]: "" }));
+    setFormData((c) => ({ ...c, [field]: value }));
+    setFormErrors((c) => ({ ...c, [field]: "" }));
   };
 
   const handleImageChange = (event) => {
     const file = event.target.files?.[0] || null;
-    setProfileImage(file);
-    setFormErrors((current) => ({ ...current, profileImage: "" }));
-    if (profileImagePreview) {
-      URL.revokeObjectURL(profileImagePreview);
+    setFormErrors((c) => ({ ...c, profileImage: "" }));
+
+    if (file) {
+      // Check file size (5MB = 5 * 1024 * 1024 bytes)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        setFormErrors((c) => ({
+          ...c,
+          profileImage: "Image size must be less than 5MB",
+        }));
+        setProfileImage(null);
+        if (profileImagePreview) URL.revokeObjectURL(profileImagePreview);
+        setProfileImagePreview("");
+        return;
+      }
     }
+
+    setProfileImage(file);
+    if (profileImagePreview) URL.revokeObjectURL(profileImagePreview);
     setProfileImagePreview(file ? URL.createObjectURL(file) : "");
   };
 
   useEffect(() => {
     return () => {
-      if (profileImagePreview) {
-        URL.revokeObjectURL(profileImagePreview);
-      }
+      if (profileImagePreview) URL.revokeObjectURL(profileImagePreview);
     };
   }, [profileImagePreview]);
 
   const submitLabel = useMemo(
-    () => (isSignup ? "Create Account" : "Login"),
+    () => (isSignup ? "Create Account" : "Sign In"),
     [isSignup],
   );
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
-
+    if (isSubmitting) return;
     setFormErrors({});
 
     if (!isSignup) {
@@ -148,7 +125,6 @@ const Login = () => {
         email: formData.email,
         password: formData.password,
       });
-
       if (!validation.success) {
         setFormErrors(getZodFieldErrors(validation.error));
         toast.error("Please fix highlighted fields");
@@ -157,20 +133,11 @@ const Login = () => {
     }
 
     if (isSignup) {
-      const localPhone = getLocalPakistanPhone(formData.phone_number);
-      const validation = signupSchema.safeParse({
-        ...formData,
-        phone_number: localPhone,
-      });
-
+      const validation = signupSchema.safeParse(formData);
       const newErrors = validation.success
         ? {}
         : getZodFieldErrors(validation.error);
-
-      if (!profileImage) {
-        newErrors.profileImage = "Profile image is required";
-      }
-
+      if (!profileImage) newErrors.profileImage = "Profile image is required";
       if (Object.keys(newErrors).length > 0) {
         setFormErrors(newErrors);
         toast.error("Please fix highlighted fields");
@@ -179,368 +146,554 @@ const Login = () => {
     }
 
     try {
+      setIsSubmitting(true);
       if (isSignup) {
-        const normalizedPhone = normalizePakistanPhone(formData.phone_number);
         const signupData = new FormData();
         signupData.append("name", formData.name);
         signupData.append("email", formData.email);
         signupData.append("password", formData.password);
-        signupData.append("phone_number", normalizedPhone);
-        signupData.append("age", formData.age);
-        signupData.append("gender", formData.gender);
         signupData.append("image", profileImage);
-
         const { data } = await axiosInstance.post(
           "/api/user/register",
           signupData,
         );
         if (data.success) {
-          localStorage.setItem("token", data.token);
-          setToken(data.token);
-          navigate("/");
-        } else {
-          toast.error(data.message);
-        }
+          setToken(data.token, "PENDING_PROFILE");
+          navigate("/complete-profile");
+        } else toast.error(data.message);
       } else {
         const { data } = await axiosInstance.post("/api/user/login", {
           email: formData.email,
           password: formData.password,
         });
         if (data.success) {
-          localStorage.setItem("token", data.token);
-          setToken(data.token);
+          setToken(data.token, "FULLY_AUTHENTICATED");
           navigate("/");
-        } else {
-          toast.error(data.message);
-        }
+        } else toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   useEffect(() => {
-    if (token && state === "Login") {
-      navigate("/");
-    }
+    const searchParams = new URLSearchParams(location.search);
+    const urlMode = searchParams.get("mode");
+    if (urlMode === "login") setState("Login");
+    else if (urlMode === "signup") setState("Sign Up");
+  }, [location.search]);
+
+  useEffect(() => {
+    if (token && state === "Login") navigate("/");
   }, [token, state, navigate]);
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
-      <form
-        onSubmit={onSubmitHandler}
-        noValidate
-        className="w-full max-w-5xl overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-[0_20px_70px_rgba(15,23,42,0.12)]"
-      >
-        <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="relative overflow-hidden bg-gradient-to-br from-primary via-primary to-[#5e8af7] p-8 text-white lg:p-12">
-            <div
-              className="absolute inset-0 opacity-25"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at top left, rgba(255,255,255,0.45), transparent 34%), radial-gradient(circle at bottom right, rgba(255,255,255,0.22), transparent 28%)",
-              }}
-            />
-            <div className="relative z-10 flex h-full flex-col justify-between gap-10">
-              <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-white/75">
-                  DocChain
-                </p>
-                <h1 className="mt-4 max-w-md text-4xl font-semibold leading-tight md:text-5xl">
-                  {isSignup ? "Create your patient profile" : "Welcome back"}
-                </h1>
-                <p className="mt-4 max-w-md text-base text-white/85 md:text-lg">
-                  {isSignup
-                    ? "Add your details once and keep the full experience ready for bookings, reminders, and profile access."
-                    : "Sign in to continue managing appointments, profile data, and consultations."}
-                </p>
-              </div>
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                {[
-                  ["Phone", "Use your sandbox number"],
-                  ["Age", "Required for care setup"],
-                  ["Image", "Visible on your profile"],
-                ].map(([title, copy]) => (
-                  <div
-                    key={title}
-                    className="rounded-2xl border border-white/20 bg-white/10 p-4 backdrop-blur-sm"
-                  >
-                    <p className="text-sm font-semibold text-white">{title}</p>
-                    <p className="mt-1 text-xs text-white/80">{copy}</p>
+        .auth-wrap {
+          /* Fill whatever space the navbar leaves */
+          height: calc(100vh - 70px);
+          max-height: 90vh;
+          display: flex;
+          font-family: 'DM Sans', sans-serif;
+          overflow: hidden;
+        }
+
+        /* ── LEFT PANEL ── */
+        .auth-left {
+          flex: 0 0 44%;
+          background: linear-gradient(145deg, #0a1628 0%, #0f2549 45%, #0c3d6b 100%);
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          padding: 30px 38px 0;
+          overflow: hidden;
+        }
+        .auth-left::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse 70% 50% at 15% 8%, rgba(56,189,248,0.16) 0%, transparent 55%),
+            radial-gradient(ellipse 50% 70% at 85% 88%, rgba(99,102,241,0.18) 0%, transparent 50%);
+          pointer-events: none;
+        }
+        .grid-bg {
+          position: absolute; inset: 0;
+          background-image:
+            linear-gradient(rgba(56,189,248,0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(56,189,248,0.035) 1px, transparent 1px);
+          background-size: 36px 36px;
+          pointer-events: none;
+        }
+        .glow-orb { position: absolute; border-radius: 50%; filter: blur(55px); pointer-events: none; }
+        .orb-a { width: 220px; height: 220px; background: rgba(56,189,248,0.1); top: -50px; left: -50px; }
+        .orb-b { width: 180px; height: 180px; background: rgba(99,102,241,0.13); bottom: 60px; right: -30px; }
+
+        .left-inner { position: relative; z-index: 2; display: flex; flex-direction: column; height: 100%; }
+
+        .brand { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.3px; line-height: 1; margin-bottom: 18px; }
+        .brand-doc { color: #fff; }
+        .brand-chain { color: #38bdf8; }
+
+        .pill {
+          display: inline-flex; align-items: center; gap: 6px;
+          background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.22);
+          border-radius: 100px; padding: 4px 12px; margin-bottom: 12px;
+        }
+        .pill-dot { width: 5px; height: 5px; border-radius: 50%; background: #38bdf8; animation: blink 2s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .pill-txt { font-size: 10px; font-weight: 500; color: #7dd3fc; letter-spacing: 0.8px; text-transform: uppercase; }
+
+        .left-heading {
+          font-family: 'Syne', sans-serif;
+          font-size: clamp(18px, 2.2vw, 26px);
+          font-weight: 700; color: #fff; line-height: 1.25;
+          margin-bottom: 8px; letter-spacing: -0.3px;
+          white-space: pre-line;
+        }
+        .left-desc {
+          font-size: 12px; line-height: 1.6; color: rgba(255,255,255,0.45);
+          font-weight: 300; max-width: 290px; margin-bottom: 18px;
+        }
+
+        .features { display: flex; flex-direction: column; gap: 9px; margin-bottom: 20px; }
+        .feat { display: flex; align-items: center; gap: 9px; }
+        .feat-icon {
+          width: 26px; height: 26px; border-radius: 6px;
+          background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.18);
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .feat-icon svg { width: 12px; height: 12px; }
+        .feat-txt { font-size: 11.5px; color: rgba(255,255,255,0.58); }
+
+        /* Doctor card — bottom-anchored, image clips out */
+        .doc-card {
+          position: relative; z-index: 2;
+          background: rgba(255,255,255,0.06);
+          backdrop-filter: blur(16px);
+          border: 1px solid rgba(255,255,255,0.09);
+          border-radius: 14px;
+          padding: 14px 18px 0;
+          margin-top: 8px;
+          overflow: hidden;
+          display: flex; align-items: flex-end; gap: 16px;
+        }
+        .doc-info { padding-bottom: 14px; }
+        .doc-label { font-size: 9px; font-weight: 500; color: rgba(255,255,255,0.32); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+        .doc-name { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+        .doc-spec { font-size: 10.5px; color: #38bdf8; }
+        .doc-img {
+          width: 100px; height: 110px; object-fit: cover; object-position: top;
+          border-radius: 8px 8px 0 0; display: block; flex-shrink: 0;
+        }
+
+        /* ── RIGHT PANEL ── */
+        .auth-right {
+          flex: 1; background: #f1f5f9;
+          display: flex; align-items: center; justify-content: center;
+          padding: 20px 28px; overflow: hidden;
+        }
+
+        .form-box { width: 100%; max-width: 390px; }
+
+        .form-top { margin-bottom: 18px; }
+
+        .form-title {
+          font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 700;
+          color: #0f172a; letter-spacing: -0.4px; line-height: 1.1; margin-bottom: 4px;
+        }
+        .form-title em { font-style: normal; color: #0ea5e9; }
+
+        .form-sub { font-size: 12px; color: #64748b; margin-bottom: 10px; }
+
+        .switch-btn {
+          display: inline-flex; align-items: center; gap: 5px;
+          padding: 5px 13px; border-radius: 100px;
+          border: 1.5px solid #e2e8f0; background: #fff;
+          font-size: 11.5px; font-weight: 500; color: #475569;
+          cursor: pointer; transition: all 0.18s; font-family: 'DM Sans', sans-serif;
+        }
+        .switch-btn:hover { border-color: #0ea5e9; color: #0ea5e9; background: #f0f9ff; }
+        .switch-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .fields { display: flex; flex-direction: column; gap: 11px; }
+
+        .field { display: flex; flex-direction: column; gap: 4px; }
+
+        .f-label { font-size: 11.5px; font-weight: 500; color: #374151; letter-spacing: 0.1px; }
+
+        .f-input {
+          height: 38px; border-radius: 8px; border: 1.5px solid #e2e8f0;
+          background: #fff; padding: 0 13px; font-size: 13px;
+          font-family: 'DM Sans', sans-serif; color: #0f172a; outline: none;
+          transition: border-color 0.18s, box-shadow 0.18s;
+          width: 100%; box-sizing: border-box;
+        }
+        .f-input::placeholder { color: #94a3b8; }
+        .f-input:hover { border-color: #cbd5e1; }
+        .f-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+        .f-input.err { border-color: #f43f5e; }
+        .f-input.err:focus { box-shadow: 0 0 0 3px rgba(244,63,94,0.08); }
+        .f-input:disabled { opacity: 0.6; background: #f8fafc; cursor: not-allowed; }
+
+        .f-error { font-size: 10.5px; color: #f43f5e; font-weight: 500; }
+
+        /* Compact horizontal upload row */
+        .upload-label {
+          height: 48px; border-radius: 8px; border: 1.5px dashed #cbd5e1;
+          background: #fff; display: flex; align-items: center; gap: 10px;
+          padding: 0 13px; cursor: pointer; transition: all 0.18s;
+        }
+        .upload-label:hover { border-color: #0ea5e9; background: #f0f9ff; }
+        .upload-label.err { border-color: #f43f5e; background: #fff1f2; }
+        .upload-label input { display: none; }
+
+        .upload-icon-box {
+          width: 30px; height: 30px; border-radius: 7px; background: #e0f2fe;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+          transition: background 0.18s;
+        }
+        .upload-label:hover .upload-icon-box { background: #bae6fd; }
+        .upload-label.err .upload-icon-box { background: #ffe4e6; }
+        .upload-icon-box svg { width: 14px; height: 14px; }
+
+        .upload-texts { flex: 1; min-width: 0; }
+        .upload-main { font-size: 12px; font-weight: 500; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .upload-hint { font-size: 10px; color: #94a3b8; }
+
+        .upload-thumb img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 2px solid #0ea5e9; }
+
+        .forgot-row { display: flex; justify-content: flex-end; }
+        .forgot-btn {
+          font-size: 11px; font-weight: 500; color: #0ea5e9;
+          background: none; border: none; cursor: pointer; padding: 0;
+          font-family: 'DM Sans', sans-serif; transition: color 0.18s;
+        }
+        .forgot-btn:hover { color: #0284c7; }
+
+        .submit-btn {
+          width: 100%; height: 42px; border-radius: 9px;
+          background: linear-gradient(135deg, #0284c7, #0ea5e9);
+          border: none; color: #fff; font-size: 13.5px; font-weight: 600;
+          font-family: 'Syne', sans-serif; cursor: pointer; transition: all 0.18s;
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          box-shadow: 0 3px 10px rgba(14,165,233,0.3); letter-spacing: 0.1px;
+        }
+        .submit-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(14,165,233,0.4); }
+        .submit-btn:active:not(:disabled) { transform: none; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+        .spinner {
+          width: 15px; height: 15px;
+          border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+          border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .google-section { margin-top: 10px; }
+        .or-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .or-line { flex: 1; height: 1px; background: #e2e8f0; }
+        .or-txt { font-size: 10.5px; color: #94a3b8; white-space: nowrap; }
+
+        @media (max-width: 768px) {
+          .auth-wrap { height: auto; max-height: none; flex-direction: column; overflow: auto; }
+          .auth-left { display: none; }
+          .auth-right { padding: 32px 20px; min-height: 100vh; overflow: auto; }
+        }
+      `}</style>
+
+      <div className="auth-wrap">
+        {/* ── LEFT ── */}
+        <div className="auth-left">
+          <div className="grid-bg" />
+          <div className="glow-orb orb-a" />
+          <div className="glow-orb orb-b" />
+
+          <div className="left-inner">
+            <div className="brand">
+              <span className="brand-doc">DOC</span>
+              <span className="brand-chain">CHAIN</span>
+            </div>
+
+            <div className="pill">
+              <span className="pill-dot" />
+              <span className="pill-txt">Healthcare Platform</span>
+            </div>
+
+            <h2 className="left-heading">
+              {isSignup
+                ? "Your health,\none profile."
+                : "Good to see\nyou again."}
+            </h2>
+            <p className="left-desc">
+              {isSignup
+                ? "Set up once, access everywhere. Book appointments, track consultations, and manage your health data."
+                : "Continue managing appointments, reviewing consultations, and accessing your profile."}
+            </p>
+
+            <div className="features">
+              {[
+                {
+                  path: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+                  label: "Smart appointment scheduling",
+                },
+                {
+                  path: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
+                  label: "Verified doctor network",
+                },
+                {
+                  path: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2",
+                  label: "Complete medical history",
+                },
+              ].map((f, i) => (
+                <div className="feat" key={i}>
+                  <div className="feat-icon">
+                    <svg
+                      fill="none"
+                      stroke="#38bdf8"
+                      viewBox="0 0 24 24"
+                      strokeWidth={1.8}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d={f.path}
+                      />
+                    </svg>
                   </div>
-                ))}
+                  <span className="feat-txt">{f.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="doc-card">
+              <div className="doc-info">
+                <div className="doc-label">Featured Doctor</div>
+                <div className="doc-name">Dr. Sarah Mitchell</div>
+                <div className="doc-spec">General Physician · 12 yrs exp</div>
               </div>
+              <img src={assets.doc1} alt="Doctor" className="doc-img" />
             </div>
           </div>
+        </div>
 
-          <div className="p-6 sm:p-8 lg:p-10">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-2xl font-semibold text-zinc-900">
-                  {isSignup ? "Create Account" : "Login"}
-                </p>
-                <p className="mt-1 text-sm text-zinc-500">
-                  {isSignup
-                    ? "All fields are required for registration."
-                    : "Use your email and password to continue."}
-                </p>
-              </div>
+        {/* ── RIGHT ── */}
+        <div className="auth-right">
+          <div className="form-box">
+            <div className="form-top">
+              <h3 className="form-title">
+                {isSignup ? (
+                  <>
+                    Create <em>Account</em>
+                  </>
+                ) : (
+                  <>
+                    Welcome <em>back</em>
+                  </>
+                )}
+              </h3>
+              <p className="form-sub">
+                {isSignup
+                  ? "All fields are required for registration."
+                  : "Sign in to continue to your dashboard."}
+              </p>
               <button
                 type="button"
                 onClick={switchAuthMode}
-                className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:border-primary hover:text-primary"
+                disabled={isSubmitting}
+                className="switch-btn"
               >
-                {isSignup ? "Switch to Login" : "Switch to Sign Up"}
+                <svg
+                  width="11"
+                  height="11"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2.2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+                {isSignup ? "Switch to Login" : "Create account"}
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="fields">
               {isSignup && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-zinc-700">
-                    Full Name
-                  </label>
+                <div className="field">
+                  <label className="f-label">Full Name</label>
                   <input
-                    className={`w-full rounded-xl border bg-white p-3 text-sm outline-none transition focus:border-primary ${
-                      formErrors.name ? "border-red-500" : "border-zinc-300"
-                    }`}
+                    className={`f-input${formErrors.name ? " err" : ""}`}
                     type="text"
+                    disabled={isSubmitting}
                     onChange={(e) => updateField("name", e.target.value)}
                     value={formData.name}
+                    placeholder="Enter your full name"
                   />
                   {formErrors.name && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {formErrors.name}
-                    </p>
+                    <span className="f-error">⚠ {formErrors.name}</span>
                   )}
                 </div>
               )}
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700">
-                  Email
-                </label>
+              <div className="field">
+                <label className="f-label">Email Address</label>
                 <input
-                  className={`w-full rounded-xl border bg-white p-3 text-sm outline-none transition focus:border-primary ${
-                    formErrors.email ? "border-red-500" : "border-zinc-300"
-                  }`}
+                  className={`f-input${formErrors.email ? " err" : ""}`}
                   type="email"
+                  disabled={isSubmitting}
                   onChange={(e) => updateField("email", e.target.value)}
                   value={formData.email}
+                  placeholder="you@example.com"
                 />
                 {formErrors.email && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {formErrors.email}
-                  </p>
+                  <span className="f-error">⚠ {formErrors.email}</span>
                 )}
               </div>
 
               {isSignup && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-zinc-700">
-                    Phone Number
-                  </label>
-                  <div className="flex items-center">
-                    <span className="rounded-l-xl border border-r-0 border-zinc-300 bg-zinc-100 px-3 py-3 text-sm font-medium text-zinc-700">
-                      +92
-                    </span>
-                    <input
-                      className={`w-full rounded-r-xl border bg-white p-3 text-sm outline-none transition focus:border-primary ${
-                        formErrors.phone_number
-                          ? "border-red-500"
-                          : "border-zinc-300"
-                      }`}
-                      type="tel"
-                      placeholder="3XXXXXXXXX or 03XXXXXXXXX"
-                      onChange={(e) =>
-                        updateField("phone_number", (() => {
-                          const digits = e.target.value.replace(/\D/g, "");
-                          return digits.startsWith("0")
-                            ? digits.slice(0, 11)
-                            : digits.slice(0, 10);
-                        })())
-                      }
-                      value={getLocalPakistanPhone(formData.phone_number)}
-                    />
-                  </div>
-                  {formErrors.phone_number && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {formErrors.phone_number}
-                    </p>
-                  )}
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Pakistan code is fixed to +92. Enter with 0 or without 0.
-                  </p>
-                </div>
-              )}
-
-              {isSignup && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-zinc-700">
-                      Age
-                    </label>
-                    <div
-                      className={`rounded-xl border bg-white p-3 ${
-                        formErrors.age ? "border-red-500" : "border-zinc-300"
-                      }`}
-                    >
-                      <input
-                        className="w-full accent-primary"
-                        type="range"
-                        min="18"
-                        max="120"
-                        step="1"
-                        onChange={(e) => updateField("age", e.target.value)}
-                        value={formData.age || 18}
-                      />
-                      <p className="mt-1 text-sm font-semibold text-zinc-700">
-                        {formData.age || 18} years
-                      </p>
-                    </div>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      User cannot be below 18.
-                    </p>
-                    {formErrors.age && (
-                      <p className="mt-1 text-xs text-red-500">
-                        {formErrors.age}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-zinc-700">
-                      Gender
-                    </label>
-                    <div
-                      className={`rounded-xl border bg-white p-3 ${
-                        formErrors.gender ? "border-red-500" : "border-zinc-300"
-                      }`}
-                    >
-                      <div className="space-y-2">
-                        {GENDER_OPTIONS.map((gender) => (
-                          <label
-                            key={gender}
-                            className="flex cursor-pointer items-center gap-2"
-                          >
-                            <input
-                              type="radio"
-                              name="gender"
-                              value={gender}
-                              checked={formData.gender === gender}
-                              onChange={(e) =>
-                                updateField("gender", e.target.value)
-                              }
-                              className="accent-primary"
-                            />
-                            <span className="font-semibold tracking-wide text-zinc-800">
-                              {gender}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    {formErrors.gender && (
-                      <p className="mt-1 text-xs text-red-500">
-                        {formErrors.gender}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {isSignup && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-zinc-700">
-                    Profile Image
-                  </label>
+                <div className="field">
+                  <label className="f-label">Profile Photo</label>
                   <label
-                    className={`flex cursor-pointer items-center justify-between rounded-2xl border-2 border-dashed bg-zinc-50 p-4 transition hover:border-primary hover:bg-primary/5 ${
-                      formErrors.profileImage
-                        ? "border-red-500"
-                        : "border-zinc-300"
-                    }`}
+                    className={`upload-label${formErrors.profileImage ? " err" : ""}`}
                   >
-                    <div>
-                      <p className="text-sm font-medium text-zinc-900">
+                    <div className="upload-icon-box">
+                      <svg
+                        fill="none"
+                        stroke={formErrors.profileImage ? "#f43f5e" : "#0ea5e9"}
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                      </svg>
+                    </div>
+                    <div className="upload-texts">
+                      <div className="upload-main">
                         {profileImage
                           ? profileImage.name
-                          : "Upload a clear profile photo"}
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-500">
-                        PNG, JPG, or WEBP
-                      </p>
+                          : "Click to upload photo"}
+                      </div>
+                      <div className="upload-hint">
+                        PNG, JPG, WEBP · max 5MB
+                      </div>
                     </div>
-                    {profileImagePreview ? (
-                      <img
-                        src={profileImagePreview}
-                        alt="Profile preview"
-                        className="h-12 w-12 rounded-xl object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                        Add image
-                      </span>
+                    {profileImagePreview && (
+                      <div className="upload-thumb">
+                        <img src={profileImagePreview} alt="Preview" />
+                      </div>
                     )}
                     <input
-                      className="hidden"
                       type="file"
                       accept="image/*"
+                      disabled={isSubmitting}
                       onChange={handleImageChange}
                     />
                   </label>
                   {formErrors.profileImage && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {formErrors.profileImage}
-                    </p>
+                    <span className="f-error">⚠ {formErrors.profileImage}</span>
                   )}
                 </div>
               )}
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700">
-                  Password
-                </label>
+              <div className="field">
+                <label className="f-label">Password</label>
                 <input
-                  className={`w-full rounded-xl border bg-white p-3 text-sm outline-none transition focus:border-primary ${
-                    formErrors.password ? "border-red-500" : "border-zinc-300"
-                  }`}
+                  className={`f-input${formErrors.password ? " err" : ""}`}
                   type="password"
+                  disabled={isSubmitting}
                   onChange={(e) => updateField("password", e.target.value)}
                   value={formData.password}
+                  placeholder={
+                    isSignup
+                      ? "Min 8 chars, one uppercase"
+                      : "Enter your password"
+                  }
                 />
                 {formErrors.password && (
-                  <p className="mt-1 text-xs text-red-500">
-                    {formErrors.password}
-                  </p>
+                  <span className="f-error">⚠ {formErrors.password}</span>
+                )}
+                {!isSignup && (
+                  <div className="forgot-row">
+                    <button
+                      type="button"
+                      className="forgot-btn"
+                      onClick={() => {}}
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
                 )}
               </div>
 
               <button
-                type="submit"
-                className="w-full rounded-xl bg-primary py-3 text-base font-semibold text-white transition hover:opacity-95"
+                type="button"
+                onClick={onSubmitHandler}
+                disabled={
+                  isSubmitting ||
+                  (!isSignup && (!formData.email || !formData.password)) ||
+                  (isSignup &&
+                    (!formData.name ||
+                      !formData.email ||
+                      !formData.password ||
+                      !profileImage))
+                }
+                className="submit-btn"
               >
-                {submitLabel}
+                {isSubmitting ? (
+                  <>
+                    <div className="spinner" />
+                    {isSignup ? "Creating Account…" : "Signing in…"}
+                  </>
+                ) : (
+                  submitLabel
+                )}
               </button>
 
               {!isSignup && (
-                <div className="pt-2">
+                <div className="google-section">
+                  <div className="or-row">
+                    <div className="or-line" />
+                    <span className="or-txt">or continue with</span>
+                    <div className="or-line" />
+                  </div>
                   <GoogleLogin
                     onSuccess={async (credentialResponse) => {
-                      const { data } = await axiosInstance.post(
-                        "/api/user/google-login",
-                        {
-                          token: credentialResponse.credential,
-                        },
-                      );
-
-                      if (data.success) {
-                        localStorage.setItem("token", data.token);
-                        setToken(data.token);
-                        navigate("/");
-                      } else {
-                        toast.error("Google login failed");
+                      try {
+                        const { data } = await axiosInstance.post(
+                          "/api/user/google-login",
+                          { token: credentialResponse.credential },
+                        );
+                        if (data.success) {
+                          if (
+                            data.user?.phone_number &&
+                            data.user?.age &&
+                            data.user?.gender
+                          ) {
+                            setToken(data.token, "FULLY_AUTHENTICATED");
+                            navigate("/");
+                          } else {
+                            setToken(data.token, "PENDING_PROFILE");
+                            navigate("/complete-profile");
+                          }
+                        } else
+                          toast.error(data.message || "Google login failed");
+                      } catch (error) {
+                        toast.error(
+                          error.response?.data?.message ||
+                            "Google login failed",
+                        );
                       }
                     }}
                     onError={() => toast.error("Google Login Failed")}
@@ -548,34 +701,10 @@ const Login = () => {
                 </div>
               )}
             </div>
-
-            <p className="mt-6 text-sm text-zinc-500">
-              {isSignup ? (
-                <>
-                  Already have an account?{" "}
-                  <span
-                    onClick={switchAuthMode}
-                    className="cursor-pointer font-medium text-primary underline"
-                  >
-                    Login here
-                  </span>
-                </>
-              ) : (
-                <>
-                  Create a new account?{" "}
-                  <span
-                    onClick={switchAuthMode}
-                    className="cursor-pointer font-medium text-primary underline"
-                  >
-                    Click here
-                  </span>
-                </>
-              )}
-            </p>
           </div>
         </div>
-      </form>
-    </div>
+      </div>
+    </>
   );
 };
 

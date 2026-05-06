@@ -9,6 +9,7 @@ import {
   PAYMENT_METHOD,
   PAYMENT_TYPE,
 } from "../config/payment.js";
+import { buildAppointmentMeetingLink } from "../utils/meetingLink.js";
 
 const isTransactionUnsupportedError = (error) =>
   error?.code === 20 ||
@@ -116,6 +117,15 @@ export const finalizeStripeAppointmentPayment = async ({
     appointment.isPaid = normalizedPaymentType === PAYMENT_TYPE.FULL;
     appointment.tokenPaid = normalizedPaymentType === PAYMENT_TYPE.TOKEN;
     appointment.currency = PAYMENT_CURRENCY;
+    appointment.sessionStatus = "booked";
+    appointment.doctorJoined = Boolean(appointment.doctorJoined);
+    appointment.patientJoined = Boolean(appointment.patientJoined);
+    if (appointment.appointmentType === "online" && !appointment.meetingLink) {
+      appointment.meetingLink = buildAppointmentMeetingLink({
+        doctorId: String(appointment.docId),
+        appointmentId: String(appointment._id),
+      });
+    }
 
     // Credit doctor wallet via WalletService (ledgered + idempotent).
     const walletResult =
