@@ -187,6 +187,107 @@ const DoctorChatWindow = ({
     });
   };
 
+  const handleDownloadFile = async (fileUrl, fileName, fileType) => {
+    try {
+      if (fileType.startsWith("image/")) {
+        window.open(fileUrl, "_blank");
+        return;
+      }
+
+      // For documents (PDFs, etc.), use backend download endpoint
+      let downloadSuccess = false;
+
+      // Method 1: Use backend download endpoint
+      try {
+        const downloadUrl = `http://localhost:4000/api/chat/download-file?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(fileName)}`;
+
+        const response = await fetch(downloadUrl, {
+          method: "GET",
+          headers: {
+            dToken: dToken,
+          },
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = fileName;
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          downloadSuccess = true;
+        }
+      } catch (backendError) {
+        console.log(
+          "Backend download method failed, trying direct approach...",
+        );
+      }
+
+      // Method 2: Try direct download with proper headers
+      if (!downloadSuccess) {
+        try {
+          const response = await fetch(fileUrl, {
+            method: "GET",
+            mode: "cors",
+            cache: "no-cache",
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            downloadSuccess = true;
+          }
+        } catch (fetchError) {
+          console.log(
+            "Direct fetch method failed, trying Cloudinary approach...",
+          );
+        }
+      }
+
+      // Method 3: For Cloudinary URLs, try with download parameter
+      if (!downloadSuccess && fileUrl.includes("cloudinary")) {
+        try {
+          const downloadUrl = fileUrl.replace(
+            "/upload/",
+            "/upload/fl_attachment/",
+          );
+          const link = document.createElement("a");
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.target = "_blank";
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          downloadSuccess = true;
+        } catch (cloudinaryError) {
+          console.log("Cloudinary method failed, trying final fallback...");
+        }
+      }
+
+      // Method 4: Final fallback - open in new tab
+      if (!downloadSuccess) {
+        window.open(fileUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      // Ultimate fallback - open in new tab
+      window.open(fileUrl, "_blank");
+    }
+  };
+
   const isMessageFromCurrentUser = (message) => {
     return message.senderType === "doctor";
   };
@@ -249,21 +350,43 @@ const DoctorChatWindow = ({
                     <img
                       src={message.fileUrl}
                       alt="Shared image"
-                      className="rounded cursor-pointer"
-                      onClick={() => window.open(message.fileUrl, "_blank")}
+                      className="rounded cursor-pointer max-w-full h-auto"
+                      onClick={() =>
+                        handleDownloadFile(
+                          message.fileUrl,
+                          message.fileName || "image",
+                          "image",
+                        )
+                      }
                     />
+                    <button
+                      onClick={() =>
+                        handleDownloadFile(
+                          message.fileUrl,
+                          message.fileName || "image",
+                          "image",
+                        )
+                      }
+                      className="text-xs text-blue-200 hover:text-white mt-1 underline"
+                    >
+                      Download Image
+                    </button>
                   </div>
                 ) : message.messageType === "document" && message.fileUrl ? (
                   <div>
                     <p className="text-sm mb-2">{message.message}</p>
-                    <a
-                      href={message.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm"
+                    <button
+                      onClick={() =>
+                        handleDownloadFile(
+                          message.fileUrl,
+                          message.fileName,
+                          "document",
+                        )
+                      }
+                      className="text-blue-600 hover:text-blue-800 text-sm underline flex items-center gap-1"
                     >
                       📄 {message.fileName}
-                    </a>
+                    </button>
                   </div>
                 ) : (
                   <p>{message.message}</p>

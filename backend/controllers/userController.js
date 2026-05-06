@@ -24,6 +24,7 @@ import {
   calculateTotalAmount,
   calculateTokenPaymentTotal,
 } from "../config/payment.js";
+import { processAppointmentRefund } from "../services/refundService.js";
 import {
   isJoinAllowedNow,
   computeSessionStatusFromJoinFlags,
@@ -276,7 +277,7 @@ const bookAppointment = async (req, res) => {
     const doctorFee = Number(docData.fees || 0);
     const platformFee = PLATFORM_FEE;
     const tokenAmount =
-      appointmentType === "physical" ? Math.min(TOKEN_AMOUNT, doctorFee) : 0;
+      appointmentType === "physical" ? Math.min(TOKEN_AMOUNT, doctorFee) : TOKEN_AMOUNT;
 
     // Calculate totals with platform fee
     const fullPaymentTotal = calculateTotalAmount(doctorFee);
@@ -492,8 +493,6 @@ const cancelAppointment = async (req, res) => {
       });
     }
 
-    const refundAmount = Number(appointment.paidAmount || 0);
-
     // 🟢 Cancel appointment
     appointment.appointmentStatus = APPOINTMENT_STATUS.CANCELLED_BY_USER;
     appointment.status = APPOINTMENT_STATUS.CANCELLED_BY_USER;
@@ -501,10 +500,6 @@ const cancelAppointment = async (req, res) => {
     appointment.cancelledAt = new Date();
     appointment.cancellationReason = "Cancelled by patient";
     appointment.cancelledBy = "USER";
-    // 🔴 Business rule: patient cancellation = NO refund, NO wallet deduction
-    appointment.refundInitiated = false;
-    appointment.refundAmount = 0;
-    appointment.refundStatus = REFUND_STATUS.NONE;
 
     await appointment.save();
 
@@ -547,13 +542,25 @@ const cancelAppointment = async (req, res) => {
       console.error("Failed to send cancellation emails:", err);
     }
 
+    // Process refund using the refund service
+    let refundResult = { success: false, refundAmount: 0 };
+    
+    try {
+      refundResult = await processAppointmentRefund(appointment._id, "USER");
+    } catch (refundError) {
+      console.error("❌ Refund processing failed:", refundError);
+      // Continue with cancellation even if refund fails
+    }
+
     return res.json({
       success: true,
       message: "Appointment cancelled successfully",
       cancellation_reason: appointment.cancellationReason,
-      refund_status: false,
-      refundAmount: 0,
-      refundInitiated: false,
+      refund_status: refundResult.refundStatus || REFUND_STATUS.NONE,
+      refundAmount: refundResult.refundAmount || 0,
+      refundInitiated: refundResult.refundAmount > 0,
+      refundProcessed: refundResult.success,
+      refundId: refundResult.refundId || null,
     });
   } catch (error) {
     console.log("cancelAppointment error:", error);

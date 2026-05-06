@@ -131,6 +131,15 @@ const appointmentSchema = new mongoose.Schema({
   refundAmount: { type: Number, default: 0 },
   refundId: { type: String, default: null },
   refundInitiated: { type: Boolean, default: false },
+  refundProcessedAt: { type: Date, default: null },
+  refundFailureReason: { type: String, default: null },
+  
+  // Cancellation Fee Breakdown
+  cancellationFees: {
+    bookingFee: { type: Number, default: 500 },
+    processingFee: { type: Number, default: 100 },
+    totalDeduction: { type: Number, default: 600 },
+  },
 
   // Legacy fields for backward compatibility
   payment: { type: Boolean, default: false },

@@ -49,6 +49,8 @@ const MyAppointments = () => {
   const [comment, setComment] = useState("");
   const [showChatWindow, setShowChatWindow] = useState(false);
   const [selectedChatAppt, setSelectedChatAppt] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedCancelAppt, setSelectedCancelAppt] = useState(null);
 
   // Initialize chat notifications
   useChatNotifications(token, "user");
@@ -80,11 +82,44 @@ const MyAppointments = () => {
     try {
       const { data } = await axiosInstance.get("/api/user/appointments");
       if (data.success) {
-        // Sort appointments by creation date (newest first) to ensure consistent ordering
+        // Sort appointments by booking date (newest first) to ensure newest booked appointments appear on top
         const sortedAppointments = data.appointments.sort((a, b) => {
-          const dateA = new Date(a.createdAt || a.date);
-          const dateB = new Date(b.createdAt || b.date);
-          return dateB.getTime() - dateA.getTime();
+          // Create proper date objects from slotDate and slotTime for accurate sorting
+          const createDateTime = (slotDate, slotTime) => {
+            if (!slotDate) return new Date(0);
+
+            // Parse slotDate (format: DD_Month_YYYY or DD-MM-YYYY)
+            const dateParts = String(slotDate).includes("-")
+              ? String(slotDate).split("-").reverse()
+              : String(slotDate).split("_");
+
+            if (dateParts.length !== 3) return new Date(0);
+
+            const [day, month, year] = dateParts;
+            const date = new Date(
+              `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`,
+            );
+
+            if (slotTime) {
+              // Parse slotTime and add to date
+              const [timeValue, meridian = ""] = String(slotTime).split(" ");
+              const [hRaw, mRaw] = timeValue.split(":");
+              let hour = Number.parseInt(hRaw, 10);
+              const minute = Number.parseInt(mRaw, 10);
+              const lowerMeridian = String(meridian).toLowerCase();
+              if (lowerMeridian === "pm" && hour < 12) hour += 12;
+              if (lowerMeridian === "am" && hour === 12) hour = 0;
+              date.setHours(hour, minute || 0, 0, 0);
+            }
+
+            return date;
+          };
+
+          const dateTimeA = createDateTime(a.slotDate, a.slotTime);
+          const dateTimeB = createDateTime(b.slotDate, b.slotTime);
+
+          // Sort by date and time (newest first)
+          return dateTimeB.getTime() - dateTimeA.getTime();
         });
         setAppointments(sortedAppointments);
       }
@@ -92,6 +127,21 @@ const MyAppointments = () => {
       console.log(error);
       toast.error(error.message);
     }
+  };
+
+  const calculateRefundAmount = (appointment) => {
+    const totalPaid = Number(
+      appointment.paidAmount || appointment.totalAmount || 0,
+    );
+    const bookingFee = 500;
+    const processingFee = 100;
+    const totalDeduction = bookingFee + processingFee;
+    return Math.max(totalPaid - totalDeduction, 0);
+  };
+
+  const openCancelModal = (appointment) => {
+    setSelectedCancelAppt(appointment);
+    setShowCancelModal(true);
   };
 
   const cancelAppointment = async (appointmentId) => {
@@ -103,6 +153,8 @@ const MyAppointments = () => {
 
       if (data.success) {
         toast.success(data.message);
+        setShowCancelModal(false);
+        setSelectedCancelAppt(null);
         getUserAppointments();
         getDoctorsData();
       } else {
@@ -386,7 +438,7 @@ const MyAppointments = () => {
                     appointmentStatus !== "CANCELLED_BY_ADMIN" &&
                     !item.isCompleted && (
                       <button
-                        onClick={() => cancelAppointment(item._id)}
+                        onClick={() => openCancelModal(item)}
                         className="text-sm text-stone-500 text-center w-full sm:min-w-48 py-2.5 border rounded hover:bg-red-600 hover:text-white transition-all"
                       >
                         Cancel appointment
@@ -481,6 +533,75 @@ const MyAppointments = () => {
                 className="px-3 py-1 bg-primary text-white rounded"
               >
                 Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CANCELLATION CONFIRMATION MODAL */}
+      {showCancelModal && selectedCancelAppt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Cancel Appointment
+              </h3>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-amber-800 font-medium mb-3">
+                  ⚠️ Cancellation charges will apply:
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      Booking fee (non-refundable):
+                    </span>
+                    <span className="font-medium">Rs. 500</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">
+                      Processing fee (non-refundable):
+                    </span>
+                    <span className="font-medium">Rs. 100</span>
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between font-semibold">
+                      <span>You will be refunded:</span>
+                      <span className="text-green-600">
+                        Rs. {calculateRefundAmount(selectedCancelAppt)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600">
+                Are you sure you want to cancel your appointment with{" "}
+                <span className="font-medium">
+                  {selectedCancelAppt.docData.name}
+                </span>{" "}
+                on{" "}
+                <span className="font-medium">
+                  {slotDateFormat(selectedCancelAppt.slotDate)} at{" "}
+                  {selectedCancelAppt.slotTime}
+                </span>
+                ?
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowCancelModal(false);
+                  setSelectedCancelAppt(null);
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => cancelAppointment(selectedCancelAppt._id)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Yes, Cancel Appointment
               </button>
             </div>
           </div>

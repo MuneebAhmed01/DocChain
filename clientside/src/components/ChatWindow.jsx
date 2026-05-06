@@ -22,6 +22,7 @@ const ChatWindow = ({ appointmentId, doctorName, doctorImage, onClose }) => {
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [socket, setSocket] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -198,6 +199,147 @@ const ChatWindow = ({ appointmentId, doctorName, doctorImage, onClose }) => {
     });
   };
 
+  const handleDownloadFile = async (fileUrl, fileName, fileType) => {
+    try {
+      // For images, open in new tab
+      if (fileType.startsWith("image/")) {
+        window.open(fileUrl, "_blank");
+        return;
+      }
+
+      // For documents (PDFs, etc.), use backend download endpoint
+      let downloadSuccess = false;
+
+      // Method 1: Use backend download endpoint
+      try {
+        const token = localStorage.getItem("token");
+        const downloadUrl = `http://localhost:4000/api/chat/download-file?fileUrl=${encodeURIComponent(fileUrl)}&fileName=${encodeURIComponent(fileName)}`;
+
+        const response = await fetch(downloadUrl, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = fileName;
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          downloadSuccess = true;
+        }
+      } catch (backendError) {
+        console.log(
+          "Backend download method failed, trying direct approach...",
+        );
+      }
+
+      // Method 2: Try direct download with proper headers
+      if (!downloadSuccess) {
+        try {
+          const response = await fetch(fileUrl, {
+            method: "GET",
+            mode: "cors",
+            cache: "no-cache",
+          });
+
+          if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = fileName;
+            link.style.display = "none";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+            downloadSuccess = true;
+          }
+        } catch (fetchError) {
+          console.log(
+            "Direct fetch method failed, trying Cloudinary approach...",
+          );
+        }
+      }
+
+      // Method 3: For Cloudinary URLs, try with download parameter
+      if (!downloadSuccess && fileUrl.includes("cloudinary")) {
+        try {
+          const downloadUrl = fileUrl.replace(
+            "/upload/",
+            "/upload/fl_attachment/",
+          );
+          const link = document.createElement("a");
+          link.href = downloadUrl;
+          link.download = fileName;
+          link.target = "_blank";
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          downloadSuccess = true;
+        } catch (cloudinaryError) {
+          console.log("Cloudinary method failed, trying final fallback...");
+        }
+      }
+
+      // Method 4: Final fallback - open in new tab
+      if (!downloadSuccess) {
+        window.open(fileUrl, "_blank");
+      }
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      // Ultimate fallback - open in new tab
+      window.open(fileUrl, "_blank");
+    }
+  };
+
+  const handleGeneratePdf = async () => {
+    try {
+      setGeneratingPdf(true);
+      toast.info("Generating PDF, please wait...");
+
+      const response = await axiosInstance.post(
+        "/api/chat/generate-pdf",
+        { appointmentId },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data.success) {
+        toast.success("PDF generated successfully!");
+
+        // Download the generated PDF
+        const downloadUrl = `/api/chat/download-file?fileUrl=${encodeURIComponent(response.data.pdfUrl)}&fileName=${encodeURIComponent(response.data.fileName)}`;
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = response.data.fileName;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        toast.error("Failed to generate PDF");
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   const isMessageFromCurrentUser = (message) => {
     const isFromCurrentUser =
       message.senderType === "patient" && message.senderId === userId;
@@ -231,24 +373,50 @@ const ChatWindow = ({ appointmentId, doctorName, doctorImage, onClose }) => {
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGeneratePdf}
+              disabled={generatingPdf}
+              className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              title="Generate PDF of chat history"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+              {generatingPdf ? (
+                <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+              ) : (
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -271,21 +439,43 @@ const ChatWindow = ({ appointmentId, doctorName, doctorImage, onClose }) => {
                     <img
                       src={message.fileUrl}
                       alt="Shared image"
-                      className="rounded cursor-pointer"
-                      onClick={() => window.open(message.fileUrl, "_blank")}
+                      className="rounded cursor-pointer max-w-full h-auto"
+                      onClick={() =>
+                        handleDownloadFile(
+                          message.fileUrl,
+                          message.fileName || "image",
+                          "image",
+                        )
+                      }
                     />
+                    <button
+                      onClick={() =>
+                        handleDownloadFile(
+                          message.fileUrl,
+                          message.fileName || "image",
+                          "image",
+                        )
+                      }
+                      className="text-xs text-blue-200 hover:text-white mt-1 underline"
+                    >
+                      Download Image
+                    </button>
                   </div>
                 ) : message.messageType === "document" && message.fileUrl ? (
                   <div>
                     <p className="text-sm mb-2">{message.message}</p>
-                    <a
-                      href={message.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm"
+                    <button
+                      onClick={() =>
+                        handleDownloadFile(
+                          message.fileUrl,
+                          message.fileName,
+                          "document",
+                        )
+                      }
+                      className="text-blue-200 hover:text-white text-sm underline flex items-center gap-1"
                     >
                       📄 {message.fileName}
-                    </a>
+                    </button>
                   </div>
                 ) : (
                   <p>{message.message}</p>
@@ -329,7 +519,7 @@ const ChatWindow = ({ appointmentId, doctorName, doctorImage, onClose }) => {
               ref={fileInputRef}
               type="file"
               onChange={handleFileUpload}
-              accept="image/*,.pdf,.doc,.docx,.txt"
+              accept="image/*,.doc,.docx"
               className="hidden"
               id="file-upload"
             />
