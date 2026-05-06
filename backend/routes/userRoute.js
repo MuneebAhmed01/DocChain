@@ -56,7 +56,8 @@ const router = express.Router();
 const upload = multer({ dest: "uploads/" });
 
 import welcomeEmail from "../emailTemplates/welcomeEmail.js";
-
+import sendOTPEmail from "../emailTemplates/otpEmail.js";
+import { generateOTP, storeOTP, verifyOTP, isEmailVerified } from "../utils/otpUtils.js";
 
 import googleClient from "../utils/googleClient.js";
 
@@ -111,6 +112,91 @@ router.post("/google-login", async (req, res) => {
   }
 });
 
+// ------------------ OTP ROUTES ------------------
+
+// Send OTP for email verification
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email is required" 
+      });
+    }
+
+    // Validate email format
+    if (!String(email).includes("@")) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid email format" 
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "An account with this email already exists" 
+      });
+    }
+
+    // Generate and store OTP
+    const otp = generateOTP();
+    await storeOTP(email, otp, 'signup');
+
+    // Send OTP email
+    await sendOTPEmail(email, otp);
+
+    res.json({ 
+      success: true, 
+      message: "OTP sent successfully to your email" 
+    });
+  } catch (error) {
+    console.error("Send OTP error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Failed to send OTP" 
+    });
+  }
+});
+
+// Verify OTP
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email and OTP are required" 
+      });
+    }
+
+    const result = await verifyOTP(email, otp, 'signup');
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: "OTP verified successfully" 
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        message: result.message 
+      });
+    }
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to verify OTP" 
+    });
+  }
+});
+
 // ------------------ REGISTER ------------------
 router.post("/register", upload.single("image"), async (req, res) => {
   try {
@@ -137,6 +223,15 @@ router.post("/register", upload.single("image"), async (req, res) => {
       return res.status(400).json({ 
         success: false, 
         message: "Password must be at least 8 characters long" 
+      });
+    }
+
+    // Check if email is verified via OTP
+    const isVerified = await isEmailVerified(email, 'signup');
+    if (!isVerified) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email verification required. Please verify your email with OTP first." 
       });
     }
 

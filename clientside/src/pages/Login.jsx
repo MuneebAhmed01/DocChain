@@ -62,22 +62,119 @@ const Login = () => {
     name: "",
     email: "",
     password: "",
+    otp: "",
   });
   const [profileImage, setProfileImage] = useState(null);
   const [profileImagePreview, setProfileImagePreview] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
   const isSignup = state === "Sign Up";
-
-  const switchAuthMode = () => {
-    setState((c) => (c === "Sign Up" ? "Login" : "Sign Up"));
-    setFormErrors({});
-  };
 
   const updateField = (field, value) => {
     setFormData((c) => ({ ...c, [field]: value }));
     setFormErrors((c) => ({ ...c, [field]: "" }));
+  };
+
+  // Send OTP function
+  const sendOTP = async () => {
+    if (!formData.email) {
+      setFormErrors((c) => ({ ...c, email: "Email is required to send OTP" }));
+      return;
+    }
+
+    if (!formData.email.includes("@")) {
+      setFormErrors((c) => ({
+        ...c,
+        email: "Please enter a valid email address",
+      }));
+      return;
+    }
+
+    setSendingOtp(true);
+    setFormErrors((c) => ({ ...c, otp: "" }));
+
+    try {
+      const { data } = await axiosInstance.post("/api/user/send-otp", {
+        email: formData.email,
+      });
+
+      if (data.success) {
+        setOtpSent(true);
+        toast.success("OTP sent to your email!");
+
+        // Start cooldown timer
+        setOtpCooldown(60);
+        const timer = setInterval(() => {
+          setOtpCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        toast.error(data.message || "Failed to send OTP");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to send OTP");
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Verify OTP function
+  const verifyOTP = async () => {
+    if (!formData.otp) {
+      setFormErrors((c) => ({ ...c, otp: "OTP is required" }));
+      return;
+    }
+
+    if (formData.otp.length !== 6) {
+      setFormErrors((c) => ({ ...c, otp: "OTP must be 6 digits" }));
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setFormErrors((c) => ({ ...c, otp: "" }));
+
+    try {
+      const { data } = await axiosInstance.post("/api/user/verify-otp", {
+        email: formData.email,
+        otp: formData.otp,
+      });
+
+      if (data.success) {
+        setOtpVerified(true);
+        toast.success("Email verified successfully!");
+      } else {
+        setFormErrors((c) => ({ ...c, otp: data.message || "Invalid OTP" }));
+        toast.error(data.message || "Invalid OTP");
+      }
+    } catch (error) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to verify OTP";
+      setFormErrors((c) => ({ ...c, otp: errorMessage }));
+      toast.error(errorMessage);
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  // Reset OTP state when switching auth mode
+  const switchAuthMode = () => {
+    setState((c) => (c === "Sign Up" ? "Login" : "Sign Up"));
+    setFormErrors({});
+    setOtpSent(false);
+    setOtpVerified(false);
+    setOtpCooldown(0);
+    setFormData((c) => ({ ...c, otp: "" }));
   };
 
   const handleImageChange = (event) => {
@@ -110,10 +207,13 @@ const Login = () => {
     };
   }, [profileImagePreview]);
 
-  const submitLabel = useMemo(
-    () => (isSignup ? "Create Account" : "Sign In"),
-    [isSignup],
-  );
+  const submitLabel = useMemo(() => {
+    if (isSignup) {
+      if (!otpVerified) return "Verify Email First";
+      return "Create Account";
+    }
+    return "Sign In";
+  }, [isSignup, otpVerified]);
 
   const onSubmitHandler = async (event) => {
     event.preventDefault();
@@ -138,6 +238,7 @@ const Login = () => {
         ? {}
         : getZodFieldErrors(validation.error);
       if (!profileImage) newErrors.profileImage = "Profile image is required";
+      if (!otpVerified) newErrors.otp = "Email verification is required";
       if (Object.keys(newErrors).length > 0) {
         setFormErrors(newErrors);
         toast.error("Please fix highlighted fields");
@@ -637,6 +738,171 @@ const Login = () => {
                 )}
               </div>
 
+              {isSignup && (
+                <div className="field">
+                  <label className="f-label">Email Verification</label>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "8px",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <input
+                        className={`f-input${formErrors.otp ? " err" : ""}`}
+                        type="text"
+                        disabled={isSubmitting || !otpSent || otpVerified}
+                        onChange={(e) =>
+                          updateField(
+                            "otp",
+                            e.target.value.replace(/\D/g, "").slice(0, 6),
+                          )
+                        }
+                        value={formData.otp}
+                        placeholder={
+                          otpSent ? "Enter 6-digit OTP" : "Send OTP first"
+                        }
+                        maxLength={6}
+                      />
+                      {formErrors.otp && (
+                        <span className="f-error">⚠ {formErrors.otp}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={sendOTP}
+                      disabled={
+                        sendingOtp ||
+                        otpCooldown > 0 ||
+                        isSubmitting ||
+                        otpVerified
+                      }
+                      style={{
+                        height: "38px",
+                        padding: "0 16px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #e2e8f0",
+                        background: otpVerified ? "#10b981" : "#fff",
+                        color: otpVerified ? "#fff" : "#0ea5e9",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        cursor:
+                          sendingOtp ||
+                          otpCooldown > 0 ||
+                          isSubmitting ||
+                          otpVerified
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          sendingOtp ||
+                          otpCooldown > 0 ||
+                          isSubmitting ||
+                          otpVerified
+                            ? 0.6
+                            : 1,
+                        transition: "all 0.18s",
+                        whiteSpace: "nowrap",
+                        minWidth: "100px",
+                      }}
+                    >
+                      {sendingOtp ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <div
+                            className="spinner"
+                            style={{
+                              width: "12px",
+                              height: "12px",
+                              borderWidth: "1.5px",
+                            }}
+                          />
+                          Sending...
+                        </div>
+                      ) : otpVerified ? (
+                        "✓ Verified"
+                      ) : otpCooldown > 0 ? (
+                        `Resend (${otpCooldown}s)`
+                      ) : (
+                        "Send OTP"
+                      )}
+                    </button>
+                  </div>
+
+                  {otpSent && !otpVerified && (
+                    <button
+                      type="button"
+                      onClick={verifyOTP}
+                      disabled={verifyingOtp || isSubmitting || !formData.otp}
+                      style={{
+                        height: "38px",
+                        borderRadius: "8px",
+                        border: "none",
+                        background: "linear-gradient(135deg, #10b981, #059669)",
+                        color: "#fff",
+                        fontSize: "12px",
+                        fontWeight: "600",
+                        cursor:
+                          verifyingOtp || isSubmitting || !formData.otp
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity:
+                          verifyingOtp || isSubmitting || !formData.otp
+                            ? 0.6
+                            : 1,
+                        transition: "all 0.18s",
+                        marginTop: "8px",
+                        width: "100%",
+                      }}
+                    >
+                      {verifyingOtp ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "6px",
+                          }}
+                        >
+                          <div
+                            className="spinner"
+                            style={{
+                              width: "12px",
+                              height: "12px",
+                              borderWidth: "1.5px",
+                            }}
+                          />
+                          Verifying...
+                        </div>
+                      ) : (
+                        "Verify OTP"
+                      )}
+                    </button>
+                  )}
+
+                  {otpVerified && (
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        color: "#10b981",
+                        fontWeight: "500",
+                        marginTop: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      ✓ Email verified successfully
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={onSubmitHandler}
@@ -647,7 +913,8 @@ const Login = () => {
                     (!formData.name ||
                       !formData.email ||
                       !formData.password ||
-                      !profileImage))
+                      !profileImage ||
+                      !otpVerified))
                 }
                 className="submit-btn"
               >
