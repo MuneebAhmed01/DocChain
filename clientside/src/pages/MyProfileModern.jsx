@@ -153,6 +153,7 @@ const MyProfile = () => {
       formData.append("address", JSON.stringify(userData.address));
       formData.append("gender", userData.gender);
       formData.append("dob", computedDob);
+      formData.append("age", age.toString());
 
       const { data } = await axiosInstance.post(
         backendUrl + "/api/user/update-profile",
@@ -474,7 +475,7 @@ const MyProfile = () => {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Gender */}
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -554,13 +555,53 @@ const MyProfile = () => {
                   </div>
                 </div>
 
+                {/* Age */}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600 mb-1">Age</p>
+                    {isEdit ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="18"
+                          max="120"
+                          value={localAge}
+                          onChange={(e) => {
+                            const newAge = parseInt(e.target.value) || 18;
+                            setLocalAge(newAge);
+                            setErrors((prev) => ({
+                              ...prev,
+                              dob: undefined,
+                            }));
+                          }}
+                          className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <span className="text-gray-600 text-sm">years</span>
+                      </div>
+                    ) : (
+                      <p className="text-gray-900 font-medium">
+                        {userData.dob !== "Not Selected"
+                          ? new Date().getFullYear() -
+                            new Date(userData.dob).getFullYear()
+                          : "—"}
+                      </p>
+                    )}
+                    {errors.dob && isEdit && (
+                      <p className="text-red-500 text-sm mt-1">{errors.dob}</p>
+                    )}
+                  </div>
+                </div>
+
                 {/* Health Tip */}
                 <div
                   className="flex items-center gap-4"
                   onClick={() => pickNewTip()}
                 >
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-6 h-6 text-orange-600" />
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <RefreshCw className="w-6 h-6 text-purple-600" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-start justify-between">

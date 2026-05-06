@@ -166,7 +166,7 @@ const updateProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const { name, phone, address, dob, gender } = req.body;
+    const { name, phone, address, dob, gender, age } = req.body;
 
     const imageFile = req.file;
 
@@ -174,12 +174,24 @@ const updateProfile = async (req, res) => {
       return res.json({ success: false, message: "Data Missing" });
     }
 
+    // Calculate DOB from age if age is provided, otherwise use provided dob
+    let finalDob = dob;
+    let finalAge = age;
+    
+    if (age && !isNaN(age)) {
+      // Calculate DOB from age (use January 1st of birth year)
+      const birthYear = new Date().getFullYear() - parseInt(age);
+      finalDob = `${birthYear}-01-01`;
+      finalAge = parseInt(age);
+    }
+
     await userModel.findByIdAndUpdate(userId, {
       name,
       phone,
       address: JSON.parse(address),
-      dob,
+      dob: finalDob,
       gender,
+      age: finalAge,
     });
 
     if (imageFile) {
