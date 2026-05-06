@@ -80,7 +80,13 @@ const MyAppointments = () => {
     try {
       const { data } = await axiosInstance.get("/api/user/appointments");
       if (data.success) {
-        setAppointments(data.appointments);
+        // Sort appointments by creation date (newest first) to ensure consistent ordering
+        const sortedAppointments = data.appointments.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.date);
+          const dateB = new Date(b.createdAt || b.date);
+          return dateB.getTime() - dateA.getTime();
+        });
+        setAppointments(sortedAppointments);
       }
     } catch (error) {
       console.log(error);
@@ -268,7 +274,15 @@ const MyAppointments = () => {
                     </div>
                     <div className="flex justify-between text-sm font-semibold pt-1 border-t">
                       <span>Total Paid:</span>
-                      <span>{formatPkrAmount(item.paidAmount || 0)}</span>
+                      <span>
+                        {item.paymentStatus === "PAID"
+                          ? formatPkrAmount(
+                              item.paidAmount || item.totalAmount || 0,
+                            )
+                          : item.paymentStatus === "PARTIAL" || item.tokenPaid
+                            ? formatPkrAmount(item.paidAmount || 0)
+                            : "Pending"}
+                      </span>
                     </div>
                   </div>
 
