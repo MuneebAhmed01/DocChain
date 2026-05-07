@@ -8,6 +8,10 @@ import { v4 as uuidv4 } from 'uuid';
 import userModel from "../models/userModel.js";
 import { finalizeStripeAppointmentPayment } from "../services/paymentFinalizeService.js";
 import {
+  sendAppointmentConfirmation,
+  sendAppointmentConfirmationToDoctor,
+} from "../services/appointmentReminderService.js";
+import {
   assertPkrAmount,
   fromStripeMinorUnits,
   toStripeMinorUnits,
@@ -139,6 +143,14 @@ router.post("/verify-payment", authUser, async (req, res) => {
         stripeSession,
         paymentType: PAYMENT_TYPE.FULL,
       });
+
+      // WhatsApp: confirmation to patient + doctor (non-blocking)
+      try {
+        await sendAppointmentConfirmation(confirmedAppointment);
+        await sendAppointmentConfirmationToDoctor(confirmedAppointment);
+      } catch (waErr) {
+        console.error("WhatsApp confirmation error (non-blocking):", waErr?.message || waErr);
+      }
 
       try {
         await paymentAccepted({

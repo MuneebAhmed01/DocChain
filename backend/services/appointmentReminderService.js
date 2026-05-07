@@ -4,6 +4,8 @@ import doctorModel from "../models/doctorModel.js";
 import { sendTemplateWhatsAppMessage } from "./whatsappService.js";
 import { APPOINTMENT_STATUS } from "../config/payment.js";
 
+const isTruthy = (v) => Boolean(v) && String(v).trim() !== "";
+
 /**
  * Send WhatsApp reminder for upcoming appointment
  * Called 1 hour before appointment
@@ -58,6 +60,44 @@ export const sendAppointmentReminder = async (appointment) => {
   }
 };
 
+export const sendAppointmentReminderToDoctor = async (appointment) => {
+  try {
+    if (!appointment) {
+      throw new Error("Appointment not found");
+    }
+
+    const doctor = await doctorModel.findById(appointment.docId);
+    if (!doctor) {
+      throw new Error("Doctor not found");
+    }
+
+    if (!doctor.whatsapp_opt_in || !doctor.phone_number) {
+      console.log(`⚠️ Doctor ${appointment.docId} not eligible for WhatsApp reminder`);
+      return { sent: false, reason: "Doctor not opted in or no phone number" };
+    }
+
+    const user = await userModel.findById(appointment.userId);
+    const patientName = user?.name || appointment.userData?.name || "Patient";
+
+    const result = await sendTemplateWhatsAppMessage({
+      templateKey: "appointmentReminderDoctor",
+      to: doctor.phone_number,
+      payload: {
+        doctorName: doctor.name,
+        patientName,
+        appointmentDate: appointment.slotDate,
+        appointmentTime: appointment.slotTime,
+      },
+    });
+
+    console.log(`✅ WhatsApp reminder sent to doctor ${doctor.phone_number}`);
+    return { sent: true, result };
+  } catch (error) {
+    console.error("❌ Error sending doctor appointment reminder:", error);
+    return { sent: false, error: error.message };
+  }
+};
+
 /**
  * Send appointment confirmation WhatsApp
  * Called after appointment is confirmed
@@ -101,6 +141,39 @@ export const sendAppointmentConfirmation = async (appointment) => {
   }
 };
 
+export const sendAppointmentConfirmationToDoctor = async (appointment) => {
+  try {
+    if (!appointment) throw new Error("Appointment not found");
+
+    const doctor = await doctorModel.findById(appointment.docId);
+    if (!doctor) throw new Error("Doctor not found");
+
+    if (!doctor.phone_number) {
+      console.log(`⚠️ No phone number for doctor ${appointment.docId}`);
+      return { sent: false, reason: "No phone number" };
+    }
+
+    const user = await userModel.findById(appointment.userId);
+
+    const result = await sendTemplateWhatsAppMessage({
+      templateKey: "appointmentConfirmationDoctor",
+      to: doctor.phone_number,
+      payload: {
+        doctorName: doctor.name,
+        patientName: user?.name || appointment.userData?.name || "Patient",
+        appointmentDate: appointment.slotDate,
+        appointmentTime: appointment.slotTime,
+      },
+    });
+
+    console.log(`✅ WhatsApp confirmation sent to doctor ${doctor.phone_number}`);
+    return { sent: true, result };
+  } catch (error) {
+    console.error("❌ Error sending appointment confirmation to doctor:", error);
+    return { sent: false, error: error.message };
+  }
+};
+
 /**
  * Send appointment cancellation WhatsApp
  * Called when appointment is cancelled
@@ -140,6 +213,96 @@ export const sendAppointmentCancellation = async (appointment) => {
     return { sent: true, result };
   } catch (error) {
     console.error("❌ Error sending appointment cancellation:", error);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendAppointmentCancellationToDoctorFromPatient = async (appointment) => {
+  try {
+    if (!appointment) throw new Error("Appointment not found");
+
+    const doctor = await doctorModel.findById(appointment.docId);
+    if (!doctor) throw new Error("Doctor not found");
+
+    if (!doctor.phone_number) {
+      console.log(`⚠️ No phone number for doctor ${appointment.docId}`);
+      return { sent: false, reason: "No phone number" };
+    }
+
+    const user = await userModel.findById(appointment.userId);
+
+    const result = await sendTemplateWhatsAppMessage({
+      templateKey: "appointmentCancelledByPatientDoctor",
+      to: doctor.phone_number,
+      payload: {
+        doctorName: doctor.name,
+        patientName: user?.name || appointment.userData?.name || "Patient",
+        appointmentDate: appointment.slotDate,
+        appointmentTime: appointment.slotTime,
+      },
+    });
+
+    console.log(`✅ WhatsApp patient-cancel notice sent to doctor ${doctor.phone_number}`);
+    return { sent: true, result };
+  } catch (error) {
+    console.error("❌ Error sending patient-cancel notice to doctor:", error);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendDoctorCancellationOrUnavailabilityToPatient = async (appointment, reason) => {
+  try {
+    if (!appointment) throw new Error("Appointment not found");
+
+    const user = await userModel.findById(appointment.userId);
+    if (!user || !user.phone_number) {
+      return { sent: false, reason: "No patient phone number" };
+    }
+
+    const doctor = await doctorModel.findById(appointment.docId);
+    if (!doctor) throw new Error("Doctor not found");
+
+    const result = await sendTemplateWhatsAppMessage({
+      templateKey: "doctorCancellationOrUnavailability",
+      to: user.phone_number,
+      payload: {
+        patientName: user.name,
+        doctorName: doctor.name,
+        appointmentDate: appointment.slotDate,
+        appointmentTime: appointment.slotTime,
+        reason,
+      },
+    });
+
+    return { sent: true, result };
+  } catch (error) {
+    console.error("❌ Error sending doctor cancellation/unavailability to patient:", error);
+    return { sent: false, error: error.message };
+  }
+};
+
+export const sendDoctorCancellationCopyToDoctor = async (appointment, reason) => {
+  try {
+    const doctor = await doctorModel.findById(appointment.docId);
+    if (!doctor || !doctor.phone_number) return { sent: false, reason: "Doctor not eligible" };
+
+    const user = await userModel.findById(appointment.userId);
+
+    const result = await sendTemplateWhatsAppMessage({
+      templateKey: "doctorCancellationDoctorCopy",
+      to: doctor.phone_number,
+      payload: {
+        doctorName: doctor.name,
+        patientName: user?.name || appointment.userData?.name || "Patient",
+        appointmentDate: appointment.slotDate,
+        appointmentTime: appointment.slotTime,
+        reason,
+      },
+    });
+
+    return { sent: true, result };
+  } catch (error) {
+    console.error("❌ Error sending doctor cancellation copy:", error);
     return { sent: false, error: error.message };
   }
 };
@@ -227,7 +390,6 @@ export const processAppointmentRemindersSimple = async () => {
     const todaysAppointments = await appointmentModel.find({
       appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
       slotDate: today,
-      reminder_sent: { $ne: true },
     });
 
     if (todaysAppointments.length === 0) {
@@ -242,10 +404,13 @@ export const processAppointmentRemindersSimple = async () => {
 
     for (const appointment of todaysAppointments) {
       try {
-        // Parse appointment time
-        const [apptHour, apptMinute] = appointment.slotTime
-          .split(":")
-          .map((x) => parseInt(x));
+        if (!isTruthy(appointment.slotTime)) continue;
+
+        // Parse appointment time (supports both "HH:mm" and locale strings if present)
+        const timeParts = String(appointment.slotTime).split(":");
+        const apptHour = parseInt(timeParts[0], 10);
+        const apptMinute = parseInt(timeParts[1], 10);
+        if (Number.isNaN(apptHour) || Number.isNaN(apptMinute)) continue;
 
         // Create appointment datetime
         const apptDate = new Date(today);
@@ -257,17 +422,31 @@ export const processAppointmentRemindersSimple = async () => {
 
         // Send reminder if within 55-65 minute window
         if (minutesUntilAppt >= 55 && minutesUntilAppt <= 65) {
-          const result = await sendAppointmentReminder(appointment);
+          // Patient reminder (legacy flag reminder_sent)
+          if (!appointment.reminder_sent) {
+            const result = await sendAppointmentReminder(appointment);
 
-          if (result.sent) {
-            sent++;
-            // Mark reminder as sent
-            await appointmentModel.findByIdAndUpdate(
-              appointment._id,
-              { reminder_sent: true }
-            );
-          } else {
-            failed++;
+            if (result.sent) {
+              sent++;
+              await appointmentModel.findByIdAndUpdate(appointment._id, {
+                reminder_sent: true,
+              });
+            } else {
+              failed++;
+            }
+          }
+
+          // Doctor reminder
+          if (!appointment.reminder_sent_doctor) {
+            const docResult = await sendAppointmentReminderToDoctor(appointment);
+            if (docResult.sent) {
+              sent++;
+              await appointmentModel.findByIdAndUpdate(appointment._id, {
+                reminder_sent_doctor: true,
+              });
+            } else {
+              failed++;
+            }
           }
         }
       } catch (apptError) {
@@ -283,6 +462,109 @@ export const processAppointmentRemindersSimple = async () => {
     return { processed: todaysAppointments.length, sent, failed };
   } catch (error) {
     console.error("❌ Error in simple reminder processing:", error);
+    throw error;
+  }
+};
+
+/**
+ * Check-in reminder (30-60 minutes before)
+ * Called every 5 minutes by a background task.
+ */
+export const processCheckInRemindersSimple = async () => {
+  try {
+    console.log("🔄 Processing check-in reminders (Simple)...");
+    const now = new Date();
+    const today = now.toISOString().split("T")[0];
+
+    const todaysAppointments = await appointmentModel.find({
+      appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
+      slotDate: today,
+    });
+
+    let sent = 0;
+    let failed = 0;
+
+    for (const appointment of todaysAppointments) {
+      try {
+        if (!isTruthy(appointment.slotTime)) continue;
+
+        const timeParts = String(appointment.slotTime).split(":");
+        const apptHour = parseInt(timeParts[0], 10);
+        const apptMinute = parseInt(timeParts[1], 10);
+        if (Number.isNaN(apptHour) || Number.isNaN(apptMinute)) continue;
+
+        const apptDate = new Date(today);
+        apptDate.setHours(apptHour, apptMinute, 0, 0);
+
+        const minutesUntilAppt = (apptDate.getTime() - now.getTime()) / (1000 * 60);
+
+        // 30-60 minute window
+        if (minutesUntilAppt < 30 || minutesUntilAppt > 60) continue;
+
+        const checkInTime = new Date(apptDate.getTime() - 15 * 60 * 1000);
+        const checkInTimeLabel = checkInTime.toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        // Patient check-in reminder
+        if (!appointment.checkin_sent_patient) {
+          const user = await userModel.findById(appointment.userId);
+          const doctor = await doctorModel.findById(appointment.docId);
+          if (user?.phone_number && doctor) {
+            const r = await sendTemplateWhatsAppMessage({
+              templateKey: "checkInReminder",
+              to: user.phone_number,
+              payload: {
+                patientName: user.name,
+                doctorName: doctor.name,
+                appointmentDate: appointment.slotDate,
+                appointmentTime: appointment.slotTime,
+                checkInTime: checkInTimeLabel,
+              },
+            });
+            if (r?.sid) {
+              sent++;
+              await appointmentModel.findByIdAndUpdate(appointment._id, {
+                checkin_sent_patient: true,
+              });
+            }
+          }
+        }
+
+        // Doctor heads-up (optional)
+        if (!appointment.checkin_sent_doctor) {
+          const doctor = await doctorModel.findById(appointment.docId);
+          if (doctor?.phone_number) {
+            const user = await userModel.findById(appointment.userId);
+            const r = await sendTemplateWhatsAppMessage({
+              templateKey: "checkInReminderDoctor",
+              to: doctor.phone_number,
+              payload: {
+                doctorName: doctor.name,
+                patientName: user?.name || appointment.userData?.name || "Patient",
+                appointmentDate: appointment.slotDate,
+                appointmentTime: appointment.slotTime,
+              },
+            });
+            if (r?.sid) {
+              sent++;
+              await appointmentModel.findByIdAndUpdate(appointment._id, {
+                checkin_sent_doctor: true,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        failed++;
+      }
+    }
+
+    console.log(`✅ Check-in processing complete: ${sent} sent, ${failed} failed`);
+    return { processed: todaysAppointments.length, sent, failed };
+  } catch (error) {
+    console.error("❌ Error in check-in processing:", error);
     throw error;
   }
 };

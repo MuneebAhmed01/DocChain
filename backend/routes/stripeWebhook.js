@@ -7,6 +7,10 @@ import {
   PAYMENT_TYPE,
 } from "../config/payment.js";
 import { finalizeStripeAppointmentPayment } from "../services/paymentFinalizeService.js";
+import {
+  sendAppointmentConfirmation,
+  sendAppointmentConfirmationToDoctor,
+} from "../services/appointmentReminderService.js";
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -101,6 +105,14 @@ router.post(
         console.log(
           `Appointment marked as paid. Paid amount: Rs. ${finalizedAppointment.paidAmount}`
         );
+
+        // WhatsApp: confirmation to patient + doctor (non-blocking)
+        try {
+          await sendAppointmentConfirmation(finalizedAppointment);
+          await sendAppointmentConfirmationToDoctor(finalizedAppointment);
+        } catch (waErr) {
+          console.error("WhatsApp confirmation error (webhook, non-blocking):", waErr?.message || waErr);
+        }
       }
     }
 

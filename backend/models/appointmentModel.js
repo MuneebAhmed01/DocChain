@@ -145,6 +145,12 @@ const appointmentSchema = new mongoose.Schema({
   payment: { type: Boolean, default: false },
   isCompleted: { type: Boolean, default: false },
   isRated: { type: Boolean, default: false },
+
+  // WhatsApp notification tracking
+  reminder_sent: { type: Boolean, default: false }, // legacy patient reminder flag
+  reminder_sent_doctor: { type: Boolean, default: false },
+  checkin_sent_patient: { type: Boolean, default: false },
+  checkin_sent_doctor: { type: Boolean, default: false },
 });
 
 appointmentSchema.pre("save", function syncLegacyFields(next) {

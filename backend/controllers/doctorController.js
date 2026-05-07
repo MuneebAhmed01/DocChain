@@ -22,6 +22,10 @@ import {
   PAYMENT_STATUS,
   REFUND_STATUS,
 } from "../config/payment.js";
+import {
+  sendDoctorCancellationOrUnavailabilityToPatient,
+  sendDoctorCancellationCopyToDoctor,
+} from "../services/appointmentReminderService.js";
 
 
 
@@ -375,6 +379,17 @@ const appointmentCancel = async (req, res) => {
     }
 
     await appointment.save();
+
+    // WhatsApp: doctor cancellation/unavailability → patient (+ optional doctor copy)
+    try {
+      await sendDoctorCancellationOrUnavailabilityToPatient(
+        appointment,
+        appointment.cancellationReason
+      );
+      await sendDoctorCancellationCopyToDoctor(appointment, appointment.cancellationReason);
+    } catch (waErr) {
+      console.error("WhatsApp doctor cancellation error (non-blocking):", waErr?.message || waErr);
+    }
 
     // ✅ Release slot from doctor's schedule
     const doctorData = await doctorModel.findById(docId);

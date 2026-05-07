@@ -15,6 +15,10 @@ import WalletService from "../services/walletService.js";
 import { refundPaymentIntent } from "../services/refundService.js";
 import PlatformRevenueService from "../services/platformRevenueService.js";
 import {
+  sendDoctorCancellationOrUnavailabilityToPatient,
+  sendDoctorCancellationCopyToDoctor,
+} from "../services/appointmentReminderService.js";
+import {
   APPOINTMENT_STATUS,
   PAYMENT_STATUS,
   PLATFORM_FEE,
@@ -279,6 +283,23 @@ const appointmentCancel = async (req, res) => {
     }
 
     await appointment.save();
+
+    // WhatsApp: admin/clinic cancellation → patient (+ optional doctor copy) (non-blocking)
+    try {
+      await sendDoctorCancellationOrUnavailabilityToPatient(
+        appointment,
+        appointment.cancellationReason
+      );
+      await sendDoctorCancellationCopyToDoctor(
+        appointment,
+        appointment.cancellationReason
+      );
+    } catch (waErr) {
+      console.error(
+        "WhatsApp admin cancellation error (non-blocking):",
+        waErr?.message || waErr
+      );
+    }
 
     // Release slot only if the appointment had been confirmed before cancellation
     if (wasConfirmed) {

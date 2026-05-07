@@ -24,6 +24,7 @@ import reviewRouter from "./routes/reviewRoute.js";
 import onboardingRouter from "./routes/onboardingRoute.js";
 import { getJwtSecret } from "./utils/jwtSecret.js";
 import { startBackgroundTasks, stopBackgroundTasks } from "./utils/backgroundTasks.js";
+import whatsappRouter from "./routes/whatsappRoute.js";
 
 
 
@@ -111,6 +112,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/online-consult", onlineConsultRoute);
 app.use("/api", reviewRouter);
 app.use("/api/onboarding", onboardingRouter);
+app.use("/api/whatsapp", whatsappRouter);
 
 // blog routes
 app.use('/api/blogs', blogRoutes);

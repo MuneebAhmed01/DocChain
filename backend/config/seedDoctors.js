@@ -49,6 +49,8 @@ const seedDoctors = async () => {
         name: doc.name,
         email: doc.email.toLowerCase(), // ✅ good practice
         image: imageUrl,
+        phone_number: doc.phone_number || null,
+        whatsapp_opt_in: Boolean(doc.phone_number),
         speciality: doc.speciality,
         degree: doc.degree,
         city: doc.city,

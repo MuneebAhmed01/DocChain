@@ -25,6 +25,16 @@ const TEMPLATE_DEFINITIONS = {
       3: doctorName,
     }),
   },
+  appointmentConfirmationDoctor: {
+    contentSidEnv: "TWILIO_CONTENT_SID_APPOINTMENT_CONFIRMATION_DOCTOR",
+    buildBody: ({ doctorName, patientName, appointmentDate, appointmentTime }) =>
+      `Hi Dr. ${doctorName || "there"}, you have a new confirmed appointment with ${patientName || "a patient"} on ${appointmentDate} at ${appointmentTime}.`,
+    buildVariables: ({ appointmentDate, appointmentTime, patientName }) => ({
+      1: appointmentDate,
+      2: appointmentTime,
+      3: patientName || "Patient",
+    }),
+  },
   appointmentReminder: {
     contentSidEnv: "TWILIO_CONTENT_SID_APPOINTMENT_REMINDER",
     buildBody: ({ patientName, doctorName, appointmentDate, appointmentTime }) =>
@@ -35,6 +45,16 @@ const TEMPLATE_DEFINITIONS = {
       3: doctorName,
     }),
   },
+  appointmentReminderDoctor: {
+    contentSidEnv: "TWILIO_CONTENT_SID_APPOINTMENT_REMINDER_DOCTOR",
+    buildBody: ({ doctorName, patientName, appointmentDate, appointmentTime }) =>
+      `Reminder Dr. ${doctorName || ""}: you have an appointment with ${patientName || "a patient"} on ${appointmentDate} at ${appointmentTime}.`,
+    buildVariables: ({ appointmentDate, appointmentTime, patientName }) => ({
+      1: appointmentDate,
+      2: appointmentTime,
+      3: patientName || "Patient",
+    }),
+  },
   appointmentCancellation: {
     contentSidEnv: "TWILIO_CONTENT_SID_APPOINTMENT_CANCELLATION",
     buildBody: ({ patientName, doctorName, appointmentDate, appointmentTime }) =>
@@ -43,6 +63,16 @@ const TEMPLATE_DEFINITIONS = {
       1: appointmentDate,
       2: appointmentTime,
       3: doctorName,
+    }),
+  },
+  appointmentCancelledByPatientDoctor: {
+    contentSidEnv: "TWILIO_CONTENT_SID_APPOINTMENT_CANCELLED_BY_PATIENT_DOCTOR",
+    buildBody: ({ doctorName, patientName, appointmentDate, appointmentTime }) =>
+      `Hi Dr. ${doctorName || "there"}, ${patientName || "a patient"} cancelled the appointment on ${appointmentDate} at ${appointmentTime}.`,
+    buildVariables: ({ appointmentDate, appointmentTime, patientName }) => ({
+      1: appointmentDate,
+      2: appointmentTime,
+      3: patientName || "Patient",
     }),
   },
   doctorCancellationOrUnavailability: {
@@ -56,6 +86,17 @@ const TEMPLATE_DEFINITIONS = {
       4: reason || "Doctor unavailable",
     }),
   },
+  doctorCancellationDoctorCopy: {
+    contentSidEnv: "TWILIO_CONTENT_SID_DOCTOR_CANCELLATION_DOCTOR_COPY",
+    buildBody: ({ doctorName, patientName, appointmentDate, appointmentTime, reason }) =>
+      `Hi Dr. ${doctorName || "there"}, you cancelled the appointment with ${patientName || "a patient"} on ${appointmentDate} at ${appointmentTime}.${reason ? ` Reason: ${reason}` : ""}`,
+    buildVariables: ({ appointmentDate, appointmentTime, patientName, reason }) => ({
+      1: appointmentDate,
+      2: appointmentTime,
+      3: patientName || "Patient",
+      4: reason || "Cancelled",
+    }),
+  },
   checkInReminder: {
     contentSidEnv: "TWILIO_CONTENT_SID_CHECKIN_REMINDER",
     buildBody: ({ patientName, doctorName, appointmentDate, appointmentTime, checkInTime }) =>
@@ -65,6 +106,16 @@ const TEMPLATE_DEFINITIONS = {
       2: appointmentTime,
       3: checkInTime,
       4: doctorName,
+    }),
+  },
+  checkInReminderDoctor: {
+    contentSidEnv: "TWILIO_CONTENT_SID_CHECKIN_REMINDER_DOCTOR",
+    buildBody: ({ doctorName, patientName, appointmentDate, appointmentTime }) =>
+      `Hi Dr. ${doctorName || "there"}, your appointment with ${patientName || "a patient"} starts at ${appointmentTime} on ${appointmentDate}.`,
+    buildVariables: ({ appointmentDate, appointmentTime, patientName }) => ({
+      1: appointmentDate,
+      2: appointmentTime,
+      3: patientName || "Patient",
     }),
   },
 };

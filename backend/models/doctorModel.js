@@ -5,6 +5,9 @@ const doctorSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     image: { type: String, required: true },
+    // WhatsApp / phone contact (E.164, e.g. +923001234567)
+    phone_number: { type: String, default: null },
+    whatsapp_opt_in: { type: Boolean, default: false },
     speciality: { type: String, required: true },
     degree: { type: String, required: true },
     experience: { type: String, required: true },

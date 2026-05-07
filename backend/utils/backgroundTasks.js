@@ -7,10 +7,14 @@ import {
   cleanupExpiredHolds,
   finalizeExpiredOnlineSessions,
 } from "../services/appointmentService.js";
-import { processAppointmentRemindersSimple } from "../services/appointmentReminderService.js";
+import {
+  processAppointmentRemindersSimple,
+  processCheckInRemindersSimple,
+} from "../services/appointmentReminderService.js";
 
 let cleanupInterval = null;
 let reminderInterval = null;
+let checkInInterval = null;
 
 /**
  * Start background tasks
@@ -43,6 +47,16 @@ export const startBackgroundTasks = () => {
     }
   }, 5 * 60 * 1000); // 5 minutes
 
+  // Run check-in reminders every 5 minutes
+  checkInInterval = setInterval(async () => {
+    try {
+      console.log(`🟣 Running check-in reminders at ${new Date().toISOString()}`);
+      await processCheckInRemindersSimple();
+    } catch (error) {
+      console.error("❌ Error in check-in task:", error);
+    }
+  }, 5 * 60 * 1000);
+
   console.log("✅ Background tasks started");
 };
 
@@ -58,6 +72,10 @@ export const stopBackgroundTasks = () => {
   if (reminderInterval) {
     clearInterval(reminderInterval);
     console.log("🛑 Reminder task stopped");
+  }
+  if (checkInInterval) {
+    clearInterval(checkInInterval);
+    console.log("🛑 Check-in task stopped");
   }
   console.log("🛑 All background tasks stopped");
 };

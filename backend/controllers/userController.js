@@ -26,6 +26,10 @@ import {
 } from "../config/payment.js";
 import { processAppointmentRefund } from "../services/refundService.js";
 import {
+  sendAppointmentCancellation,
+  sendAppointmentCancellationToDoctorFromPatient,
+} from "../services/appointmentReminderService.js";
+import {
   isJoinAllowedNow,
   computeSessionStatusFromJoinFlags,
 } from "../utils/appointmentSession.js";
@@ -552,6 +556,14 @@ const cancelAppointment = async (req, res) => {
       });
     } catch (err) {
       console.error("Failed to send cancellation emails:", err);
+    }
+
+    // WhatsApp: patient cancellation → patient + doctor (non-blocking)
+    try {
+      await sendAppointmentCancellation(appointment);
+      await sendAppointmentCancellationToDoctorFromPatient(appointment);
+    } catch (waErr) {
+      console.error("WhatsApp cancellation error (non-blocking):", waErr?.message || waErr);
     }
 
     // Process refund using the refund service
