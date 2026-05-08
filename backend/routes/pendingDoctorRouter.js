@@ -7,10 +7,9 @@ import authUser from "../middlewares/authUser.js";
 
 const pendingDoctorRouter = express.Router();
 
-// Submit doctor join form - REQUIRES AUTHENTICATION
+// Submit doctor join form - PUBLIC for new doctor registration
 pendingDoctorRouter.post(
   "/join",
-  authUser,
   upload.fields([
     { name: "profilePic", maxCount: 1 },
     { name: "degreeProof", maxCount: 1 },

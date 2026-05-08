@@ -25,7 +25,7 @@ const Header = () => {
           <p className="text-sm sm:text-base">
             We offer 24/7 acess to healthcare services,
             <br className="hidden sm:block" />
-            empowering you to stay healthy without long queee wait
+            empowering you to stay healthy without long queue wait
           </p>
         </div>
 

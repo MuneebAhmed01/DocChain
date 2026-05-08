@@ -279,9 +279,30 @@ const MyProfile = () => {
               </div>
 
               {/* Name */}
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {userData.name}
-              </h2>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                {isEdit ? (
+                  <input
+                    type="text"
+                    value={userData.name}
+                    onChange={(e) => {
+                      setUserData((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }));
+                      setErrors((prev) => ({ ...prev, name: undefined }));
+                    }}
+                    className="text-2xl font-bold text-gray-900 text-center bg-transparent border-b-2 border-blue-500 focus:outline-none focus:border-blue-600 px-2"
+                    placeholder="Your name"
+                  />
+                ) : (
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {userData.name}
+                  </h2>
+                )}
+                {errors.name && isEdit && (
+                  <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+                )}
+              </div>
               <p className="text-gray-600 mb-6">{userData.email}</p>
 
               {/* Quick Stats */}
@@ -475,7 +496,11 @@ const MyProfile = () => {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div
+                className={
+                  isEdit ? "space-y-6" : "grid grid-cols-1 lg:grid-cols-3 gap-6"
+                }
+              >
                 {/* Gender */}
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">

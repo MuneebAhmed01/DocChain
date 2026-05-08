@@ -22,10 +22,30 @@ export default function Contact() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState(null);
+  const [phoneError, setPhoneError] = useState(null);
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((s) => ({ ...s, [name]: value }));
+
+    if (name === "phone") {
+      // Only allow digits
+      const digitsOnly = value.replace(/\D/g, "");
+      // Limit to 10 digits
+      const limitedDigits = digitsOnly.slice(0, 10);
+
+      // Validate and set error
+      if (value && !/^\d+$/.test(value)) {
+        setPhoneError("Please enter a valid number (digits only)");
+      } else if (digitsOnly.length > 10) {
+        setPhoneError("Phone number cannot exceed 10 digits");
+      } else {
+        setPhoneError(null);
+      }
+
+      setForm((s) => ({ ...s, [name]: limitedDigits }));
+    } else {
+      setForm((s) => ({ ...s, [name]: value }));
+    }
   }
 
   function validate() {
@@ -33,6 +53,8 @@ export default function Contact() {
       return "Please enter your full name.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email))
       return "Please enter a valid email.";
+    if (!form.phone || form.phone.length < 10)
+      return "Please enter a valid 10-digit phone number.";
     if (!form.message.trim()) return "Please enter a message.";
     return null;
   }
@@ -201,14 +223,21 @@ export default function Contact() {
                     <option>+61</option>
                     <option>+91</option>
                   </select>
-                  <input
-                    id="phone"
-                    name="phone"
-                    value={form.phone}
-                    onChange={handleChange}
-                    placeholder="Phone number"
-                    className="flex-1 rounded-full px-4 py-2 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-300 w-full"
-                  />
+                  <div className="flex-1">
+                    <input
+                      id="phone"
+                      name="phone"
+                      value={form.phone}
+                      onChange={handleChange}
+                      placeholder="Phone number"
+                      className={`w-full rounded-full px-4 py-2 border ${phoneError ? "border-red-300 focus:ring-2 focus:ring-red-300" : "border-gray-200 focus:ring-2 focus:ring-blue-300"} focus:outline-none`}
+                    />
+                    {phoneError && (
+                      <p className="text-red-500 text-xs mt-1 ml-2">
+                        {phoneError}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Message */}

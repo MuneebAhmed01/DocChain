@@ -21,4 +21,22 @@ axiosInstance.interceptors.request.use(
   }
 );
 
+// Response interceptor to handle aborted requests silently
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Check if the error is due to request abortion (common during redirects)
+    if (error.code === 'ERR_CANCELED' || 
+        error.message?.includes('canceled') ||
+        error.message?.includes('aborted') ||
+        (error.response?.status === 0 && error.message)) {
+      // Completely suppress aborted request errors to prevent toast notifications
+      return new Promise(() => {}); // Never resolves or rejects
+    }
+    
+    // For other errors, let them propagate normally
+    return Promise.reject(error);
+  }
+);
+
 export default axiosInstance;

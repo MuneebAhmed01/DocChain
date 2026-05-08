@@ -82,9 +82,19 @@ const MyAppointments = () => {
     try {
       const { data } = await axiosInstance.get("/api/user/appointments");
       if (data.success) {
-        // Sort appointments by booking date (newest first) to ensure newest booked appointments appear on top
+        // Sort appointments by booking date (newest first) to show latest bookings at top
         const sortedAppointments = data.appointments.sort((a, b) => {
-          // Create proper date objects from slotDate and slotTime for accurate sorting
+          // Primary sort: by booking date (newest first)
+          // Use 'date' field which is the creation timestamp, or fallback to _id
+          const bookingDateA = new Date(a.date || a._id.getTimestamp());
+          const bookingDateB = new Date(b.date || b._id.getTimestamp());
+
+          // If booking dates are different, sort by booking date (newest first)
+          if (bookingDateA.getTime() !== bookingDateB.getTime()) {
+            return bookingDateB.getTime() - bookingDateA.getTime();
+          }
+
+          // Secondary sort: if same booking time, sort by appointment datetime
           const createDateTime = (slotDate, slotTime) => {
             if (!slotDate) return new Date(0);
 
@@ -97,7 +107,10 @@ const MyAppointments = () => {
 
             const [day, month, year] = dateParts;
             const date = new Date(
-              `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`,
+              `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(
+                2,
+                "0",
+              )}T00:00:00`,
             );
 
             if (slotTime) {
@@ -115,11 +128,29 @@ const MyAppointments = () => {
             return date;
           };
 
-          const dateTimeA = createDateTime(a.slotDate, a.slotTime);
-          const dateTimeB = createDateTime(b.slotDate, b.slotTime);
+          const appointmentDateTimeA = createDateTime(a.slotDate, a.slotTime);
+          const appointmentDateTimeB = createDateTime(b.slotDate, b.slotTime);
+          const now = new Date();
 
-          // Sort by date and time (newest first)
-          return dateTimeB.getTime() - dateTimeA.getTime();
+          // Check if appointments are in future or past
+          const isAFuture = appointmentDateTimeA > now;
+          const isBFuture = appointmentDateTimeB > now;
+
+          // If both are future or both are past, sort by appointment datetime
+          if (isAFuture && isBFuture) {
+            // Both future: earliest appointment first
+            return (
+              appointmentDateTimeA.getTime() - appointmentDateTimeB.getTime()
+            );
+          } else if (!isAFuture && !isBFuture) {
+            // Both past: latest appointment first
+            return (
+              appointmentDateTimeB.getTime() - appointmentDateTimeA.getTime()
+            );
+          } else {
+            // One future, one past: future appointments first
+            return isAFuture ? -1 : 1;
+          }
         });
         setAppointments(sortedAppointments);
       }
