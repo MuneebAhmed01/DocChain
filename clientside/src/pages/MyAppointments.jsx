@@ -450,6 +450,32 @@ const MyAppointments = () => {
                             : "Not started yet"}
                       </button>
                     ))}
+                  {/* SEND REMINDER BUTTON */}
+                  {!item.cancelled &&
+                    appointmentStatus === "CONFIRMED" && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data } = await axiosInstance.post(
+                              "/api/user/trigger-reminder",
+                              { appointmentId: item._id },
+                            );
+                            if (data.success) {
+                              toast.success("Reminder sent successfully!");
+                            } else {
+                              toast.error(data.message || "Failed to send reminder");
+                            }
+                          } catch (err) {
+                            console.error(err);
+                            toast.error("Failed to send reminder");
+                          }
+                        }}
+                        className="text-sm text-white bg-amber-500 text-center w-full sm:min-w-48 py-2.5 rounded hover:bg-amber-600 transition-all"
+                      >
+                        🔔 Send Reminder
+                      </button>
+                    )}
+
                   {/* CHAT BUTTON */}
                   {!item.cancelled && (
                     <button

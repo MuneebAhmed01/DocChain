@@ -346,3 +346,174 @@ export const sendWhapiAppointmentCancelledNotifications = async (appointment) =>
     return { sent: false, error: error.message };
   }
 };
+
+/**
+ * Manual / on-demand reminder for a single appointment.
+ * Called from the API endpoint triggered by the frontend "Send Reminder" button.
+ * Does NOT affect booking or cancellation flows.
+ */
+export const sendWhapiReminderForAppointment = async (appointmentId) => {
+  try {
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) {
+      return { sent: false, error: "Appointment not found" };
+    }
+
+    const [patient, doctor] = await Promise.all([
+      userModel.findById(appointment.userId),
+      doctorModel.findById(appointment.docId),
+    ]);
+
+    if (!patient || !doctor) {
+      return { sent: false, error: "Unable to load appointment participants" };
+    }
+
+    const appointmentDateTime = toAppointmentDateTime(appointment);
+    const timeLabel = formatTimeLabel(appointmentDateTime, appointment.slotTime);
+    const patientName = patient.name || appointment.userData?.name || "Patient";
+    const doctorName = doctor.name || appointment.docData?.name || "Doctor";
+    const slotDateLabel = appointment.slotDate;
+
+    const patientPhone = normalizeWhapiPhoneNumber(patient.phone_number || appointment.userData?.phone_number);
+    const doctorPhone = normalizeWhapiPhoneNumber(doctor.phone_number || appointment.docData?.phone_number);
+
+    const result = { patient: { sent: false }, doctor: { sent: false } };
+
+    if (patientPhone) {
+      try {
+        const response = await sendWhapiTextMessage({
+          to: patientPhone,
+          body: `Reminder: Your appointment with Dr. ${doctorName} is on ${slotDateLabel} at ${timeLabel}. Please be on time.`,
+        });
+        result.patient = { sent: true, response };
+        console.log(`[WAPI][MANUAL-REMINDER] Sent to patient ${patientPhone}`);
+      } catch (err) {
+        console.error(`[WAPI][MANUAL-REMINDER] Failed to send to patient:`, err?.message);
+        result.patient = { sent: false, error: err?.message };
+      }
+    } else {
+      console.warn(`[WAPI][MANUAL-REMINDER] No patient phone for appointment ${appointmentId}`);
+    }
+
+    if (doctorPhone) {
+      try {
+        const response = await sendWhapiTextMessage({
+          to: doctorPhone,
+          body: `Reminder: You have an appointment with ${patientName} on ${slotDateLabel} at ${timeLabel}.`,
+        });
+        result.doctor = { sent: true, response };
+        console.log(`[WAPI][MANUAL-REMINDER] Sent to doctor ${doctorPhone}`);
+      } catch (err) {
+        console.error(`[WAPI][MANUAL-REMINDER] Failed to send to doctor:`, err?.message);
+        result.doctor = { sent: false, error: err?.message };
+      }
+    } else {
+      console.warn(`[WAPI][MANUAL-REMINDER] No doctor phone for appointment ${appointmentId}`);
+    }
+
+    return { sent: Boolean(result.patient.sent || result.doctor.sent), ...result };
+  } catch (error) {
+    console.error("[WAPI][MANUAL-REMINDER] Error:", error);
+    return { sent: false, error: error.message };
+  }
+};
+
+/**
+ * Auto-reminder scheduler: finds CONFIRMED appointments whose slot is
+ * exactly 30 minutes away (±5 min window) and sends a WhatsApp reminder.
+ * Called by the background task every 5 minutes.
+ * Does NOT affect booking or cancellation flows.
+ */
+export const processWhapiAutoReminders = async () => {
+  try {
+    const now = new Date();
+    console.log(`[WAPI][AUTO-REMINDER] Job triggered at ${now.toISOString()}`);
+
+    // Fetch all confirmed appointments that haven't had auto reminder sent yet
+    const confirmedAppointments = await appointmentModel.find({
+      appointmentStatus: APPOINTMENT_STATUS.CONFIRMED,
+      $or: [
+        { whapi_auto_reminder_sent_patient: { $ne: true } },
+        { whapi_auto_reminder_sent_doctor: { $ne: true } },
+      ],
+    });
+
+    console.log(`[WAPI][AUTO-REMINDER] Checking ${confirmedAppointments.length} appointments`);
+
+    let sent = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const appointment of confirmedAppointments) {
+      try {
+        const appointmentDateTime = toAppointmentDateTime(appointment);
+        if (!appointmentDateTime || Number.isNaN(appointmentDateTime.getTime())) {
+          skipped++;
+          continue;
+        }
+
+        // 30-min reminder window: send if appointment is 25–35 minutes away
+        const minutesUntil = (appointmentDateTime.getTime() - now.getTime()) / (1000 * 60);
+        if (minutesUntil < 25 || minutesUntil > 35) {
+          skipped++;
+          continue;
+        }
+
+        console.log(`[WAPI][AUTO-REMINDER] Appointment ${appointment._id} is ${minutesUntil.toFixed(1)} min away – sending reminder`);
+
+        const [patient, doctor] = await Promise.all([
+          userModel.findById(appointment.userId),
+          doctorModel.findById(appointment.docId),
+        ]);
+
+        const timeLabel = formatTimeLabel(appointmentDateTime, appointment.slotTime);
+        const patientName = patient?.name || appointment.userData?.name || "Patient";
+        const doctorName = doctor?.name || appointment.docData?.name || "Doctor";
+        const slotDateLabel = appointment.slotDate;
+
+        // Patient reminder
+        const patientPhone = normalizeWhapiPhoneNumber(patient?.phone_number || appointment.userData?.phone_number);
+        if (patientPhone && !appointment.whapi_auto_reminder_sent_patient) {
+          try {
+            await sendWhapiTextMessage({
+              to: patientPhone,
+              body: `Reminder: Your appointment with Dr. ${doctorName} is in 30 minutes at ${timeLabel} on ${slotDateLabel}. Please be ready.`,
+            });
+            await appointmentModel.findByIdAndUpdate(appointment._id, { whapi_auto_reminder_sent_patient: true });
+            sent++;
+            console.log(`[WAPI][AUTO-REMINDER] Patient reminder sent to ${patientPhone}`);
+          } catch (err) {
+            failed++;
+            console.error(`[WAPI][AUTO-REMINDER] Failed patient reminder:`, err?.message);
+          }
+        }
+
+        // Doctor reminder
+        const doctorPhone = normalizeWhapiPhoneNumber(doctor?.phone_number || appointment.docData?.phone_number);
+        if (doctorPhone && !appointment.whapi_auto_reminder_sent_doctor) {
+          try {
+            await sendWhapiTextMessage({
+              to: doctorPhone,
+              body: `Reminder: Your appointment with ${patientName} is in 30 minutes at ${timeLabel} on ${slotDateLabel}.`,
+            });
+            await appointmentModel.findByIdAndUpdate(appointment._id, { whapi_auto_reminder_sent_doctor: true });
+            sent++;
+            console.log(`[WAPI][AUTO-REMINDER] Doctor reminder sent to ${doctorPhone}`);
+          } catch (err) {
+            failed++;
+            console.error(`[WAPI][AUTO-REMINDER] Failed doctor reminder:`, err?.message);
+          }
+        }
+      } catch (err) {
+        failed++;
+        console.error(`[WAPI][AUTO-REMINDER] Error processing appointment ${appointment._id}:`, err?.message);
+      }
+    }
+
+    console.log(`[WAPI][AUTO-REMINDER] Done – sent: ${sent}, skipped: ${skipped}, failed: ${failed}`);
+    return { sent, skipped, failed };
+  } catch (error) {
+    console.error("[WAPI][AUTO-REMINDER] Unexpected error:", error);
+    throw error;
+  }
+};

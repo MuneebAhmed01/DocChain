@@ -7,10 +7,11 @@ import {
   cleanupExpiredHolds,
   finalizeExpiredOnlineSessions,
 } from "../services/appointmentService.js";
-import { processWhapiAppointmentRemindersSimple } from "../services/whapiAppointmentService.js";
+import { processWhapiAppointmentRemindersSimple, processWhapiAutoReminders } from "../services/whapiAppointmentService.js";
 
 let cleanupInterval = null;
 let whapiReminderInterval = null;
+let whapiAutoReminderInterval = null;
 
 /**
  * Start background tasks
@@ -45,6 +46,18 @@ export const startBackgroundTasks = () => {
     }
   }, 5 * 60 * 1000);
 
+  // Auto-reminder: send WhatsApp 30 min before appointment, checked every 5 min
+  whapiAutoReminderInterval = setInterval(async () => {
+    try {
+      await processWhapiAutoReminders();
+    } catch (error) {
+      console.error("[WAPI][AUTO-REMINDER] Scheduler task failed", {
+        message: error?.message,
+        stack: error?.stack,
+      });
+    }
+  }, 5 * 60 * 1000);
+
   console.log("✅ Background tasks started");
 };
 
@@ -60,6 +73,10 @@ export const stopBackgroundTasks = () => {
   if (whapiReminderInterval) {
     clearInterval(whapiReminderInterval);
     console.log("🛑 Whapi reminder task stopped");
+  }
+  if (whapiAutoReminderInterval) {
+    clearInterval(whapiAutoReminderInterval);
+    console.log("🛑 Whapi auto-reminder task stopped");
   }
   console.log("🛑 All background tasks stopped");
 };

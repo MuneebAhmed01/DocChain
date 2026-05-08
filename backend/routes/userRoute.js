@@ -353,6 +353,25 @@ router.post("/appointments/join-online", authUser, joinOnlineAppointment);
 // Cancel appointment
 router.post("/cancel-appointment", authUser, cancelAppointment);
 
+// Trigger WhatsApp reminder (manual, for demo)
+import { sendWhapiReminderForAppointment } from "../services/whapiAppointmentService.js";
+router.post("/trigger-reminder", authUser, async (req, res) => {
+  try {
+    const { appointmentId } = req.body;
+    if (!appointmentId) {
+      return res.status(400).json({ success: false, message: "appointmentId is required" });
+    }
+    const result = await sendWhapiReminderForAppointment(appointmentId);
+    if (result.sent) {
+      return res.json({ success: true, message: "Reminder sent successfully", result });
+    }
+    return res.json({ success: false, message: result.error || "Failed to send reminder", result });
+  } catch (error) {
+    console.error("[WAPI][TRIGGER-REMINDER] Error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 router.post("/rate-doctor", authUser, rateDoctor);
 
 // Patient response after appointment time
