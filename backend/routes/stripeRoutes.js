@@ -7,10 +7,7 @@ import authUser from "../middlewares/authUser.js";
 import { v4 as uuidv4 } from 'uuid';
 import userModel from "../models/userModel.js";
 import { finalizeStripeAppointmentPayment } from "../services/paymentFinalizeService.js";
-import {
-  sendAppointmentConfirmation,
-  sendAppointmentConfirmationToDoctor,
-} from "../services/appointmentReminderService.js";
+import { sendWhapiAppointmentBookedNotifications } from "../services/whapiAppointmentService.js";
 import {
   assertPkrAmount,
   fromStripeMinorUnits,
@@ -144,12 +141,11 @@ router.post("/verify-payment", authUser, async (req, res) => {
         paymentType: PAYMENT_TYPE.FULL,
       });
 
-      // WhatsApp: confirmation to patient + doctor (non-blocking)
+      // Whapi: confirmation to patient + doctor (non-blocking)
       try {
-        await sendAppointmentConfirmation(confirmedAppointment);
-        await sendAppointmentConfirmationToDoctor(confirmedAppointment);
+        await sendWhapiAppointmentBookedNotifications(confirmedAppointment);
       } catch (waErr) {
-        console.error("WhatsApp confirmation error (non-blocking):", waErr?.message || waErr);
+        console.error("Whapi booking confirmation error (non-blocking):", waErr?.message || waErr);
       }
 
       try {
@@ -311,6 +307,13 @@ router.post("/verify-token-payment", authUser, async (req, res) => {
 
       confirmedAppointment.tokenPaymentIntentId = stripeSession.payment_intent;
       await confirmedAppointment.save();
+
+      // Whapi: confirmation to patient + doctor (non-blocking)
+      try {
+        await sendWhapiAppointmentBookedNotifications(confirmedAppointment);
+      } catch (waErr) {
+        console.error("Whapi booking confirmation error (non-blocking):", waErr?.message || waErr);
+      }
 
       try {
         await paymentAccepted({

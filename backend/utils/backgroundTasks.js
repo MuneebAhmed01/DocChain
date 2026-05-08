@@ -7,14 +7,10 @@ import {
   cleanupExpiredHolds,
   finalizeExpiredOnlineSessions,
 } from "../services/appointmentService.js";
-import {
-  processAppointmentRemindersSimple,
-  processCheckInRemindersSimple,
-} from "../services/appointmentReminderService.js";
+import { processWhapiAppointmentRemindersSimple } from "../services/whapiAppointmentService.js";
 
 let cleanupInterval = null;
-let reminderInterval = null;
-let checkInInterval = null;
+let whapiReminderInterval = null;
 
 /**
  * Start background tasks
@@ -36,24 +32,16 @@ export const startBackgroundTasks = () => {
     }
   }, 5 * 60 * 1000); // 5 minutes
 
-  // Run appointment reminders every 5 minutes
-  reminderInterval = setInterval(async () => {
+  // Run Whapi reminders every 5 minutes
+  whapiReminderInterval = setInterval(async () => {
     try {
-      console.log(`📧 Running appointment reminders at ${new Date().toISOString()}`);
-      await processAppointmentRemindersSimple();
+      console.log(`[WAPI][REMINDER] Scheduler triggered at ${new Date().toISOString()}`);
+      await processWhapiAppointmentRemindersSimple();
     } catch (error) {
-      console.error("❌ Error in reminder task:", error);
-      // Don't rethrow - let other tasks continue
-    }
-  }, 5 * 60 * 1000); // 5 minutes
-
-  // Run check-in reminders every 5 minutes
-  checkInInterval = setInterval(async () => {
-    try {
-      console.log(`🟣 Running check-in reminders at ${new Date().toISOString()}`);
-      await processCheckInRemindersSimple();
-    } catch (error) {
-      console.error("❌ Error in check-in task:", error);
+      console.error("[WAPI][REMINDER] Scheduler task failed", {
+        message: error?.message,
+        stack: error?.stack,
+      });
     }
   }, 5 * 60 * 1000);
 
@@ -69,13 +57,9 @@ export const stopBackgroundTasks = () => {
     clearInterval(cleanupInterval);
     console.log("🛑 Cleanup task stopped");
   }
-  if (reminderInterval) {
-    clearInterval(reminderInterval);
-    console.log("🛑 Reminder task stopped");
-  }
-  if (checkInInterval) {
-    clearInterval(checkInInterval);
-    console.log("🛑 Check-in task stopped");
+  if (whapiReminderInterval) {
+    clearInterval(whapiReminderInterval);
+    console.log("🛑 Whapi reminder task stopped");
   }
   console.log("🛑 All background tasks stopped");
 };
@@ -92,6 +76,6 @@ export const triggerCleanup = async () => {
  * Manually trigger reminder processing (useful for testing)
  */
 export const triggerReminderProcessing = async () => {
-  console.log("🔄 Manually triggering appointment reminders...");
-  return await processAppointmentRemindersSimple();
+  console.log("🔄 Manually triggering Whapi appointment reminders...");
+  return await processWhapiAppointmentRemindersSimple();
 };

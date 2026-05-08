@@ -147,6 +147,10 @@ const appointmentSchema = new mongoose.Schema({
   isRated: { type: Boolean, default: false },
 
   // WhatsApp notification tracking
+  whapi_booking_sent_patient: { type: Boolean, default: false },
+  whapi_booking_sent_doctor: { type: Boolean, default: false },
+  whapi_reminder_sent_patient: { type: Boolean, default: false },
+  whapi_reminder_sent_doctor: { type: Boolean, default: false },
   reminder_sent: { type: Boolean, default: false }, // legacy patient reminder flag
   reminder_sent_doctor: { type: Boolean, default: false },
   checkin_sent_patient: { type: Boolean, default: false },
