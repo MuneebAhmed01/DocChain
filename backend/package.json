@@ -8,12 +8,14 @@
     "start": "node server.js",
     "server": "nodemon server.js",
     "seed:blogs": "node scripts/createDemoBlogs.js",
-    "clean:blogs": "node scripts/deleteDemoBlogs.js"
+    "clean:blogs": "node scripts/deleteDemoBlogs.js",
+    "wa:test": "tsx scripts/testBaileysNotifications.ts"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.19",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",
@@ -37,6 +39,12 @@
     "stripe": "^20.0.0",
     "twilio": "^6.0.0",
     "uuid": "^13.0.0",
-    "validator": "^13.12.0"
+    "validator": "^13.12.0",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }

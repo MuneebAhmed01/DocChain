@@ -141,7 +141,7 @@ router.post("/verify-payment", authUser, async (req, res) => {
         paymentType: PAYMENT_TYPE.FULL,
       });
 
-      // Whapi: confirmation to patient + doctor (non-blocking)
+      // WhatsApp (Whapi): confirmation to patient + doctor (non-blocking)
       try {
         await sendWhapiAppointmentBookedNotifications(confirmedAppointment);
       } catch (waErr) {

@@ -103,7 +103,7 @@ router.post(
           `Appointment marked as paid. Paid amount: Rs. ${finalizedAppointment.paidAmount}`
         );
 
-        // Whapi: confirmation to patient + doctor (non-blocking)
+        // WhatsApp (Whapi): confirmation to patient + doctor (non-blocking)
         try {
           await sendWhapiAppointmentBookedNotifications(finalizedAppointment);
         } catch (waErr) {
