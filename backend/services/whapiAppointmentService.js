@@ -38,7 +38,8 @@ const toAppointmentDateTime = (appointment) => {
     return new Date(Number(isoDate[1]), Number(isoDate[2]) - 1, Number(isoDate[3]), hour, minute, 0, 0);
   }
 
-  const underscoredDate = slotDate.match(/^(\d{2})_(\d{2})_(\d{4})$/);
+  // Handles both D_M_YYYY and DD_MM_YYYY (single or double digit day/month)
+  const underscoredDate = slotDate.match(/^(\d{1,2})_(\d{1,2})_(\d{4})$/);
   if (underscoredDate) {
     return new Date(Number(underscoredDate[3]), Number(underscoredDate[2]) - 1, Number(underscoredDate[1]), hour, minute, 0, 0);
   }
@@ -276,5 +277,72 @@ export const processWhapiAppointmentRemindersSimple = async () => {
     });
     console.error("[WAPI][REMINDER] WhatsApp reminder flow failed");
     throw error;
+  }
+};
+export const sendWhapiAppointmentCancelledNotifications = async (appointment) => {
+  try {
+    if (!appointment) {
+      throw new Error("Appointment not found");
+    }
+
+    const [patient, doctor] = await Promise.all([
+      userModel.findById(appointment.userId),
+      doctorModel.findById(appointment.docId),
+    ]);
+
+    if (!patient || !doctor) {
+      throw new Error("Unable to load appointment participants");
+    }
+
+    const appointmentDateTime = toAppointmentDateTime(appointment);
+    const timeLabel = formatTimeLabel(appointmentDateTime, appointment.slotTime);
+    const patientName = patient.name || appointment.userData?.name || "Patient";
+    const doctorName = doctor.name || appointment.docData?.name || "Doctor";
+    const slotDateLabel = appointment.slotDate;
+
+    const patientPhone = normalizeWhapiPhoneNumber(patient.phone_number || appointment.userData?.phone_number);
+    const doctorPhone = normalizeWhapiPhoneNumber(doctor.phone_number || appointment.docData?.phone_number);
+
+    const result = {
+      patient: { sent: false },
+      doctor: { sent: false },
+    };
+
+    if (patientPhone) {
+      try {
+        const response = await sendWhapiTextMessage({
+          to: patientPhone,
+          body: `Your appointment on ${slotDateLabel} at ${timeLabel} with Dr. ${doctorName} has been cancelled.`,
+        });
+        result.patient = { sent: true, response };
+        console.log(`[WAPI][CANCEL] Cancellation notice sent to patient ${patientPhone}`);
+      } catch (err) {
+        console.error(`[WAPI][CANCEL] Failed to send to patient ${patientPhone}:`, err?.message);
+        result.patient = { sent: false, error: err?.message };
+      }
+    } else {
+      console.warn(`[WAPI][CANCEL] Skipping patient – no phone number`, { userId: appointment.userId });
+    }
+
+    if (doctorPhone) {
+      try {
+        const response = await sendWhapiTextMessage({
+          to: doctorPhone,
+          body: `Appointment with ${patientName} on ${slotDateLabel} at ${timeLabel} has been cancelled.`,
+        });
+        result.doctor = { sent: true, response };
+        console.log(`[WAPI][CANCEL] Cancellation notice sent to doctor ${doctorPhone}`);
+      } catch (err) {
+        console.error(`[WAPI][CANCEL] Failed to send to doctor ${doctorPhone}:`, err?.message);
+        result.doctor = { sent: false, error: err?.message };
+      }
+    } else {
+      console.warn(`[WAPI][CANCEL] Skipping doctor – no phone number`, { docId: appointment.docId });
+    }
+
+    return { sent: Boolean(result.patient.sent || result.doctor.sent), ...result };
+  } catch (error) {
+    console.error("[WAPI][CANCEL] Cancellation notification error:", error);
+    return { sent: false, error: error.message };
   }
 };

@@ -29,6 +29,7 @@ import {
   sendAppointmentCancellation,
   sendAppointmentCancellationToDoctorFromPatient,
 } from "../services/appointmentReminderService.js";
+import { sendWhapiAppointmentCancelledNotifications } from "../services/whapiAppointmentService.js";
 import {
   isJoinAllowedNow,
   computeSessionStatusFromJoinFlags,
@@ -558,12 +559,11 @@ const cancelAppointment = async (req, res) => {
       console.error("Failed to send cancellation emails:", err);
     }
 
-    // WhatsApp: patient cancellation → patient + doctor (non-blocking)
+    // WhatsApp (Whapi): send cancellation to both patient + doctor (non-blocking)
     try {
-      await sendAppointmentCancellation(appointment);
-      await sendAppointmentCancellationToDoctorFromPatient(appointment);
+      await sendWhapiAppointmentCancelledNotifications(appointment);
     } catch (waErr) {
-      console.error("WhatsApp cancellation error (non-blocking):", waErr?.message || waErr);
+      console.error("[WAPI][CANCEL] Whapi cancellation error (non-blocking):", waErr?.message || waErr);
     }
 
     // Process refund using the refund service
