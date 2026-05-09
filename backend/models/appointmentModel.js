@@ -146,6 +146,10 @@ const appointmentSchema = new mongoose.Schema({
   isCompleted: { type: Boolean, default: false },
   isRated: { type: Boolean, default: false },
 
+  // Demo/testing flag: bypasses the time-window check so the appointment
+  // becomes joinable immediately. Set via /api/user/appointments/force-active.
+  demoActive: { type: Boolean, default: false },
+
   // WhatsApp notification tracking
   whapi_booking_sent_patient: { type: Boolean, default: false },
   whapi_booking_sent_doctor: { type: Boolean, default: false },

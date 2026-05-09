@@ -133,8 +133,13 @@ const joinOnlineAppointment = async (req, res) => {
       return res.status(400).json({ success: false, message: "Meeting link not available yet" });
     }
 
-    if (!isJoinAllowedNow(appointment)) {
+    // Allow join if within the normal time window OR if demoActive flag is set (for demo/testing)
+    if (!appointment.demoActive && !isJoinAllowedNow(appointment)) {
       return res.status(400).json({ success: false, message: "Call is not available at this time" });
+    }
+
+    if (appointment.demoActive) {
+      console.log(`[DEMO] Doctor joining force-activated appointment ${appointmentId}`);
     }
 
     appointment.doctorJoined = true;

@@ -84,12 +84,17 @@ const DoctorAppointments = () => {
             const window = getAppointmentWindow(item.slotDate, item.slotTime);
             const canJoinCall =
               isOnline &&
-              window &&
-              now >= window.joinStart &&
-              now <= window.end &&
               !item.cancelled &&
               !item.isCompleted &&
-              (item.appointmentStatus || item.status) === "CONFIRMED";
+              (item.appointmentStatus || item.status) === "CONFIRMED" &&
+              (
+                item.demoActive === true ||
+                (
+                  window &&
+                  now >= window.joinStart &&
+                  now <= window.end
+                )
+              );
             const hasWindowEnded = Boolean(window && now > window.end);
 
             return (

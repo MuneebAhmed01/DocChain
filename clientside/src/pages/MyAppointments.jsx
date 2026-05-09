@@ -292,11 +292,16 @@ const MyAppointments = () => {
             const window = getAppointmentWindow(item.slotDate, item.slotTime);
             const canJoin = Boolean(
               isOnlineAppointment &&
-              window &&
-              now >= window.joinStart &&
-              now <= window.end &&
               !item.cancelled &&
-              appointmentStatus === "CONFIRMED",
+              appointmentStatus === "CONFIRMED" &&
+              (
+                item.demoActive === true ||
+                (
+                  window &&
+                  now >= window.joinStart &&
+                  now <= window.end
+                )
+              ),
             );
             const isBeforeWindow = Boolean(window && now < window.joinStart);
             const isAfterWindow = Boolean(window && now > window.end);
@@ -456,23 +461,40 @@ const MyAppointments = () => {
                       <button
                         onClick={async () => {
                           try {
-                            const { data } = await axiosInstance.post(
-                              "/api/user/trigger-reminder",
-                              { appointmentId: item._id },
-                            );
-                            if (data.success) {
-                              toast.success("Reminder sent successfully!");
+                            // For online appointments: force-activate so Join Call appears immediately (demo mode)
+                            if (isOnlineAppointment) {
+                              console.log("[DEMO] Triggering force-active for appointment", item._id);
+                              const { data } = await axiosInstance.post(
+                                "/api/user/appointments/force-active",
+                                { appointmentId: item._id },
+                              );
+                              console.log("[DEMO] force-active response:", data);
+                              if (data.success) {
+                                toast.success("Appointment is now joinable! Click 'Join Call'.");
+                                getUserAppointments(); // refresh so demoActive flag is reflected
+                              } else {
+                                toast.error(data.message || "Failed to activate appointment");
+                              }
                             } else {
-                              toast.error(data.message || "Failed to send reminder");
+                              // For office appointments: just send the WhatsApp reminder
+                              const { data } = await axiosInstance.post(
+                                "/api/user/trigger-reminder",
+                                { appointmentId: item._id },
+                              );
+                              if (data.success) {
+                                toast.success("Reminder sent successfully!");
+                              } else {
+                                toast.error(data.message || "Failed to send reminder");
+                              }
                             }
                           } catch (err) {
-                            console.error(err);
-                            toast.error("Failed to send reminder");
+                            console.error("[DEMO] trigger error:", err);
+                            toast.error("Failed to trigger appointment");
                           }
                         }}
                         className="text-sm text-white bg-amber-500 text-center w-full sm:min-w-48 py-2.5 rounded hover:bg-amber-600 transition-all"
                       >
-                        🔔 Send Reminder
+                        {isOnlineAppointment ? "🚀 Trigger Appointment" : "🔔 Send Reminder"}
                       </button>
                     )}
 

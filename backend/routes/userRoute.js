@@ -32,6 +32,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import userModel from "../models/userModel.js";
+import appointmentModel from "../models/appointmentModel.js";
 import authUser from "../middlewares/authUser.js";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
@@ -352,6 +353,43 @@ router.post("/appointments/join-online", authUser, joinOnlineAppointment);
 
 // Cancel appointment
 router.post("/cancel-appointment", authUser, cancelAppointment);
+
+// Force-activate an appointment for demo/testing: bypasses the time-window check
+// so the "Join Call" button appears immediately on the frontend.
+router.post("/appointments/force-active", authUser, async (req, res) => {
+  try {
+    const { appointmentId } = req.body;
+    if (!appointmentId) {
+      return res.status(400).json({ success: false, message: "appointmentId is required" });
+    }
+
+    const appointment = await appointmentModel.findById(appointmentId);
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    // Only the appointment owner can trigger this
+    if (String(appointment.userId) !== String(req.user.userId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    if (appointment.appointmentType !== "online" && appointment.type !== "online") {
+      return res.status(400).json({ success: false, message: "Only online appointments can be force-activated" });
+    }
+
+    console.log(`[DEMO] Force-activating appointment ${appointmentId} for user ${req.user.userId}`);
+
+    appointment.demoActive = true;
+    await appointment.save();
+
+    console.log(`[DEMO] Appointment ${appointmentId} is now force-active (demoActive=true)`);
+
+    return res.json({ success: true, message: "Appointment is now joinable (demo mode)", demoActive: true });
+  } catch (error) {
+    console.error("[DEMO] force-active error:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // Trigger WhatsApp reminder (manual, for demo)
 import { sendWhapiReminderForAppointment } from "../services/whapiAppointmentService.js";
