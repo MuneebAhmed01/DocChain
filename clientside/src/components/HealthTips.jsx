@@ -41,7 +41,7 @@ export default function HealthTips() {
           {bigCards.map((item) => (
             <Link
               key={item._id}
-              to={`/blogs/${item.slug || item._id}`}
+              to={"/blog/" + item._id}
               className="rounded-xl overflow-hidden border shadow-sm bg-white hover:shadow-md transition cursor-pointer flex flex-col"
             >
               <img
@@ -73,7 +73,7 @@ export default function HealthTips() {
           {smallCards.map((item) => (
             <Link
               key={item._id}
-              to={`/blogs/${item.slug || item._id}`}
+              to={"/blog/" + item._id}
               className="flex gap-3 p-2 rounded-xl border bg-white shadow-sm hover:shadow-md transition cursor-pointer h-20 sm:h-24"
             >
               <img

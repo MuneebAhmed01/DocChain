@@ -1,9 +1,31 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { AdminContext } from "../../context/AdminContext";
+
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-primary" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
 
 const DoctorsList = () => {
   const { doctors, aToken, getAllDoctors, changeAvailability, changeDoctorStatus } =
     useContext(AdminContext);
+
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
+  const handleAction = async (doctorId, action, apiFn, ...args) => {
+    if (lockRef.current[doctorId]) return;
+    lockRef.current[doctorId] = true;
+    setLoadingMap((prev) => ({ ...prev, [doctorId]: action }));
+    try {
+      await apiFn(doctorId, ...args);
+    } finally {
+      lockRef.current[doctorId] = false;
+      setLoadingMap((prev) => ({ ...prev, [doctorId]: null }));
+    }
+  };
 
   useEffect(() => {
     if (aToken) {
@@ -40,34 +62,45 @@ const DoctorsList = () => {
               
               <div className="flex flex-col gap-3">
                 {/* Availability Toggle */}
-                <div className="flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    className="w-4 h-4 cursor-pointer accent-primary"
-                    onChange={() => changeAvailability(item._id)}
-                    type="checkbox"
-                    checked={item.available}
-                    disabled={item.status === "suspended"}
-                  />
-                  <p className={item.status === "suspended" ? "text-gray-400" : ""}>
+                <div className="flex items-center gap-2 text-sm text-gray-700 h-6">
+                  {loadingMap[item._id] === "availability" ? (
+                    <Spinner />
+                  ) : (
+                    <input
+                      className="w-4 h-4 cursor-pointer accent-primary"
+                      onChange={() => handleAction(item._id, "availability", changeAvailability)}
+                      type="checkbox"
+                      checked={item.available}
+                      disabled={item.status === "suspended" || !!loadingMap[item._id]}
+                    />
+                  )}
+                  <p className={(item.status === "suspended" || !!loadingMap[item._id]) ? "text-gray-400" : ""}>
                     Available
                   </p>
                 </div>
 
                 {/* Status Button */}
                 <button
+                  disabled={!!loadingMap[item._id]}
                   onClick={() =>
-                    changeDoctorStatus(
+                    handleAction(
                       item._id,
+                      "status",
+                      changeDoctorStatus,
                       item.status === "active" ? "suspended" : "active"
                     )
                   }
-                  className={`w-full text-xs font-medium py-2 rounded-lg transition-colors ${
+                  className={`w-full text-xs font-medium py-2 rounded-lg transition-colors flex items-center justify-center min-h-[32px] ${
                     item.status === "suspended"
                       ? "bg-green-100 text-green-700 hover:bg-green-200"
                       : "bg-red-50 text-red-600 hover:bg-red-100"
-                  }`}
+                  } ${!!loadingMap[item._id] ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  {item.status === "suspended" ? "Activate Doctor" : "Suspend Doctor"}
+                  {loadingMap[item._id] === "status" ? (
+                    <Spinner />
+                  ) : (
+                    item.status === "suspended" ? "Activate Doctor" : "Suspend Doctor"
+                  )}
                 </button>
               </div>
             </div>

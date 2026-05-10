@@ -21,7 +21,7 @@ export default function BlogList() {
         {sorted.map((b) => (
           <Link
             key={b._id}
-            to={`/blogs/${b.slug || b._id}`}
+            to={"/blog/" + b._id}
             className="block bg-white rounded-xl shadow hover:shadow-md transition overflow-hidden"
           >
             <img

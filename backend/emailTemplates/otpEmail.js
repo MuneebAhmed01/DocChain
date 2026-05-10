@@ -24,7 +24,11 @@ The DocChain Team
     console.log(`📧 OTP email sent to ${email}`);
   } catch (error) {
     console.error("Error sending OTP email:", error);
-    throw new Error("Failed to send OTP email");
+    console.log(`🔐 EMAIL FAILED - Email verification OTP for ${email}: ${otp}`);
+    console.log("⚠️  Please use the OTP above to verify your email. Email service is currently unavailable.");
+    
+    // Don't throw error - allow OTP flow to continue even if email fails
+    // This ensures users can still verify email using the console OTP
   }
 };
 

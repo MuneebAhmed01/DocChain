@@ -1,10 +1,17 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { DoctorContext } from "../../context/DoctorContext";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
+
+const Spinner = ({ color = "white" }) => (
+  <svg className={`animate-spin h-4 w-4 inline-block text-${color}`} viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
 
 export default function DoctorBlogs() {
   const {
@@ -27,6 +34,10 @@ export default function DoctorBlogs() {
     tags: "",
     imageUrl: "",
   });
+
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
   useEffect(() => {
     if (dToken) {
       getDoctorAllBlogs();
@@ -47,8 +58,16 @@ export default function DoctorBlogs() {
   }, [allBlogs, filter]);
 
   const handleDelete = async (blogId) => {
+    if (lockRef.current[blogId]) return;
     if (window.confirm("Are you sure you want to delete this blog?")) {
-      await deleteDoctorBlog(blogId);
+      lockRef.current[blogId] = true;
+      setLoadingMap((prev) => ({ ...prev, [blogId]: "delete" }));
+      try {
+        await deleteDoctorBlog(blogId);
+      } finally {
+        lockRef.current[blogId] = false;
+        setLoadingMap((prev) => ({ ...prev, [blogId]: null }));
+      }
     }
   };
 
@@ -66,6 +85,10 @@ export default function DoctorBlogs() {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (lockRef.current[editingId]) return;
+    
+    lockRef.current[editingId] = true;
+    setLoadingMap((prev) => ({ ...prev, [editingId]: "edit" }));
     try {
       await updateDoctorBlog(editingId, editForm);
       setEditingId(null);
@@ -80,6 +103,9 @@ export default function DoctorBlogs() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to update blog");
+    } finally {
+      lockRef.current[editingId] = false;
+      setLoadingMap((prev) => ({ ...prev, [editingId]: null }));
     }
   };
 
@@ -311,10 +337,11 @@ export default function DoctorBlogs() {
 
                     <div className="flex gap-3">
                       <button
+                        disabled={!!loadingMap[editingId]}
                         type="submit"
-                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all"
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all flex items-center justify-center min-w-[130px]"
                       >
-                        Save Changes
+                        {loadingMap[editingId] === "edit" ? <Spinner /> : "Save Changes"}
                       </button>
                       <button
                         type="button"
@@ -387,10 +414,11 @@ export default function DoctorBlogs() {
                         ✎ Edit
                       </button>
                       <button
+                        disabled={!!loadingMap[blog._id]}
                         onClick={() => handleDelete(blog._id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all"
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all flex items-center justify-center min-w-[100px]"
                       >
-                        🗑 Delete
+                        {loadingMap[blog._id] === "delete" ? <Spinner /> : "🗑 Delete"}
                       </button>
                       <button
                         onClick={() => setViewingId(blog._id)}

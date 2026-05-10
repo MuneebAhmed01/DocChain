@@ -1,11 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-gray-500" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
+
 export default function PendingBlogs({ token }) {
   const [blogs, setBlogs] = useState([]);
-  const [busyId, setBusyId] = useState("");
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
   const backendUrl =
     import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
@@ -36,8 +45,10 @@ export default function PendingBlogs({ token }) {
   }, [token]);
 
   const updateStatus = async (id, status) => {
+    if (lockRef.current[id]) return;
+    lockRef.current[id] = true;
+    setLoadingMap((prev) => ({ ...prev, [id]: status }));
     try {
-      setBusyId(id);
       await axios.patch(
         `${backendUrl}/api/blogs/admin/${id}/status`,
         { status },
@@ -52,7 +63,8 @@ export default function PendingBlogs({ token }) {
         err.response?.data?.message || "Failed to update blog status",
       );
     } finally {
-      setBusyId("");
+      lockRef.current[id] = false;
+      setLoadingMap((prev) => ({ ...prev, [id]: null }));
     }
   };
 
@@ -89,17 +101,17 @@ export default function PendingBlogs({ token }) {
                 <td className="p-4 text-center">
                   <button
                     onClick={() => updateStatus(b._id, "approved")}
-                    disabled={busyId === b._id}
-                    className="text-green-600 hover:text-green-700 font-medium mr-4 disabled:opacity-50"
+                    disabled={!!loadingMap[b._id]}
+                    className="text-green-600 hover:text-green-700 font-medium mr-4 disabled:opacity-50 inline-flex items-center justify-center min-w-[70px]"
                   >
-                    Approve
+                    {loadingMap[b._id] === "approved" ? <Spinner /> : "Approve"}
                   </button>
                   <button
                     onClick={() => updateStatus(b._id, "rejected")}
-                    disabled={busyId === b._id}
-                    className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50"
+                    disabled={!!loadingMap[b._id]}
+                    className="text-red-500 hover:text-red-700 font-medium disabled:opacity-50 inline-flex items-center justify-center min-w-[70px]"
                   >
-                    Reject
+                    {loadingMap[b._id] === "rejected" ? <Spinner /> : "Reject"}
                   </button>
                 </td>
               </tr>

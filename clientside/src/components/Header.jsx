@@ -76,13 +76,13 @@ const Header = () => {
 
         {/* Floating Action Bar - Hidden on mobile, Flex on desktop */}
         <div className="hidden md:flex absolute top-1/2 right-3 -translate-y-1/2 items-center gap-3 bg-white/60 backdrop-blur-sm p-3 rounded-xl shadow">
-          <div className="p-2 bg-white rounded-full shadow cursor-pointer">
+          <div className="p-2 bg-white rounded-full shadow cursor-default" aria-hidden="true">
             📷
           </div>
-          <div className="p-2 bg-blue-600 text-white rounded-full shadow cursor-pointer">
+          <div className="p-2 bg-blue-600 text-white rounded-full shadow cursor-default" aria-hidden="true">
             📞
           </div>
-          <div className="p-2 bg-white rounded-full shadow cursor-pointer">
+          <div className="p-2 bg-white rounded-full shadow cursor-default" aria-hidden="true">
             🎤
           </div>
         </div>

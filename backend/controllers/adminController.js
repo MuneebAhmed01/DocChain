@@ -102,12 +102,17 @@ if (!allowedCities.includes(city)) {
       });
     }
 
+    // Normalize speciality names to match frontend filters
+    const normalizedSpeciality = speciality.toLowerCase() === 'pediatrician' 
+      ? 'Pediatricians' 
+      : speciality.charAt(0).toUpperCase() + speciality.slice(1).toLowerCase();
+
     const doctorData = {
       name,
       email,
       image: imageUrl,     // ✔ new Cloudinary URL
       password: hashedPassword,
-      speciality,
+      speciality: normalizedSpeciality,
       degree,
       experience,
         city,
@@ -115,6 +120,8 @@ if (!allowedCities.includes(city)) {
       fees,
       address: JSON.parse(address),
       date: Date.now(),
+      onlineConsultEnabled: true,
+      onlineConsultFee: fees,
     };
 
     const newDoctor = new doctorModel(doctorData);
@@ -197,6 +204,11 @@ const appointmentCancel = async (req, res) => {
         success: false,
         message: "Appointment not found",
       });
+    }
+
+    // Idempotency guard: already cancelled → return success without re-running side effects
+    if (/^CANCELLED_/.test(appointment.appointmentStatus)) {
+      return res.json({ success: true, message: "Appointment already cancelled" });
     }
 
     const wasConfirmed = appointment.appointmentStatus === APPOINTMENT_STATUS.CONFIRMED;

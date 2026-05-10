@@ -99,10 +99,10 @@ console.log("PASSWORD:", password)
 const appointmentsDoctor = async (req, res) => {
   try {
     const { docId } = req.body;
-    // ✅ Sort by date descending (newest first) and by time
+    // ✅ Sort by booking timestamp descending (newest first)
     const appointments = await appointmentModel
       .find({ docId })
-      .sort({ slotDate: -1, slotTime: -1 })
+      .sort({ date: -1 })
       .lean();
 
     res.json({ success: true, appointments });
@@ -178,20 +178,22 @@ const appointmentComplete = async (req, res) => {
       });
     }
 
+    // ✅ Idempotency guard: already in a terminal state — return early before any side effects
+    if (
+      appointment.appointmentStatus === "COMPLETED" ||
+      /^CANCELLED_/.test(appointment.appointmentStatus)
+    ) {
+      return res.json({
+        success: true,
+        message: "Appointment already in target state",
+      });
+    }
+
     // ✅ Only CONFIRMED appointments can be completed
     if (!canCompleteAppointment(appointment)) {
       return res.status(400).json({
         success: false,
         message: `Cannot complete appointment with status: ${appointment.appointmentStatus}`,
-      });
-    }
-
-    // ✅ Prevent double completion
-    if (appointment.appointmentStatus === APPOINTMENT_STATUS.COMPLETED) {
-      return res.json({
-        success: true,
-        message: "Appointment already completed",
-        isDuplicate: true,
       });
     }
 
@@ -297,6 +299,11 @@ const appointmentCancel = async (req, res) => {
 
     if (String(appointment.docId) !== String(docId)) {
       return res.json({ success: false, message: "Not authorized" });
+    }
+
+    // ✅ Idempotency guard: already cancelled — return success immediately before any side effects
+    if (/^CANCELLED_/.test(appointment.appointmentStatus)) {
+      return res.json({ success: true, message: "Appointment already cancelled" });
     }
 
     // ✅ Only allow cancelling HOLD or CONFIRMED appointments
@@ -429,10 +436,10 @@ const appointmentCancel = async (req, res) => {
 const doctorDashboard = async (req, res) => {
   try {
     const { docId } = req.body;
-    // ✅ Sort appointments: newest first (descending by date, then by time)
+    // ✅ Sort appointments: newest first (descending by booking timestamp)
     const appointments = await appointmentModel
       .find({ docId })
-      .sort({ slotDate: -1, slotTime: -1 })
+      .sort({ date: -1 })
       .lean();
 
     const doctor = await doctorModel.findById(docId).select("walletBalance");

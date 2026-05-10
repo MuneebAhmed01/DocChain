@@ -58,6 +58,7 @@ const upload = multer({ dest: "uploads/" });
 
 import welcomeEmail from "../emailTemplates/welcomeEmail.js";
 import sendOTPEmail from "../emailTemplates/otpEmail.js";
+import sendPasswordResetEmail from "../emailTemplates/passwordResetEmail.js";
 import { generateOTP, storeOTP, verifyOTP, isEmailVerified } from "../utils/otpUtils.js";
 
 import googleClient from "../utils/googleClient.js";
@@ -167,7 +168,7 @@ router.post("/send-otp", async (req, res) => {
 // Verify OTP
 router.post("/verify-otp", async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, purpose = 'signup' } = req.body;
 
     if (!email || !otp) {
       return res.status(400).json({ 
@@ -176,7 +177,7 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    const result = await verifyOTP(email, otp, 'signup');
+    const result = await verifyOTP(email, otp, purpose);
     
     if (result.success) {
       res.json({ 
@@ -453,6 +454,110 @@ router.post("/complete-profile", authUser, async (req, res) => {
   } catch (error) {
     console.log("Complete profile error:", error);
     res.status(500).json({ success: false, message: "Failed to complete profile" });
+  }
+});
+
+// ------------------ FORGOT PASSWORD ------------------
+
+// Send OTP for password reset
+router.post("/send-otp-reset", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email is required" 
+      });
+    }
+
+    // Validate email format
+    if (!String(email).includes("@")) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid email format" 
+      });
+    }
+
+    // Check if user exists
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "No account found with this email address." 
+      });
+    }
+
+    // Generate and store OTP
+    const otp = generateOTP();
+    await storeOTP(email, otp, 'password_reset');
+
+    // Send OTP email
+    await sendPasswordResetEmail(email, otp);
+
+    res.json({ 
+      success: true, 
+      message: "OTP sent successfully to your email" 
+    });
+  } catch (error) {
+    console.error("Send OTP reset error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Failed to send OTP" 
+    });
+  }
+});
+
+// Reset password
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email, OTP, and new password are required" 
+      });
+    }
+
+    // Verify OTP
+    const result = await verifyOTP(email, otp, 'password_reset');
+    if (!result.success) {
+      return res.status(400).json({ 
+        success: false, 
+        message: result.message 
+      });
+    }
+
+    // Validate password strength
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long"
+      });
+    }
+
+    const hasUpperCase = /[A-Z]/.test(newPassword);
+    if (!hasUpperCase) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must contain at least one uppercase letter"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await userModel.findOneAndUpdate({ email }, { password: hashedPassword });
+
+    res.json({ 
+      success: true, 
+      message: "Password reset successfully" 
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to reset password" 
+    });
   }
 });
 

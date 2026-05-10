@@ -76,8 +76,10 @@ const changeDoctorStatus = async (doctorId, status) => {
       });
 
       if (data.success) {
-        setAppointments(data.appointments);
-        console.log(data.appointments);
+        // Sort appointments by booking timestamp (newest first)
+        const sorted = data.appointments.sort((a, b) => (b.date || 0) - (a.date || 0));
+        setAppointments(sorted);
+        console.log(sorted);
       } else {
         toast.error(data.message);
       }

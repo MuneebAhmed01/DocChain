@@ -5,7 +5,7 @@ export const doctors = [
        image: "doc1.png",
         speciality: 'General physician',
         email:"doc01@gmail.com",
-        phone_number: "+923349543758",
+        phone_number: "+923345001289",
         password: "12345678",
         degree: 'MBBS',
         experience: '4 Years',

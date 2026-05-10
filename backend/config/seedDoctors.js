@@ -59,6 +59,8 @@ const seedDoctors = async () => {
         fees: doc.fees,
         address: doc.address,
         password: hashedPassword, // ✅ HASHED
+        onlineConsultEnabled: true,
+        onlineConsultFee: doc.fees,
       });
 
       console.log(`✅ Added: ${doc.name}`);

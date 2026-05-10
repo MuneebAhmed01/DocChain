@@ -67,14 +67,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/appointment/:docId"
-          element={
-            <ProtectedRoute>
-              <Appointment />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/appointment/:docId" element={<Appointment />} />
       </Routes>
       <ScrollToTop />
       <Footer />

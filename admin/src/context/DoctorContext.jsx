@@ -24,47 +24,10 @@ const DoctorContextProvider = (props) => {
         { headers: { dToken } },
       );
       if (data.success) {
-        // Sort appointments by booking date (newest first) to ensure newest booked appointments appear on top
-        const sortedAppointments = data.appointments.sort((a, b) => {
-          // Create proper date objects from slotDate and slotTime for accurate sorting
-          const createDateTime = (slotDate, slotTime) => {
-            if (!slotDate) return new Date(0);
-
-            // Parse slotDate (format: DD_Month_YYYY or DD-MM-YYYY)
-            const dateParts = String(slotDate).includes("-")
-              ? String(slotDate).split("-").reverse()
-              : String(slotDate).split("_");
-
-            if (dateParts.length !== 3) return new Date(0);
-
-            const [day, month, year] = dateParts;
-            const date = new Date(
-              `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00`,
-            );
-
-            if (slotTime) {
-              // Parse slotTime and add to date
-              const [timeValue, meridian = ""] = String(slotTime).split(" ");
-              const [hRaw, mRaw] = timeValue.split(":");
-              let hour = Number.parseInt(hRaw, 10);
-              const minute = Number.parseInt(mRaw, 10);
-              const lowerMeridian = String(meridian).toLowerCase();
-              if (lowerMeridian === "pm" && hour < 12) hour += 12;
-              if (lowerMeridian === "am" && hour === 12) hour = 0;
-              date.setHours(hour, minute || 0, 0, 0);
-            }
-
-            return date;
-          };
-
-          const dateTimeA = createDateTime(a.slotDate, a.slotTime);
-          const dateTimeB = createDateTime(b.slotDate, b.slotTime);
-
-          // Sort by date and time (newest first)
-          return dateTimeB.getTime() - dateTimeA.getTime();
-        });
-        setAppointments(sortedAppointments);
-        console.log(sortedAppointments);
+        // Sort appointments by booking timestamp (newest first)
+        const sorted = data.appointments.sort((a, b) => (b.date || 0) - (a.date || 0));
+        setAppointments(sorted);
+        console.log(sorted);
       } else {
         toast.error(data.message);
       }

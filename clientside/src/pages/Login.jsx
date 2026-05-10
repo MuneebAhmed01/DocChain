@@ -74,7 +74,123 @@ const Login = () => {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpCooldown, setOtpCooldown] = useState(0);
 
+  // Forgot Password State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [fpStep, setFpStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
+  const [fpEmail, setFpEmail] = useState("");
+  const [fpOtp, setFpOtp] = useState("");
+  const [fpNewPassword, setFpNewPassword] = useState("");
+  const [fpConfirmPassword, setFpConfirmPassword] = useState("");
+  const [fpError, setFpError] = useState("");
+  const [fpLoading, setFpLoading] = useState(false);
+  const [fpOtpCooldown, setFpOtpCooldown] = useState(0);
+
   const isSignup = state === "Sign Up";
+
+  // Forgot Password Handlers
+  const handleSendFpOtp = async () => {
+    if (!fpEmail) {
+      setFpError("Email is required");
+      return;
+    }
+    if (!fpEmail.includes("@")) {
+      setFpError("Invalid email address");
+      return;
+    }
+
+    setFpLoading(true);
+    setFpError("");
+    try {
+      const { data } = await axiosInstance.post("/api/user/send-otp-reset", { email: fpEmail });
+      if (data.success) {
+        setFpStep(2);
+        toast.success("OTP sent to your email!");
+        setFpOtpCooldown(60);
+        const timer = setInterval(() => {
+          setFpOtpCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        setFpError(data.message);
+      }
+    } catch (error) {
+      setFpError(error.response?.data?.message || "Failed to send OTP");
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const handleVerifyFpOtp = async () => {
+    if (fpOtp.length !== 6) {
+      setFpError("Enter 6-digit OTP");
+      return;
+    }
+
+    setFpLoading(true);
+    setFpError("");
+    try {
+      const { data } = await axiosInstance.post("/api/user/verify-otp", { 
+        email: fpEmail, 
+        otp: fpOtp,
+        purpose: 'password_reset'
+      });
+      if (data.success) {
+        setFpStep(3);
+        toast.success("OTP verified!");
+      } else {
+        setFpError(data.message);
+      }
+    } catch (error) {
+      setFpError(error.response?.data?.message || "Verification failed");
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (fpNewPassword.length < 8) {
+      setFpError("Password must be at least 8 characters");
+      return;
+    }
+    if (!/[A-Z]/.test(fpNewPassword)) {
+      setFpError("Password must contain at least one uppercase letter");
+      return;
+    }
+    if (fpNewPassword !== fpConfirmPassword) {
+      setFpError("Passwords do not match");
+      return;
+    }
+
+    setFpLoading(true);
+    setFpError("");
+    try {
+      const { data } = await axiosInstance.post("/api/user/reset-password", {
+        email: fpEmail,
+        otp: fpOtp,
+        newPassword: fpNewPassword
+      });
+      if (data.success) {
+        toast.success("Password reset successfully! Please login.");
+        setShowForgotPassword(false);
+        setFpStep(1);
+        setFpEmail("");
+        setFpOtp("");
+        setFpNewPassword("");
+        setFpConfirmPassword("");
+      } else {
+        setFpError(data.message);
+      }
+    } catch (error) {
+      setFpError(error.response?.data?.message || "Failed to reset password");
+    } finally {
+      setFpLoading(false);
+    }
+  };
 
   const updateField = (field, value) => {
     setFormData((c) => ({ ...c, [field]: value }));
@@ -182,7 +298,6 @@ const Login = () => {
     setFormErrors((c) => ({ ...c, profileImage: "" }));
 
     if (file) {
-      // Check file size (5MB = 5 * 1024 * 1024 bytes)
       const maxSize = 5 * 1024 * 1024;
       if (file.size > maxSize) {
         setFormErrors((c) => ({
@@ -296,7 +411,6 @@ const Login = () => {
         @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
         .auth-wrap {
-          /* Fill whatever space the navbar leaves */
           height: calc(100vh - 70px);
           max-height: 90vh;
           display: flex;
@@ -304,7 +418,6 @@ const Login = () => {
           overflow: hidden;
         }
 
-        /* ── LEFT PANEL ── */
         .auth-left {
           flex: 0 0 44%;
           background: linear-gradient(145deg, #0a1628 0%, #0f2549 45%, #0c3d6b 100%);
@@ -372,7 +485,6 @@ const Login = () => {
         .feat-icon svg { width: 12px; height: 12px; }
         .feat-txt { font-size: 11.5px; color: rgba(255,255,255,0.58); }
 
-        /* Doctor card — bottom-anchored, image clips out */
         .doc-card {
           position: relative; z-index: 2;
           background: rgba(255,255,255,0.06);
@@ -393,7 +505,6 @@ const Login = () => {
           border-radius: 8px 8px 0 0; display: block; flex-shrink: 0;
         }
 
-        /* ── RIGHT PANEL ── */
         .auth-right {
           flex: 1; background: #f1f5f9;
           display: flex; align-items: center; justify-content: center;
@@ -444,7 +555,6 @@ const Login = () => {
 
         .f-error { font-size: 10.5px; color: #f43f5e; font-weight: 500; }
 
-        /* Compact horizontal upload row */
         .upload-label {
           height: 48px; border-radius: 8px; border: 1.5px dashed #cbd5e1;
           background: #fff; display: flex; align-items: center; gap: 10px;
@@ -509,7 +619,7 @@ const Login = () => {
       `}</style>
 
       <div className="auth-wrap">
-        {/* ── LEFT ── */}
+        {/* ── LEFT PANEL ── */}
         <div className="auth-left">
           <div className="grid-bg" />
           <div className="glow-orb orb-a" />
@@ -583,7 +693,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/* ── RIGHT ── */}
+        {/* ── RIGHT PANEL ── */}
         <div className="auth-right">
           <div className="form-box">
             <div className="form-top">
@@ -730,7 +840,12 @@ const Login = () => {
                     <button
                       type="button"
                       className="forgot-btn"
-                      onClick={() => {}}
+                      onClick={() => {
+                        setShowForgotPassword(true);
+                        setFpStep(1);
+                        setFpEmail("");
+                        setFpError("");
+                      }}
                     >
                       Forgot password?
                     </button>
@@ -741,14 +856,8 @@ const Login = () => {
               {isSignup && (
                 <div className="field">
                   <label className="f-label">Email Verification</label>
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "8px",
-                      alignItems: "flex-start",
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
                       <input
                         className={`f-input${formErrors.otp ? " err" : ""}`}
                         type="text"
@@ -778,50 +887,15 @@ const Login = () => {
                         isSubmitting ||
                         otpVerified
                       }
-                      style={{
-                        height: "38px",
-                        padding: "0 16px",
-                        borderRadius: "8px",
-                        border: "1.5px solid #e2e8f0",
-                        background: otpVerified ? "#10b981" : "#fff",
-                        color: otpVerified ? "#fff" : "#0ea5e9",
-                        fontSize: "12px",
-                        fontWeight: "500",
-                        cursor:
-                          sendingOtp ||
-                          otpCooldown > 0 ||
-                          isSubmitting ||
-                          otpVerified
-                            ? "not-allowed"
-                            : "pointer",
-                        opacity:
-                          sendingOtp ||
-                          otpCooldown > 0 ||
-                          isSubmitting ||
-                          otpVerified
-                            ? 0.6
-                            : 1,
-                        transition: "all 0.18s",
-                        whiteSpace: "nowrap",
-                        minWidth: "100px",
-                      }}
+                      className={`h-[38px] px-4 rounded-lg border font-medium text-xs transition-all whitespace-nowrap min-w-[100px] ${
+                        otpVerified 
+                          ? "bg-green-500 text-white border-green-500" 
+                          : "bg-white text-sky-500 border-gray-200 hover:border-sky-500"
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {sendingOtp ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "6px",
-                          }}
-                        >
-                          <div
-                            className="spinner"
-                            style={{
-                              width: "12px",
-                              height: "12px",
-                              borderWidth: "1.5px",
-                            }}
-                          />
+                        <div className="flex items-center gap-1.5">
+                          <div className="spinner !w-3 !h-3 !border-[1.5px]" />
                           Sending...
                         </div>
                       ) : otpVerified ? (
@@ -839,44 +913,11 @@ const Login = () => {
                       type="button"
                       onClick={verifyOTP}
                       disabled={verifyingOtp || isSubmitting || !formData.otp}
-                      style={{
-                        height: "38px",
-                        borderRadius: "8px",
-                        border: "none",
-                        background: "linear-gradient(135deg, #10b981, #059669)",
-                        color: "#fff",
-                        fontSize: "12px",
-                        fontWeight: "600",
-                        cursor:
-                          verifyingOtp || isSubmitting || !formData.otp
-                            ? "not-allowed"
-                            : "pointer",
-                        opacity:
-                          verifyingOtp || isSubmitting || !formData.otp
-                            ? 0.6
-                            : 1,
-                        transition: "all 0.18s",
-                        marginTop: "8px",
-                        width: "100%",
-                      }}
+                      className="w-full h-[38px] mt-2 rounded-lg bg-gradient-to-r from-emerald-500 to-green-600 text-white text-xs font-semibold shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {verifyingOtp ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: "6px",
-                          }}
-                        >
-                          <div
-                            className="spinner"
-                            style={{
-                              width: "12px",
-                              height: "12px",
-                              borderWidth: "1.5px",
-                            }}
-                          />
+                        <div className="flex items-center justify-center gap-1.5">
+                          <div className="spinner !w-3 !h-3 !border-[1.5px]" />
                           Verifying...
                         </div>
                       ) : (
@@ -884,19 +925,8 @@ const Login = () => {
                       )}
                     </button>
                   )}
-
                   {otpVerified && (
-                    <div
-                      style={{
-                        fontSize: "11px",
-                        color: "#10b981",
-                        fontWeight: "500",
-                        marginTop: "4px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px",
-                      }}
-                    >
+                    <div className="text-[11px] text-emerald-500 font-medium mt-1 flex items-center gap-1">
                       ✓ Email verified successfully
                     </div>
                   )}
@@ -971,6 +1001,155 @@ const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* ── FORGOT PASSWORD MODAL ── */}
+      {showForgotPassword && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-xl font-bold text-gray-800 font-syne">Reset Password</h3>
+              <button 
+                onClick={() => setShowForgotPassword(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={fpLoading}
+              >
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6">
+              {fpError && (
+                <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-600 text-xs font-medium border border-red-100 flex items-center gap-2">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  {fpError}
+                </div>
+              )}
+
+              {/* STEP 1: EMAIL */}
+              {fpStep === 1 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Enter your email address and we'll send you an OTP to reset your password.
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Email Address</label>
+                    <input
+                      type="email"
+                      className="f-input"
+                      placeholder="you@example.com"
+                      value={fpEmail}
+                      onChange={(e) => {
+                        setFpEmail(e.target.value);
+                        setFpError("");
+                      }}
+                      disabled={fpLoading}
+                    />
+                  </div>
+                  <button 
+                    onClick={handleSendFpOtp}
+                    disabled={fpLoading || !fpEmail}
+                    className="submit-btn"
+                  >
+                    {fpLoading ? <div className="spinner" /> : "Send Reset OTP"}
+                  </button>
+                </div>
+              )}
+
+              {/* STEP 2: OTP */}
+              {fpStep === 2 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    We've sent a 6-digit code to <span className="font-semibold text-gray-800">{fpEmail}</span>. 
+                    The code expires in 5 minutes.
+                  </p>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Verification Code</label>
+                    <input
+                      type="text"
+                      className="f-input text-center text-lg tracking-[0.5em] font-mono"
+                      placeholder="000000"
+                      maxLength={6}
+                      value={fpOtp}
+                      onChange={(e) => {
+                        setFpOtp(e.target.value.replace(/\D/g, ""));
+                        setFpError("");
+                      }}
+                      disabled={fpLoading}
+                    />
+                  </div>
+                  <button 
+                    onClick={handleVerifyFpOtp}
+                    disabled={fpLoading || fpOtp.length !== 6}
+                    className="submit-btn"
+                  >
+                    {fpLoading ? <div className="spinner" /> : "Verify Code"}
+                  </button>
+                  <div className="text-center mt-2">
+                    <button
+                      onClick={handleSendFpOtp}
+                      disabled={fpLoading || fpOtpCooldown > 0}
+                      className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                    >
+                      {fpOtpCooldown > 0 ? `Resend OTP in ${fpOtpCooldown}s` : "Resend code"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: NEW PASSWORD */}
+              {fpStep === 3 && (
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    OTP Verified! Now create a strong new password for your account.
+                  </p>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">New Password</label>
+                      <input
+                        type="password"
+                        className="f-input"
+                        placeholder="Min 8 chars, 1 uppercase"
+                        value={fpNewPassword}
+                        onChange={(e) => {
+                          setFpNewPassword(e.target.value);
+                          setFpError("");
+                        }}
+                        disabled={fpLoading}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Confirm Password</label>
+                      <input
+                        type="password"
+                        className="f-input"
+                        placeholder="Re-enter new password"
+                        value={fpConfirmPassword}
+                        onChange={(e) => {
+                          setFpConfirmPassword(e.target.value);
+                          setFpError("");
+                        }}
+                        disabled={fpLoading}
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleResetPassword}
+                    disabled={fpLoading || !fpNewPassword || !fpConfirmPassword}
+                    className="submit-btn"
+                  >
+                    {fpLoading ? <div className="spinner" /> : "Update Password"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

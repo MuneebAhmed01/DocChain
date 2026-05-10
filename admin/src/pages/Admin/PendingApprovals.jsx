@@ -1,10 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-white" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
 
 const PendingApprovals = () => {
   const [pendingDoctors, setPendingDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
+  const handleAction = async (requestId, action, apiFn) => {
+    if (lockRef.current[requestId]) return;
+    lockRef.current[requestId] = true;
+    setLoadingMap((prev) => ({ ...prev, [requestId]: action }));
+    try {
+      await apiFn(requestId);
+    } finally {
+      lockRef.current[requestId] = false;
+      setLoadingMap((prev) => ({ ...prev, [requestId]: null }));
+    }
+  };
 
   const fetchPendingDoctors = async () => {
     try {
@@ -107,8 +129,20 @@ const PendingApprovals = () => {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-center gap-2">
-                    <button onClick={() => approveDoctor(doc._id)} className="bg-green-500 text-white px-3 py-1.5 rounded text-xs hover:bg-green-600 transition">Approve</button>
-                    <button onClick={() => rejectDoctor(doc._id)} className="bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600 transition">Reject</button>
+                    <button
+                      disabled={!!loadingMap[doc._id]}
+                      onClick={() => handleAction(doc._id, "approve", approveDoctor)}
+                      className="bg-green-500 text-white px-3 py-1.5 rounded text-xs hover:bg-green-600 transition flex items-center justify-center min-w-[70px] min-h-[30px]"
+                    >
+                      {loadingMap[doc._id] === "approve" ? <Spinner /> : "Approve"}
+                    </button>
+                    <button
+                      disabled={!!loadingMap[doc._id]}
+                      onClick={() => handleAction(doc._id, "reject", rejectDoctor)}
+                      className="bg-red-500 text-white px-3 py-1.5 rounded text-xs hover:bg-red-600 transition flex items-center justify-center min-w-[70px] min-h-[30px]"
+                    >
+                      {loadingMap[doc._id] === "reject" ? <Spinner /> : "Reject"}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -149,8 +183,20 @@ const PendingApprovals = () => {
             </div>
 
             <div className="flex gap-2 mt-2">
-              <button onClick={() => approveDoctor(doc._id)} className="flex-1 bg-green-500 text-white py-2.5 rounded-lg font-bold hover:bg-green-600 active:scale-95 transition">Approve</button>
-              <button onClick={() => rejectDoctor(doc._id)} className="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600 active:scale-95 transition">Reject</button>
+              <button
+                disabled={!!loadingMap[doc._id]}
+                onClick={() => handleAction(doc._id, "approve", approveDoctor)}
+                className="flex-1 bg-green-500 text-white py-2.5 rounded-lg font-bold hover:bg-green-600 active:scale-95 transition flex items-center justify-center min-h-[44px]"
+              >
+                {loadingMap[doc._id] === "approve" ? <Spinner /> : "Approve"}
+              </button>
+              <button
+                disabled={!!loadingMap[doc._id]}
+                onClick={() => handleAction(doc._id, "reject", rejectDoctor)}
+                className="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600 active:scale-95 transition flex items-center justify-center min-h-[44px]"
+              >
+                {loadingMap[doc._id] === "reject" ? <Spinner /> : "Reject"}
+              </button>
             </div>
           </div>
         ))}

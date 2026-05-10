@@ -5,6 +5,7 @@ const JoinDoctor = () => {
     fullName: "",
     email: "",
     password: "",
+    phone_number: "",
     experience: "",
     fee: "",
     specialty: "",
@@ -17,6 +18,68 @@ const JoinDoctor = () => {
 
   const [profilePic, setProfilePic] = useState(null);
   const [degreeProof, setDegreeProof] = useState(null);
+  const [phoneError, setPhoneError] = useState("");
+
+  const validateProfilePic = (file) => {
+    if (!file) return true;
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only JPG and PNG image files are allowed for profile pictures");
+      return false;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("Profile picture size too large. Maximum size is 5MB");
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateDegreeProof = (file) => {
+    if (!file) return true;
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      alert("Only JPG, PNG images and PDF files are allowed for degree proof");
+      return false;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert("Degree proof size too large. Maximum size is 5MB");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleProfilePicChange = (e) => {
+    const file = e.target.files[0];
+    if (file && validateProfilePic(file)) {
+      setProfilePic(file);
+    } else {
+      e.target.value = "";
+      setProfilePic(null);
+    }
+  };
+
+  const handleDegreeProofChange = (e) => {
+    const file = e.target.files[0];
+    if (file && validateDegreeProof(file)) {
+      setDegreeProof(file);
+    } else {
+      e.target.value = "";
+      setDegreeProof(null);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -37,9 +100,30 @@ const JoinDoctor = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setPhoneError("");
+
+    // Phone Number Normalization
+    let normalizedPhone = formData.phone_number.trim();
+    if (normalizedPhone.startsWith("0") && normalizedPhone.length === 11) {
+      normalizedPhone = normalizedPhone.substring(1);
+    }
+
+    // Phone Number Validation
+    const phoneRegex = /^3[0-9]{9}$/;
+    if (!phoneRegex.test(normalizedPhone)) {
+      setPhoneError("Enter a valid Pakistani mobile number (e.g. 3001234567)");
+      return;
+    }
+
+    const finalPhone = "+92" + normalizedPhone;
+
     const form = new FormData();
     Object.keys(formData).forEach((key) => {
-      form.append(key, formData[key]);
+      if (key === "phone_number") {
+        form.append("phone_number", finalPhone);
+      } else {
+        form.append(key, formData[key]);
+      }
     });
     form.append("profilePic", profilePic);
     form.append("degreeProof", degreeProof);
@@ -103,20 +187,45 @@ const JoinDoctor = () => {
             </div>
           </div>
 
-          {/* Password */}
-          <div className="flex flex-col gap-1 w-full">
-            <label className="text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+          {/* Password & Phone */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
+            <div className="flex flex-col gap-1 w-full">
+              <label className="text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1 w-full">
+              <label className="text-sm font-medium text-gray-700">
+                WhatsApp Number (Pakistani)
+              </label>
+              <div className="flex shadow-sm">
+                <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                  +92
+                </span>
+                <input
+                  type="tel"
+                  name="phone_number"
+                  placeholder="3001234567"
+                  value={formData.phone_number}
+                  onChange={handleChange}
+                  required
+                  className="flex-1 border border-gray-300 p-3 rounded-r-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              {phoneError && (
+                <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+              )}
+            </div>
           </div>
 
           {/* Experience & Fee */}
@@ -246,18 +355,24 @@ const JoinDoctor = () => {
               <p className="text-sm font-bold">Profile Picture</p>
               <input
                 type="file"
-                onChange={(e) => setProfilePic(e.target.files[0])}
+                onChange={handleProfilePicChange}
+                accept=".jpg,.jpeg,.png"
                 className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
+              <p className="text-xs text-gray-500">JPG, PNG only (Max 5MB)</p>
             </div>
 
             <div className="flex flex-col gap-2">
               <p className="text-sm font-bold">Degree Proof</p>
               <input
                 type="file"
-                onChange={(e) => setDegreeProof(e.target.files[0])}
+                onChange={handleDegreeProofChange}
+                accept=".jpg,.jpeg,.png,.pdf"
                 className="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               />
+              <p className="text-xs text-gray-500">
+                JPG, PNG, PDF only (Max 5MB)
+              </p>
             </div>
           </div>
 

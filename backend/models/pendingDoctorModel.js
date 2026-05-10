@@ -18,6 +18,11 @@ const pendingDoctorSchema = new mongoose.Schema(
       required: true,
     },
 
+    phone_number: {
+      type: String,
+      default: null,
+    },
+
     experience: {
       type: Number,
       min: 0,

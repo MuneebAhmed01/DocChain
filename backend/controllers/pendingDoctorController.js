@@ -7,6 +7,7 @@ export const joinDoctorRequest = async (req, res) => {
       fullName,
       email,
       password,
+      phone_number,
       experience,
       fee,
       specialty,
@@ -32,6 +33,7 @@ export const joinDoctorRequest = async (req, res) => {
       fullName,
       email,
       password: hashedPassword,
+      phone_number,
       experience,
       fee,
     
@@ -97,13 +99,19 @@ if (!imageUrl) {
 console.log("PROFILE PIC:", pendingDoctor.profilePic);
 
 
+    // Normalize speciality names to match frontend filters
+    const normalizedSpeciality = pendingDoctor.specialty.toLowerCase() === 'pediatrician' 
+      ? 'Pediatricians' 
+      : pendingDoctor.specialty.charAt(0).toUpperCase() + pendingDoctor.specialty.slice(1).toLowerCase();
+
     const doctor = await Doctor.create({
       name: pendingDoctor.fullName,
       email: pendingDoctor.email,
       password: pendingDoctor.password, // already hashed
+      phone_number: pendingDoctor.phone_number || null,
       experience: pendingDoctor.experience,
       fees: pendingDoctor.fee,
-      speciality: pendingDoctor.specialty,
+      speciality: normalizedSpeciality,
       about: pendingDoctor.about,
       degree: pendingDoctor.education,
       city: pendingDoctor.city,
@@ -113,6 +121,8 @@ console.log("PROFILE PIC:", pendingDoctor.profilePic);
         line2: pendingDoctor.address2,
       },
       date: new Date(),
+      onlineConsultEnabled: true,
+      onlineConsultFee: pendingDoctor.fee,
     });
 
     await PendingDoctor.findByIdAndDelete(id);

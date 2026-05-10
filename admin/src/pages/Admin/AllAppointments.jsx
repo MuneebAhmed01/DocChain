@@ -1,18 +1,40 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { AppContext } from "../../context/AppContext";
 import { assets } from "../../assets/assets";
+
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-red-500" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
 
 const AllAppointments = () => {
   const { aToken, appointments, getAllAppointments, cancelAppointment } =
     useContext(AdminContext);
   const { calculateAge, slotDateFormat, currency } = useContext(AppContext);
 
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
   useEffect(() => {
     if (aToken) {
       getAllAppointments();
     }
   }, [aToken]);
+
+  const handleCancel = async (appointmentId) => {
+    if (lockRef.current[appointmentId]) return;
+    lockRef.current[appointmentId] = true;
+    setLoadingMap((prev) => ({ ...prev, [appointmentId]: true }));
+    try {
+      await cancelAppointment(appointmentId);
+    } finally {
+      lockRef.current[appointmentId] = false;
+      setLoadingMap((prev) => ({ ...prev, [appointmentId]: false }));
+    }
+  };
 
   return (
     <div className="w-full m-1 sm:m-3 ">
@@ -144,14 +166,19 @@ const AllAppointments = () => {
                 </p>
               ) : (
                 <button
-                  onClick={() => cancelAppointment(item._id)}
-                  className="transition-transform p-1 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95"
+                  disabled={!!loadingMap[item._id]}
+                  onClick={() => handleCancel(item._id)}
+                  className="transition-transform p-1 hover:bg-red-50 rounded-full hover:scale-110 active:scale-95 flex items-center justify-center"
                 >
-                  <img
-                    className="w-5 h-5"
-                    src={assets.cancel_icon}
-                    alt="Cancel"
-                  />
+                  {loadingMap[item._id] ? (
+                    <Spinner />
+                  ) : (
+                    <img
+                      className="w-5 h-5"
+                      src={assets.cancel_icon}
+                      alt="Cancel"
+                    />
+                  )}
                 </button>
               )}
             </div>

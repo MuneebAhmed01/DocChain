@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { useBlogs } from "../../context/BlogContext";
 
 export default function BlogDetail() {
@@ -59,8 +59,18 @@ export default function BlogDetail() {
 
       {/* Meta */}
       <p className="text-sm text-gray-500 mb-4">
-        By {blog.author || "Admin"} •{" "}
-        {new Date(blog.createdAt).toLocaleDateString()}
+        By{" "}
+        {blog.authorRole === "doctor" && blog.doctorId ? (
+          <Link
+            to={`/appointment/${blog.doctorId}`}
+            className="text-primary hover:underline font-medium"
+          >
+            {blog.author}
+          </Link>
+        ) : (
+          <span>{blog.author || "Admin"}</span>
+        )}{" "}
+        • {new Date(blog.createdAt).toLocaleDateString()}
       </p>
 
       {/* Content */}

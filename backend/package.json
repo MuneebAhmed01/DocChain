@@ -8,7 +8,9 @@
     "start": "node server.js",
     "server": "nodemon server.js",
     "seed:blogs": "node scripts/createDemoBlogs.js",
-    "clean:blogs": "node scripts/deleteDemoBlogs.js",
+    "seed:doctor-blogs": "node scripts/seedBlogs.js",
+    "delete:blogs": "node scripts/deleteDemoBlogs.js",
+
     "wa:test": "tsx scripts/testBaileysNotifications.ts"
   },
   "author": "",

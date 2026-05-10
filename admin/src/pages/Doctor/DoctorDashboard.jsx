@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { DoctorContext } from "../../context/DoctorContext";
 import { assets } from "../../assets/assets";
 import { AppContext } from "../../context/AppContext";
@@ -28,16 +28,40 @@ ChartJS.register(
   BarElement,
 );
 
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-gray-500" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
+
 const DoctorDashboard = () => {
   const {
     dToken,
     dashData,
     getDashData,
+    appointments,
+    getAppointments,
     completeAppointment,
     cancelAppointment,
     joinOnlineAppointment,
   } = useContext(DoctorContext);
   const { currency, slotDateFormat } = useContext(AppContext);
+
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
+  const handleAction = async (appointmentId, action, apiFn) => {
+    if (lockRef.current[appointmentId]) return;
+    lockRef.current[appointmentId] = true;
+    setLoadingMap((prev) => ({ ...prev, [appointmentId]: action }));
+    try {
+      await apiFn(appointmentId);
+    } finally {
+      lockRef.current[appointmentId] = false;
+      setLoadingMap((prev) => ({ ...prev, [appointmentId]: null }));
+    }
+  };
 
   // Calculate real data from dashData
   const completedAppointments =
@@ -144,6 +168,7 @@ const DoctorDashboard = () => {
   useEffect(() => {
     if (dToken) {
       getDashData();
+      getAppointments();
     }
   }, [dToken]);
 
@@ -154,10 +179,11 @@ const DoctorDashboard = () => {
 
     const intervalId = window.setInterval(() => {
       getDashData();
+      getAppointments();
     }, 30000);
 
     return () => window.clearInterval(intervalId);
-  }, [dToken, getDashData]);
+  }, [dToken, getDashData, getAppointments]);
 
   const getAppointmentWindow = (slotDate, slotTime) => {
     if (!slotDate || !slotTime) return null;
@@ -360,7 +386,7 @@ const DoctorDashboard = () => {
             </div>
 
             <div className="divide-y divide-gray-100">
-              {dashData.latestAppointments.map((item, index) => (
+              {appointments.slice(0, 5).map((item, index) => (
                 <div
                   className="flex items-center gap-4 px-6 py-5 hover:bg-gray-50 transition-colors"
                   key={index}
@@ -506,42 +532,52 @@ const DoctorDashboard = () => {
                           </button>
                         )}
                         <button
-                          onClick={() => cancelAppointment(item._id)}
-                          className="p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors group"
+                          disabled={!!loadingMap[item._id]}
+                          onClick={() => handleAction(item._id, "cancel", cancelAppointment)}
+                          className="p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors group flex items-center justify-center min-w-[36px] min-h-[36px]"
                           title="Cancel Appointment"
                         >
-                          <svg
-                            className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
+                          {loadingMap[item._id] === "cancel" ? (
+                            <Spinner />
+                          ) : (
+                            <svg
+                              className="w-5 h-5 text-red-600 group-hover:scale-110 transition-transform"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          )}
                         </button>
                         <button
-                          onClick={() => completeAppointment(item._id)}
-                          className="p-2 bg-green-50 rounded-lg hover:bg-green-100 transition-colors group"
+                          disabled={!!loadingMap[item._id]}
+                          onClick={() => handleAction(item._id, "complete", completeAppointment)}
+                          className="p-2 bg-green-50 rounded-lg hover:bg-green-100 transition-colors group flex items-center justify-center min-w-[36px] min-h-[36px]"
                           title="Mark Completed"
                         >
-                          <svg
-                            className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+                          {loadingMap[item._id] === "complete" ? (
+                            <Spinner />
+                          ) : (
+                            <svg
+                              className="w-5 h-5 text-green-600 group-hover:scale-110 transition-transform"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
                         </button>
                       </div>
                     )}

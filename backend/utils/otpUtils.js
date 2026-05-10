@@ -32,14 +32,21 @@ export const storeOTP = async (email, otp, purpose = 'signup') => {
 // Verify OTP
 export const verifyOTP = async (email, otp, purpose = 'signup') => {
   try {
+    // Ensure OTP is string for consistent comparison
+    const normalizedOTP = String(otp).trim();
+    
     const otpRecord = await emailOtpModel.findOne({
       email,
-      otp,
       purpose,
       isVerified: false,
     });
 
     if (!otpRecord) {
+      return { success: false, message: "Invalid OTP" };
+    }
+
+    // Compare OTPs as strings
+    if (otpRecord.otp !== normalizedOTP) {
       return { success: false, message: "Invalid OTP" };
     }
 
@@ -51,13 +58,19 @@ export const verifyOTP = async (email, otp, purpose = 'signup') => {
       return { success: false, message: "OTP has expired" };
     }
 
+    // Check max attempts BEFORE incrementing
+    if (otpRecord.attempts >= otpRecord.maxAttempts) {
+      await emailOtpModel.deleteOne({ _id: otpRecord._id });
+      return { success: false, message: "Maximum attempts exceeded. Please request a new OTP." };
+    }
+
     // Increment attempts
     await emailOtpModel.updateOne(
       { _id: otpRecord._id },
       { $inc: { attempts: 1 } }
     );
 
-    // Check max attempts
+    // Check if this was the last attempt (after incrementing)
     if (otpRecord.attempts >= otpRecord.maxAttempts - 1) {
       await emailOtpModel.deleteOne({ _id: otpRecord._id });
       return { success: false, message: "Maximum attempts exceeded. Please request a new OTP." };

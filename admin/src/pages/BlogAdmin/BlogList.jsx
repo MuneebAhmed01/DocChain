@@ -1,9 +1,37 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom"; // Recommended over <a> tags for SPA navigation
 
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-red-500" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
+
 export function BlogList({ token }) {
   const [blogs, setBlogs] = useState([]);
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
+  const handleDelete = async (id) => {
+    if (lockRef.current[id]) return;
+    if (!confirm("Delete this blog?")) return;
+    
+    lockRef.current[id] = true;
+    setLoadingMap((prev) => ({ ...prev, [id]: true }));
+    try {
+      await axios.delete(`http://localhost:4000/api/blogs/admin/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setBlogs((prev) => prev.filter((b) => b._id !== id));
+    } catch (err) {
+      console.error("Delete error", err);
+    } finally {
+      lockRef.current[id] = false;
+      setLoadingMap((prev) => ({ ...prev, [id]: false }));
+    }
+  };
 
   useEffect(() => {
     axios
@@ -19,18 +47,6 @@ export function BlogList({ token }) {
         setBlogs(data);
       });
   }, []);
-
-  const deleteBlog = async (id) => {
-    if (!confirm("Delete this blog?")) return;
-    try {
-      await axios.delete(`http://localhost:4000/api/blogs/admin/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setBlogs((prev) => prev.filter((b) => b._id !== id));
-    } catch (err) {
-      console.error("Delete error", err);
-    }
-  };
 
   return (
     <div className="p-4 sm:p-6">
@@ -84,10 +100,11 @@ export function BlogList({ token }) {
                     Edit
                   </Link>
                   <button
-                    onClick={() => deleteBlog(b._id)}
-                    className="text-red-500 hover:text-red-700 font-medium"
+                    disabled={!!loadingMap[b._id]}
+                    onClick={() => handleDelete(b._id)}
+                    className="text-red-500 hover:text-red-700 font-medium inline-flex items-center justify-center min-w-[50px]"
                   >
-                    Delete
+                    {loadingMap[b._id] ? <Spinner /> : "Delete"}
                   </button>
                 </td>
               </tr>
@@ -120,10 +137,11 @@ export function BlogList({ token }) {
                 Edit
               </Link>
               <button
-                onClick={() => deleteBlog(b._id)}
-                className="flex-1 py-2 text-sm font-semibold bg-red-50 text-red-500 rounded-lg"
+                disabled={!!loadingMap[b._id]}
+                onClick={() => handleDelete(b._id)}
+                className="flex-1 py-2 text-sm font-semibold bg-red-50 text-red-500 rounded-lg flex items-center justify-center min-h-[36px]"
               >
-                Delete
+                {loadingMap[b._id] ? <Spinner /> : "Delete"}
               </button>
             </div>
           </div>

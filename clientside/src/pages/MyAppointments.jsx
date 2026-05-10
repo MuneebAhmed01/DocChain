@@ -40,6 +40,13 @@ const getAppointmentWindow = (slotDate, slotTime) => {
   return { start, end, joinStart };
 };
 
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-white" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
+
 const MyAppointments = () => {
   const { token, getDoctorsData } = useContext(AppContext);
   const [appointments, setAppointments] = useState([]);
@@ -51,6 +58,7 @@ const MyAppointments = () => {
   const [selectedChatAppt, setSelectedChatAppt] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedCancelAppt, setSelectedCancelAppt] = useState(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Initialize chat notifications
   useChatNotifications(token, "user");
@@ -176,6 +184,7 @@ const MyAppointments = () => {
   };
 
   const cancelAppointment = async (appointmentId) => {
+    setIsCancelling(true);
     try {
       const { data } = await axiosInstance.post(
         "/api/user/cancel-appointment",
@@ -194,6 +203,8 @@ const MyAppointments = () => {
     } catch (error) {
       console.log(error);
       toast.error(error.message);
+    } finally {
+      setIsCancelling(false);
     }
   };
   const openRateModal = (appt) => {
@@ -677,10 +688,11 @@ const MyAppointments = () => {
                 Go Back
               </button>
               <button
+                disabled={isCancelling}
                 onClick={() => cancelAppointment(selectedCancelAppt._id)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center min-w-[180px]"
               >
-                Yes, Cancel Appointment
+                {isCancelling ? <Spinner /> : "Yes, Cancel Appointment"}
               </button>
             </div>
           </div>

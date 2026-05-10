@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import { assets } from "../../assets/assets";
 import { AppContext } from "../../context/AppContext";
@@ -28,11 +28,33 @@ ChartJS.register(
   BarElement,
 );
 
+const Spinner = () => (
+  <svg className="animate-spin h-4 w-4 inline-block text-red-500" viewBox="0 0 24 24" fill="none">
+    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+  </svg>
+);
+
 const Dashboard = () => {
   const { aToken, getDashData, cancelAppointment, dashData } =
     useContext(AdminContext);
 
   const { slotDateFormat } = useContext(AppContext);
+
+  const [loadingMap, setLoadingMap] = useState({});
+  const lockRef = useRef({});
+
+  const handleCancel = async (appointmentId) => {
+    if (lockRef.current[appointmentId]) return;
+    lockRef.current[appointmentId] = true;
+    setLoadingMap((prev) => ({ ...prev, [appointmentId]: true }));
+    try {
+      await cancelAppointment(appointmentId);
+    } finally {
+      lockRef.current[appointmentId] = false;
+      setLoadingMap((prev) => ({ ...prev, [appointmentId]: false }));
+    }
+  };
 
   // State for platform revenue data
   const [platformRevenue, setPlatformRevenue] = useState({
@@ -497,7 +519,7 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="ml-4 shrink-0">
+                <div className="ml-4 shrink-0 flex items-center justify-center min-w-[40px] min-h-[40px]">
                   {item.cancelled ? (
                     <p className="text-red-400 text-xs font-medium bg-red-50 px-2 py-1 rounded">
                       Cancelled
@@ -508,14 +530,19 @@ const Dashboard = () => {
                     </p>
                   ) : (
                     <button
-                      onClick={() => cancelAppointment(item._id)}
+                      disabled={!!loadingMap[item._id]}
+                      onClick={() => handleCancel(item._id)}
                       className="transition-transform active:scale-90"
                     >
-                      <img
-                        className="w-8 sm:w-10 cursor-pointer"
-                        src={assets.cancel_icon}
-                        alt="Cancel"
-                      />
+                      {loadingMap[item._id] ? (
+                        <Spinner />
+                      ) : (
+                        <img
+                          className="w-8 sm:w-10 cursor-pointer"
+                          src={assets.cancel_icon}
+                          alt="Cancel"
+                        />
+                      )}
                     </button>
                   )}
                 </div>
